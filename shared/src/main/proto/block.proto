@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "sanity.nil.grpc.block";
+option java_outer_classname = "BlockServiceProto";
+
+package block;
+
+service BlockService {
+  rpc CheckBlocksExistence (CheckBlocksExistenceRequest) returns (CheckBlocksExistenceResponse) {}
+  rpc DeleteBlocks (DeleteBlocksRequest) returns (DeleteBlocksResponse) {}
+}
+
+message CheckBlocksExistenceRequest {
+  repeated string hash = 1;
+}
+
+message CheckBlocksExistenceResponse {
+  repeated string missingBlocks = 1;
+}
+
+message DeleteBlocksRequest {
+  repeated string hash = 1;
+}
+
+message DeleteBlocksResponse {
+  Code code = 1;
+}
+
+enum Code {
+  success = 0;
+  failure = 1;
+}
+
+// we can just return those hashes that aren't present
+//message BlockData {
+//  string hash = 1;
+//  bool exists = 2;
+//}

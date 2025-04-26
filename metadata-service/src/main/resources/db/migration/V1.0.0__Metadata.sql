@@ -1,0 +1,107 @@
+create table if not exists metadata_db.file_journal (
+    ws_id bigint not null,
+    file_id bigint not null,
+    blocklist text,
+    version integer not null,
+    history_id integer,
+    primary key (ws_id, file_id, version)
+);
+create table if not exists metadata_db.files (
+    id bigint generated always as identity,
+    content_type varchar(255),
+    filename varchar(255),
+    created_at timestamptz,
+    updated_at timestamptz,
+    primary key (id)
+);
+create table if not exists metadata_db.statistics (
+    id smallint generated always as identity,
+    description varchar(255),
+    name varchar(255),
+    primary key (id)
+);
+create table if not exists metadata_db.user_statistics (
+    statistics_id smallint not null,
+    user_id UUID not null,
+    value varchar(255),
+    primary key (statistics_id, user_id)
+);
+create table if not exists metadata_db.user_subscriptions (
+    id smallint generated always as identity,
+    description varchar(255),
+    title varchar(255),
+    storage_limit numeric(38,2),
+    workspaces_limit integer,
+    primary key (id)
+);
+create table if not exists metadata_db.user_workspaces (
+    user_id UUID not null,
+    ws_id bigint not null,
+    role varchar(255),
+    primary key (user_id, ws_id)
+);
+create table if not exists metadata_db.users (
+    id uuid default gen_random_uuid(),
+    email varchar(255),
+    password varchar(255),
+    username varchar(255),
+    subscription_id smallint not null,
+    created_at timestamptz,
+    updated_at timestamptz,
+    primary key (id)
+);
+create table if not exists metadata_db.workspace_subscriptions (
+    id smallint generated always as identity,
+    description varchar(255),
+    title varchar(255),
+    primary key (id)
+);
+create table if not exists metadata_db.workspaces (
+    id bigint generated always as identity,
+    name varchar(255),
+    description varchar(255),
+    primary key (id)
+);
+
+alter table if exists metadata_db.file_journal
+    add constraint file_journal_file
+        foreign key (file_id)
+            references metadata_db.files;
+alter table if exists metadata_db.file_journal
+    add constraint file_journal_ws
+        foreign key (ws_id)
+            references metadata_db.workspaces;
+alter table if exists metadata_db.user_statistics
+    add constraint user_statistics_statistics
+        foreign key (statistics_id)
+            references metadata_db.statistics;
+alter table if exists metadata_db.user_statistics
+    add constraint user_statistics_user
+        foreign key (user_id)
+            references metadata_db.users;
+alter table if exists metadata_db.user_workspaces
+    add constraint user_ws_user
+        foreign key (user_id)
+            references metadata_db.users;
+alter table if exists metadata_db.user_workspaces
+    add constraint user_ws_ws
+        foreign key (ws_id)
+            references metadata_db.workspaces;
+alter table if exists metadata_db.users
+    add constraint user_subscription
+        foreign key (subscription_id)
+            references metadata_db.user_subscriptions;
+
+insert into metadata_db.user_subscriptions (title, description, storage_limit, workspaces_limit) values ('Normal', 'Default subscription', 10, 3);
+insert into metadata_db.user_subscriptions (title, description, storage_limit, workspaces_limit) values ('Advanced', 'Advanced subscription', 400, 10);
+
+insert into metadata_db.users (id, username, email, password, subscription_id, created_at, updated_at) values ('5a9bf3fa-d99a-4ccc-b64f-b2ddf20ee5e5', 'admin', 'example@gmail.com', 'admin', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+insert into metadata_db.users (id, username, email, password, subscription_id, created_at, updated_at) values ('4d70da54-5ec5-4042-b011-b829bff6f8de', 'anonymous', 'anon@gmail.com', 'admin', 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+insert into metadata_db.workspaces (name, description) values ('w1', 'first workspace');
+insert into metadata_db.workspaces (name, description) values ('w2', 'second workspace');
+insert into metadata_db.user_workspaces (user_id, ws_id, role) values ('5a9bf3fa-d99a-4ccc-b64f-b2ddf20ee5e5', 1, 'OWNER');
+insert into metadata_db.user_workspaces (user_id, ws_id, role) values ('5a9bf3fa-d99a-4ccc-b64f-b2ddf20ee5e5', 2, 'USER');
+insert into metadata_db.user_workspaces (user_id, ws_id, role) values ('4d70da54-5ec5-4042-b011-b829bff6f8de', 1, 'USER');
+insert into metadata_db.user_workspaces (user_id, ws_id, role) values ('4d70da54-5ec5-4042-b011-b829bff6f8de', 2, 'OWNER');
+insert into metadata_db.statistics(name, description) values ('storage used', 'Indicates how much storage user has used up');
+insert into metadata_db.statistics(name, description) values ('workspaces connected', 'Indicates to how many workspaces user is connected');

@@ -1,0 +1,77 @@
+quarkus:
+  grpc:
+    server:
+      host: localhost
+      use-separate-server: false
+      enable-reflection-service: true
+    clients:
+      metadataService:
+        host: localhost
+        port: 8082
+  hibernate-orm:
+    log:
+      sql: true
+      bind-parameters: true
+    database:
+      default-schema: block_db
+      generation:
+        ~: none
+  datasource:
+    username: sanity
+    password: wordpass
+    jdbc:
+      url: jdbc:postgresql://localhost:5432/jodrive
+    db-kind: postgresql
+  flyway:
+    migrate-at-start: true
+    schemas: block_db
+  scheduler:
+    start-mode: forced
+  quartz:
+    clustered: true
+    store-type: jdbc-cmt
+#    driver-delegate: io.quarkus.quartz.runtime.jdbc.QuarkusPostgreSQLDelegate
+    thread-count: 2
+    table-prefix: quartz.QRTZ_
+  live-reload:
+    enabled: false
+  test:
+    continuous-testing: DISABLED
+  devservices:
+    enabled: false
+  http:
+    limits:
+        max-form-attribute-size: 20M
+        max-body-size: 20M
+#      max-form-attribute-size: 4096
+#      max-body-size: 8192
+    port: 8081
+    cors:
+      ~: true
+      origins: /.*/
+      methods: GET, OPTIONS, HEAD, PUT, POST
+      headers: origin, accept, authorization, content-type, content-disposition
+  arc:
+    remove-unused-beans: none
+    log-injection-errors: true
+  index-dependency:
+    shared:
+      group-id: sanity.nil
+      artifact-id: shared
+  log:
+    category:
+      "io.quarkus.http":
+        level: DEBUG
+      "quarkus.error":
+        level: DEBUG
+      "io.quarkus.rest":
+        level: DEBUG
+
+application:
+  scheduler:
+    interval: 10
+  minio:
+    url: localhost
+    port: 9000
+    accessKey: Q3AM3UQ867SPQQA43P2F
+    secretKey: zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG
