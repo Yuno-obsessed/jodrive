@@ -35,12 +35,12 @@ public class BlockApi {
     @Path("/download/{fileId}")
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
     @RestStreamElementType("application/octet-stream")
-    public Multi<byte[]> download(@PathParam("fileId") String fileId) {
-        return blockService.getFileBlock(fileId);
+    public Multi<byte[]> download(
+            @PathParam("fileId") String fileId,
+            @QueryParam("wsID") String wsID,
+            @QueryParam("link") String link
+    ) {
+        return blockService.getFileBlock(fileId, wsID, link);
     }
-
-    // TODO: add get download endpoint here
-    // and list endpoint in metadata service to get blocklist for filename
-    // Think about how to do sync
 
 }

@@ -39,6 +39,12 @@ quarkus:
     continuous-testing: DISABLED
   devservices:
     enabled: false
+  oidc:
+    auth-server-url: http://localhost:7080/realms/jodrive-realm
+    application-type: service
+    authentication.scopes: openid profile email
+    authentication.user-info-required: true
+    token.issuer: http://localhost:7080/realms/jodrive-realm
   http:
     limits:
         max-form-attribute-size: 20M

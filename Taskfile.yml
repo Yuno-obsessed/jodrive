@@ -1,0 +1,13 @@
+version: 3
+
+tasks:
+
+  test-ci:
+    vars:
+      HOST:
+        # need to override testcontainers host so that it resolves correct ip in act
+        sh: powershell -Command "(Get-NetIPAddress -InterfaceAlias '*Wi*' -AddressFamily IPv4).IPAddress"
+    cmds:
+      # to run this command .secrets file should be present in root directory with secrets definitions
+      - act --env TESTCONTAINERS_HOST_OVERRIDE={{.HOST}} -W .github/workflows/ci.yml
+    silent: false

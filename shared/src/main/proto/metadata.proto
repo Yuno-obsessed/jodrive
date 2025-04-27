@@ -8,12 +8,33 @@ package meta;
 
 service MetadataService {
   rpc GetFileBlockList (GetFileBlockListRequest) returns (GetFileBlockListResponse) {}
+  rpc VerifyLink (VerifyLinkRequest) returns (VerifyLinkResponse) {}
+  rpc GetUserWorkspace (GetUserWorkspaceRequest) returns (GetUserWorkspaceResponse) {}
 }
 
 message GetFileBlockListRequest {
-  string id = 1;
+  string fileID = 1;
+  string wsID = 2;
 }
 
 message GetFileBlockListResponse {
   repeated string block = 1;
+}
+
+message VerifyLinkRequest {
+  string link = 1;
+}
+
+message VerifyLinkResponse {
+  bool valid = 1;
+  bool expired = 2;
+}
+
+message GetUserWorkspaceRequest {
+  string userID = 1;
+  string workspaceID = 2;
+}
+
+message GetUserWorkspaceResponse {
+  bool exists = 1;
 }

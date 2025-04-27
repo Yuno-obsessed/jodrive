@@ -2,6 +2,7 @@ package sanity.nil.meta.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.extern.jbosslog.JBossLog;
@@ -14,6 +15,7 @@ import sanity.nil.meta.model.StatisticsModel;
 import sanity.nil.meta.model.UserModel;
 import sanity.nil.meta.model.UserStatisticsModel;
 import sanity.nil.meta.model.UserSubscriptionModel;
+import sanity.nil.security.IdentityProvider;
 
 import java.util.List;
 import java.util.UUID;
@@ -28,7 +30,10 @@ public class UserService {
     SubscriptionMapper subscriptionMapper;
     @Inject
     StatisticsMapper statisticsMapper;
-    private final String DEFAULT_VALUE = "0";
+    @Inject
+    @Named("keycloakIdentityProvider")
+    IdentityProvider identityProvider;
+    private final String DEFAULT_STATISTICS_VALUE = "0";
 
     @Transactional
     public UUID createUser(CreateUserDTO dto) {
@@ -42,13 +47,17 @@ public class UserService {
                 .getResultList();
         entityManager.persist(newUser);
         for (var statistics : defaultStatistics) {
-            var userStatistic = new UserStatisticsModel(newUser, statistics, DEFAULT_VALUE);
+            var userStatistic = new UserStatisticsModel(newUser, statistics, DEFAULT_STATISTICS_VALUE);
             entityManager.persist(userStatistic);
         }
         return newUser.getId();
     }
 
     public UserBaseDTO getUser(UUID id) {
+        var identity = identityProvider.getCheckedIdentity();
+        if (id.equals(identity.getUserID())) {
+            // TODO: return extended userdto
+        }
         var user = entityManager.createQuery("SELECT u FROM UserModel u " +
                 "WHERE u.id = :id", UserModel.class)
                 .setParameter("id", id)

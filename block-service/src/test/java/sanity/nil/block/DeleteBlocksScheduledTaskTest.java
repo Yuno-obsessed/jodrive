@@ -15,12 +15,14 @@ import org.awaitility.Awaitility;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.platform.commons.util.ReflectionUtils;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import sanity.nil.block.consts.TaskStatus;
 import sanity.nil.block.consts.TaskType;
 import sanity.nil.block.infra.minio.MinioOperations;
 import sanity.nil.block.model.BlockModel;
 import sanity.nil.block.model.TaskModel;
+import sanity.nil.exceptions.StorageException;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -51,14 +53,11 @@ public class DeleteBlocksScheduledTaskTest {
     ObjectMapper objectMapper;
     @Inject
     UserTransaction userTransaction;
-    private static final String BUCKET_NAME = "test";
 
     @Test
     public void given_Blocks_For_Two_Files_When_Delete_Blocks_Task_Created_Minio_Objects_Removed_And_Database_Entries_Deleted() throws Exception {
         File directory1 = getDirectory("files");
         File directory2 = copyResourceDirectory(directory1, "files-copy");
-
-        minioOperations.createBucketIfNotExists(BUCKET_NAME);
 
         userTransaction.begin();
         List<String> savedFiles1 = uploadFilesFromDirectoryToMinio(directory1);
@@ -99,18 +98,13 @@ public class DeleteBlocksScheduledTaskTest {
 
         for (String hash : hashList) {
             try {
-                minioOperations.getMinioClient().statObject(
-                        StatObjectArgs.builder()
-                                .bucket(BUCKET_NAME)
-                                .object(hash)
-                                .build()
-                );
+                minioOperations.statObject(hash);
                 return false;
-            } catch (ErrorResponseException e) {
-                if (!e.errorResponse().code().equals("NoSuchKey")) {
+            } catch (StorageException e) {
+                if (!e.getMessage().startsWith("NoSuchKey")) {
                     throw e;
                 }
-                log.info("Got error code: " + e.errorResponse().code());
+                log.info("Object successfully deleted: " + hash);
             }
         }
 
@@ -133,11 +127,9 @@ public class DeleteBlocksScheduledTaskTest {
             try (InputStream inputStream = new FileInputStream(file)) {
                 minioOperations.putObject(
                         PutObjectArgs.builder()
-                                .bucket(BUCKET_NAME)
                                 .object(filename)
                                 .stream(inputStream, file.length(), -1)
                                 .contentType("application/octet-stream")
-                                .build()
                 );
                 log.info("Saved file " + filename);
                 savedFiles.add(filename);

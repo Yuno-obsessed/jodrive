@@ -39,8 +39,8 @@ quarkus:
     token.issuer: http://localhost:7080/realms/jodrive-realm
   http:
     limits:
-        max-form-attribute-size: 20M
-        max-body-size: 20M
+      max-form-attribute-size: 20M
+      max-body-size: 20M
 #      max-form-attribute-size: 4096
 #      max-body-size: 8192
     port: 8082

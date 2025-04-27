@@ -8,12 +8,11 @@ import io.smallrye.mutiny.infrastructure.Infrastructure;
 import jakarta.inject.Inject;
 import lombok.extern.jbosslog.JBossLog;
 import sanity.nil.grpc.LogInterceptor;
-import sanity.nil.grpc.meta.GetFileBlockListRequest;
-import sanity.nil.grpc.meta.GetFileBlockListResponse;
-import sanity.nil.grpc.meta.MetadataServiceGrpc;
+import sanity.nil.grpc.meta.*;
 import sanity.nil.meta.service.MetadataService;
 
 import java.security.InvalidParameterException;
+import java.util.UUID;
 
 @JBossLog
 @GrpcService
@@ -25,11 +24,11 @@ public class MetadataServiceRPC extends MetadataServiceGrpc.MetadataServiceImplB
 
     @Override
     public void getFileBlockList(GetFileBlockListRequest request, StreamObserver<GetFileBlockListResponse> responseObserver) {
-        if (request == null || request.getId().isBlank()) {
+        if (request == null || request.getFileID().isBlank() || request.getWsID().isBlank()) {
             throw new InvalidParameterException("Invalid request");
         }
 
-        Uni.createFrom().item(() -> metadataService.getFileBlockList(request.getId()))
+        Uni.createFrom().item(() -> metadataService.getFileBlockList(request.getFileID(), request.getWsID()))
                 .runSubscriptionOn(Infrastructure.getDefaultExecutor())
                 .subscribe().with(
                         blockList -> {
@@ -45,4 +44,34 @@ public class MetadataServiceRPC extends MetadataServiceGrpc.MetadataServiceImplB
                 );
     }
 
+    @Override
+    public void verifyLink(VerifyLinkRequest request, StreamObserver<VerifyLinkResponse> responseObserver) {
+        // TODO: think about logic
+        responseObserver.onNext(VerifyLinkResponse.newBuilder()
+                .setValid(true).setExpired(false).build()
+        );
+    }
+
+    @Override
+    public void getUserWorkspace(GetUserWorkspaceRequest request, StreamObserver<GetUserWorkspaceResponse> responseObserver) {
+        if (request == null || request.getUserID().isBlank() || request.getWorkspaceID().isBlank()) {
+            throw new InvalidParameterException("Invalid request");
+        }
+
+        var userID = UUID.fromString(request.getUserID());
+        Uni.createFrom().item(() -> metadataService.existsUserWorkspace(userID, request.getWorkspaceID()))
+                .runSubscriptionOn(Infrastructure.getDefaultExecutor())
+                .subscribe().with(
+                        exists -> {
+                            responseObserver.onNext(GetUserWorkspaceResponse.newBuilder()
+                                    .setExists(exists)
+                                    .build());
+                            responseObserver.onCompleted();
+                        },
+                        failure -> {
+                            log.error("Failed to check existing workspace user " + failure);
+                            responseObserver.onError(failure);
+                        }
+                );
+    }
 }

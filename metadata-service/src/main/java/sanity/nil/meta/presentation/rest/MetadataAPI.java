@@ -20,10 +20,12 @@ public class MetadataAPI {
     MetadataService metadataService;
 
     @DELETE
-    @Path("file/{id}")
-    public Response deleteFile(@PathParam("id") String fileID) {
-        // TODO: check perms
-        metadataService.deleteFile(fileID);
+    @Path("file/{fileID}")
+    public Response deleteFile(
+            @PathParam("fileID") String fileID,
+            @QueryParam("wsID") String wsID
+    ) {
+        metadataService.deleteFile(fileID, wsID);
         return Response.noContent().build();
     }
 
@@ -49,9 +51,12 @@ public class MetadataAPI {
     @Path("file/{id}")
     @Produces(MediaType.APPLICATION_JSON)
     @RunOnVirtualThread
-    public FileInfo getFileInfo(@PathParam("id") String fileID) {
-        // TODO: check perms
-        return metadataService.getFileInfo(fileID);
+    public FileInfo getFileInfo(
+            @PathParam("id") String fileID,
+            @QueryParam("wsID") String wsID,
+            @QueryParam("link") String link
+    ) {
+        return metadataService.getFileInfo(fileID, wsID, link);
     }
 
     @GET

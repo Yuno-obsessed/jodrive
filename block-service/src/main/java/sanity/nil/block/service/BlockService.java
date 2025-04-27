@@ -1,9 +1,10 @@
 package sanity.nil.block.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.minio.GetObjectArgs;
 import io.minio.PutObjectArgs;
 import io.quarkus.grpc.GrpcClient;
+import io.quarkus.security.ForbiddenException;
+import io.quarkus.security.UnauthorizedException;
 import io.smallrye.mutiny.Multi;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -23,6 +24,9 @@ import sanity.nil.block.model.BlockModel;
 import sanity.nil.block.model.TaskModel;
 import sanity.nil.grpc.meta.GetFileBlockListRequest;
 import sanity.nil.grpc.meta.MutinyMetadataServiceGrpc;
+import sanity.nil.grpc.meta.VerifyLinkRequest;
+import sanity.nil.security.Role;
+import sanity.nil.security.WorkspaceIdentityProvider;
 
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
@@ -43,23 +47,26 @@ public class BlockService {
     MinioOperations minio;
     @Inject
     ObjectMapper objectMapper;
+    @Inject
+    WorkspaceIdentityProvider identityProvider;
     @GrpcClient("metadataService")
     MutinyMetadataServiceGrpc.MutinyMetadataServiceStub metadataClient;
 
     @Transactional
     public BlockUpload saveBlocks(List<FileUpload> files, BlockUploadRequest request) {
+        var identity = identityProvider.getIdentity();
+        if (!identity.hasRole(Role.USER)) {
+            throw new UnauthorizedException();
+        }
         log.info(String.format("Correlation-ID: %s for req: \n%s", request.correlationID(), request));
-        String bucket = "test";
         var results = new ArrayList<BlockUpload.UploadResult>();
         for (FileUpload block : files) {
             try {
-                minio.createBucketIfNotExists(bucket);
                 try (BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(block.filePath().toFile()))) {
                     minio.putObject(PutObjectArgs.builder()
                             .stream(inputStream, block.size(), -1)
                             .object(block.fileName())
-                            .bucket(bucket)
-                            .build());
+                    );
                 }
             } catch (Exception e) {
                 log.error(e.toString());
@@ -106,26 +113,12 @@ public class BlockService {
         return true;
     }
 
-//    public Multi<byte[]> getFileBlock(String fileID) {
-//
-//        var blocks = metadataClient.getFileBlockList(GetFileBlockListRequest.newBuilder()
-//                .setId(fileID).build()
-//        );
-//        if (blocks != null) {
-//            log.info("Metadata response: " + blocks.getBlockList().size());
-//
-//            // For each block, get its stream and flatten
-//            return Multi.createFrom().iterable(blocks.getBlockList())
-//                    .onItem().transformToMulti(hash -> getBlock(hash))
-//                    .concatenate(); // Maintain block order
-//        }
-//        return Multi.createFrom().empty();
-//    }
-
-    public Multi<byte[]> getFileBlock(String fileID) {
-
+    public Multi<byte[]> getFileBlock(String fileID, String wsID, String link) {
+        if (!hasPermissions(wsID, link)) {
+            throw new ForbiddenException();
+        }
         return metadataClient.getFileBlockList(GetFileBlockListRequest.newBuilder()
-                        .setId(fileID).build())
+                        .setFileID(fileID).setWsID(wsID).build())
                 .ifNoItem().after(Duration.ofSeconds(2)).failWith(NoResultException::new)
                 .onItem().transformToMulti(blockListResponse -> {
                     return Multi.createFrom().iterable(blockListResponse.getBlockList())
@@ -135,11 +128,22 @@ public class BlockService {
     }
 
     public Multi<byte[]> getBlock(String hash)  {
-        try (InputStream minioStream = minio.getMinioClient().getObject(
-                GetObjectArgs.builder().bucket("test").object(hash).build())) {
+        try (InputStream minioStream = minio.getObject(hash)) {
             return Multi.createFrom().item(minioStream.readAllBytes());
         } catch (Exception e) {
             throw new WebApplicationException("Error downloading file: " + hash, e);
+        }
+    }
+
+    private boolean hasPermissions(String wsID, String link) {
+        if (!link.isBlank()) {
+            var response = metadataClient.verifyLink(
+                    VerifyLinkRequest.newBuilder().setLink(link).build()
+            ).await().atMost(Duration.ofSeconds(2));
+            return response.getValid() && !response.getExpired();
+        } else {
+            var identity = identityProvider.getIdentity(wsID);
+            return identity.hasRole(Role.USER);
         }
     }
 

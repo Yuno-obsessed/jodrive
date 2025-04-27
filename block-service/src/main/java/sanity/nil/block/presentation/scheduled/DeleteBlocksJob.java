@@ -74,8 +74,8 @@ public class DeleteBlocksJob implements Job {
             var minioDeleteObject = blockHashes.stream().map(DeleteObject::new).toList();
             int minioRes = minioOperations.removeObjects(
                     RemoveObjectsArgs.builder()
-                            .bucket("test").objects(minioDeleteObject)
-                            .bypassGovernanceMode(true).build()
+                            .objects(minioDeleteObject)
+                            .bypassGovernanceMode(true)
             );
             log.info("Deleted " + minioRes + " s3 objects");
             log.info("Deleted " + deletes + " rows");

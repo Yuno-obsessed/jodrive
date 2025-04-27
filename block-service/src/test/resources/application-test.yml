@@ -9,19 +9,15 @@ quarkus:
         host: localhost
         port: 8082
   hibernate-orm:
-#    log:
-#      sql: true
-#      bind-parameters: true
     database:
       default-schema: block_db
       generation:
-        ~: drop-and-create
+        ~: none
   datasource:
-    username: sanity
-    password: wordpass
-    jdbc:
-      url: jdbc:postgresql://localhost:5432/jodrive
     db-kind: postgresql
+  flyway:
+    migrate-at-start: true
+    schemas: block_db
   scheduler:
     start-mode: forced
   quartz:
@@ -36,6 +32,12 @@ quarkus:
     continuous-testing: DISABLED
   devservices:
     enabled: false
+  oidc:
+    auth-server-url: http://localhost:7080/realms/jodrive-realm
+    application-type: service
+    authentication.scopes: openid profile email
+    authentication.user-info-required: true
+    token.issuer: http://localhost:7080/realms/jodrive-realm
   http:
     limits:
         max-form-attribute-size: 20M
@@ -51,6 +53,10 @@ quarkus:
   arc:
     remove-unused-beans: none
     log-injection-errors: true
+  index-dependency:
+    shared:
+      group-id: sanity.nil
+      artifact-id: shared
   log:
     category:
       "io.quarkus.http":
@@ -59,6 +65,10 @@ quarkus:
         level: DEBUG
       "io.quarkus.rest":
         level: DEBUG
+      "org.hibernate.SQL":
+        level: DEBUG
+      "org.hibernate.type.descriptor.sql":
+        level: TRACE
 
 application:
   scheduler:

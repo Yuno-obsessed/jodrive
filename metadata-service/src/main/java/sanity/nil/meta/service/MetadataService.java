@@ -1,6 +1,7 @@
 package sanity.nil.meta.service;
 
 import io.quarkus.grpc.GrpcClient;
+import io.quarkus.security.ForbiddenException;
 import io.quarkus.security.UnauthorizedException;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -18,10 +19,12 @@ import sanity.nil.meta.dto.block.GetBlockMetadata;
 import sanity.nil.meta.dto.file.FileInfo;
 import sanity.nil.meta.model.FileJournalModel;
 import sanity.nil.meta.model.FileModel;
+import sanity.nil.meta.model.LinkModel;
 import sanity.nil.meta.model.WorkspaceModel;
-import sanity.nil.security.IdentityProvider;
 import sanity.nil.security.Role;
+import sanity.nil.security.WorkspaceIdentityProvider;
 
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -34,17 +37,19 @@ public class MetadataService {
     @Inject
     EntityManager entityManager;
     @Inject
-    IdentityProvider identityProvider;
+    WorkspaceIdentityProvider identityProvider;
     @GrpcClient("blockService")
     BlockServiceGrpc.BlockServiceBlockingStub blockClient;
 
     private final static Long BLOCK_SIZE = (long) (4 * 1024 * 1024);
 
-    public List<String> getFileBlockList(String fileID) {
+    public List<String> getFileBlockList(String fileID, String workspaceID) {
         log.info("MetadataService thread: " + Thread.currentThread().getName());
         var fileJournal = entityManager.createQuery("SELECT f FROM FileJournalModel f " +
-                        "WHERE f.id.fileID = :fileID ORDER BY f.historyID DESC", FileJournalModel.class)
+                        "WHERE f.id.fileID = :fileID AND f.id.workspaceID = :wsID " +
+                        "ORDER BY f.historyID DESC", FileJournalModel.class)
                 .setParameter("fileID", fileID)
+                .setParameter("wsID", workspaceID)
                 .getSingleResult();
 
         if (fileJournal == null) {
@@ -53,15 +58,15 @@ public class MetadataService {
         return getBlocksFromBlockList(fileJournal.getBlocklist());
     }
 
-    public void deleteFile(String fileIDParam) {
-        var identity = identityProvider.getCheckedIdentity();
+    public void deleteFile(String fileIDParam, String workspaceIDParam) {
+        var identity = identityProvider.getIdentity(workspaceIDParam);
         if (!identity.hasRole(Role.USER)) {
             throw new UnauthorizedException();
         }
 
         Long fileID = Long.valueOf(fileIDParam);
         // TODO: rn taking only blocks from latest version, but what if prev versions had blocks that aren't in latest?
-        var blockList = getFileBlockList(fileIDParam);
+        var blockList = getFileBlockList(fileIDParam, workspaceIDParam);
 
         deleteFileJournal(fileID);
 
@@ -88,13 +93,13 @@ public class MetadataService {
     }
 
     public BlockMetadata getBlocksMetadata(GetBlockMetadata request) {
-        var identity = identityProvider.getCheckedIdentity();
+        var identity = identityProvider.getIdentity(String.valueOf(request.workspaceID()));
         if (!identity.hasRole(Role.USER)) {
             throw new UnauthorizedException();
         }
 
         log.debug("MetadataService thread: " + Thread.currentThread().getName());
-        var workspace = getWorkspace(request, identity.getUserID());
+        var workspace = getWorkspace(request.workspaceID(), identity.getUserID());
         if (workspace.isEmpty()) {
             return new BlockMetadata(request.correlationID());
         }
@@ -152,10 +157,10 @@ public class MetadataService {
         }
     }
 
-    public Optional<WorkspaceModel> getWorkspace(GetBlockMetadata request, UUID userID) {
+    public Optional<WorkspaceModel> getWorkspace(Long wsID, UUID userID) {
         var workspaces = entityManager.createQuery("SELECT m.workspace FROM UserWorkspaceModel m " +
                         "WHERE m.id.workspaceID = ?1 AND m.id.userID IN ?2 ", WorkspaceModel.class)
-                .setParameter(1, request.workspaceID())
+                .setParameter(1, wsID)
                 .setParameter(2, userID)
                 .getResultList();
         if (workspaces == null || workspaces.isEmpty())
@@ -164,13 +169,37 @@ public class MetadataService {
         return Optional.of(workspaces.getFirst());
     }
 
-    public FileInfo getFileInfo(String fileID) {
+    public FileInfo getFileInfo(String fileID, String wsID, String link) {
+        if (!hasPermissions(wsID, link)) {
+            throw new ForbiddenException();
+        }
         if (!StringUtils.isNumeric(fileID)) {
             return null;
         }
         var file = entityManager.find(FileModel.class, Long.valueOf(fileID));
 
         return new FileInfo(file.getFilename(), file.getContentType(), file.getCreatedAt());
+    }
+
+    public boolean existsUserWorkspace(UUID userID, String workspaceID) {
+        return getWorkspace(Long.valueOf(workspaceID), userID).isPresent();
+    }
+
+    public boolean verifyLink(String bareLink) {
+        var link = entityManager.find(LinkModel.class, bareLink);
+        if (link != null) {
+            return link.getExpiresAt().isBefore(ZonedDateTime.now());
+        }
+        return false;
+    }
+
+    private boolean hasPermissions(String wsID, String link) {
+        if (!link.isBlank()) {
+            return verifyLink(link);
+        } else {
+            var identity = identityProvider.getIdentity(wsID);
+            return identity.hasRole(Role.USER);
+        }
     }
 
 //    public String blockUploadedEvent(BlocksUploadedEvent event) {

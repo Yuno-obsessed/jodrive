@@ -1,0 +1,37 @@
+name: Jodrive CI
+
+on:
+  push:
+    branches: [ "master" ]
+
+jobs:
+  test:
+
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Install Maven if needed # for running locally with act
+        if: env.ACT
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y maven
+
+      - name: Build and place in maven local repo shared lib
+        working-directory: ./shared
+        run: mvn install
+
+      - name: Test BlockService
+        working-directory: ./block-service
+        run: mvn test
+
+      - name: Test MetadataService
+        working-directory: ./metadata-service
+        run: mvn test
