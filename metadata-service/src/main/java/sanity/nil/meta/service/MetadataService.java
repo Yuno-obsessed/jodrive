@@ -3,6 +3,7 @@ package sanity.nil.meta.service;
 import io.quarkus.grpc.GrpcClient;
 import io.quarkus.security.ForbiddenException;
 import io.quarkus.security.UnauthorizedException;
+import io.vertx.ext.auth.impl.hash.SHA256;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -14,16 +15,17 @@ import sanity.nil.grpc.block.BlockServiceGrpc;
 import sanity.nil.grpc.block.CheckBlocksExistenceRequest;
 import sanity.nil.grpc.block.Code;
 import sanity.nil.grpc.block.DeleteBlocksRequest;
+import sanity.nil.meta.consts.Quota;
 import sanity.nil.meta.dto.block.BlockMetadata;
 import sanity.nil.meta.dto.block.GetBlockMetadata;
 import sanity.nil.meta.dto.file.FileInfo;
-import sanity.nil.meta.model.FileJournalModel;
-import sanity.nil.meta.model.FileModel;
-import sanity.nil.meta.model.LinkModel;
-import sanity.nil.meta.model.WorkspaceModel;
+import sanity.nil.meta.exceptions.InsufficientQuotaException;
+import sanity.nil.meta.infra.cache.SubscriptionQuotaCache;
+import sanity.nil.meta.model.*;
 import sanity.nil.security.Role;
 import sanity.nil.security.WorkspaceIdentityProvider;
 
+import java.security.MessageDigest;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -38,18 +40,23 @@ public class MetadataService {
     EntityManager entityManager;
     @Inject
     WorkspaceIdentityProvider identityProvider;
+    @Inject
+    SubscriptionQuotaCache subscriptionQuotaCache;
     @GrpcClient("blockService")
     BlockServiceGrpc.BlockServiceBlockingStub blockClient;
 
     private final static Long BLOCK_SIZE = (long) (4 * 1024 * 1024);
+    private final static Integer FILE_VERSIONS_MAX = 3;
 
-    public List<String> getFileBlockList(String fileID, String workspaceID) {
+    public List<String> getFileBlockList(String fileID, String workspaceID, Integer versions) {
         log.info("MetadataService thread: " + Thread.currentThread().getName());
-        var fileJournal = entityManager.createQuery("SELECT f FROM FileJournalModel f " +
+        var fileJournal = entityManager.createQuery("SELECT f.blocklist FROM FileJournalModel f " +
                         "WHERE f.id.fileID = :fileID AND f.id.workspaceID = :wsID " +
-                        "ORDER BY f.historyID DESC", FileJournalModel.class)
+                        "ORDER BY f.id.version DESC " +
+                        "FETCH FIRST :versions ONLY ", FileJournalModel.class)
                 .setParameter("fileID", fileID)
                 .setParameter("wsID", workspaceID)
+                .setParameter("versions", versions)
                 .getSingleResult();
 
         if (fileJournal == null) {
@@ -65,11 +72,11 @@ public class MetadataService {
         }
 
         Long fileID = Long.valueOf(fileIDParam);
-        // TODO: rn taking only blocks from latest version, but what if prev versions had blocks that aren't in latest?
-        var blockList = getFileBlockList(fileIDParam, workspaceIDParam);
+        Long workspaceID = Long.valueOf(workspaceIDParam);
+        // get all file versions blocks to delete
+        var blockList = getFileBlockList(fileIDParam, workspaceIDParam, FILE_VERSIONS_MAX);
 
-        deleteFileJournal(fileID);
-
+        deleteFileJournal(fileID, workspaceID);
         deleteBlocksWithRetry(blockList);
     }
 
@@ -86,9 +93,11 @@ public class MetadataService {
     }
 
     @Transactional
-    public void deleteFileJournal(Long fileID) {
-        var deleted = entityManager.createQuery("DELETE FROM FileJournalModel f WHERE f.id.fileID = :fileID")
+    public void deleteFileJournal(Long fileID, Long workspaceID) {
+        var deleted = entityManager.createQuery("DELETE FROM FileJournalModel f " +
+                        "WHERE f.id.fileID = :fileID AND f.id.workspaceID = :wsID ")
                 .setParameter("fileID", fileID)
+                .setParameter("wsID", workspaceID)
                 .executeUpdate();
     }
 
@@ -97,12 +106,10 @@ public class MetadataService {
         if (!identity.hasRole(Role.USER)) {
             throw new UnauthorizedException();
         }
+        var fileSize = calculateFileSize(request.blocks().size(), request.lastBlockSize());
+        verifyQuotaUsage(identity.getUserID(), fileSize);
 
         log.debug("MetadataService thread: " + Thread.currentThread().getName());
-        var workspace = getWorkspace(request.workspaceID(), identity.getUserID());
-        if (workspace.isEmpty()) {
-            return new BlockMetadata(request.correlationID());
-        }
 
         var requestBlocks = request.blocks().stream()
                 .sorted(Comparator.comparing(a -> a.position))
@@ -119,42 +126,67 @@ public class MetadataService {
         }
 
         if (missingBlocks.isEmpty()) {
+            log.debug("All blocks already exist");
             return new BlockMetadata(request.correlationID());
         }
 
-        postProcessMetadata(request, missingBlocks, requestBlocks, workspace.get());
+        var workspace = getWorkspace(request.workspaceID(), identity.getUserID()).get();
+        if (missingBlocks.size() == requestBlocks.size()) {
+            postProcessNewFile(request.filename(), missingBlocks, workspace, fileSize);
+        } else {
+            postProcessUpdateFile(request.filename(), missingBlocks, workspace, fileSize);
+        }
 
         return new BlockMetadata(request.correlationID(), missingBlocks);
     }
 
     @Transactional
-    public void postProcessMetadata(GetBlockMetadata request, List<String> missingBlocks, Set<String> requestBlocks, WorkspaceModel workspace) {
-        if (missingBlocks.size() == requestBlocks.size()) {
-            // TODO: get last block's size from request
-            // TODO: check before inserting if user has enough storage to store file, add to statistics inserted file's size
+    protected void postProcessNewFile(String filename, List<String> newBlocks, WorkspaceModel workspace, Long fileSize) {
+        var rawFilename = StringUtils.substringBeforeLast(filename, ".");
+        var contentType = StringUtils.substringAfterLast(filename, ".");
+        FileModel newFile = new FileModel(rawFilename, contentType, fileSize);
+        entityManager.persist(newFile);
+        FileJournalModel fileJournal = new FileJournalModel(workspace, newFile, createBlockList(newBlocks.stream()),0, 0);
+        entityManager.merge(fileJournal);
+    }
 
-            var filename = StringUtils.substringBeforeLast(request.filename(), ".");
-            var contentType = StringUtils.substringAfterLast(request.filename(), ".");
-            FileModel newFile = new FileModel(filename, contentType);
-            entityManager.persist(newFile);
-            FileJournalModel fileJournal = new FileJournalModel(workspace, newFile, createBlockList(requestBlocks.stream()),0, 0);
-            entityManager.merge(fileJournal);
-        } else {
-            // TODO: maybe we also need to know at which position this block already exists?
-            // F.e. it exists at pos 2, now we are inserting it at pos 3
+    @Transactional
+    protected void postProcessUpdateFile(String filename, List<String> newBlocks, WorkspaceModel workspace, Long fileSize) {
+        // TODO: maybe we also need to know at which position this block already exists?
+        // F.e. it exists at pos 2, now we are inserting it at pos 3
+        // TODO: check block-by-block for any changes, because they can occur at any block
+        var existingVersions = entityManager.createQuery("SELECT f.id.version FROM FileJournalModel f " +
+                    "WHERE f.id.workspaceID = ?1 AND f.file.filename = ?2", Integer.class)
+                .setParameter(1, workspace.getId())
+                .setParameter(2, filename)
+                .getResultList();
 
-            // TODO: allow to maintain at max 3 versions of a file
-            var fileJournal = entityManager.createQuery("SELECT f FROM FileJournalModel f " +
-                            "WHERE f.id.workspaceID = ?1 AND f.file.filename = ?2 ", FileJournalModel.class)
-                    .setParameter(1, request.workspaceID())
-                    .setParameter(2, request.filename())
-                    .getSingleResult();
-            // TODO: first find a file with latest version to increment it
-
-            fileJournal.setBlocklist(createBlockList(missingBlocks.stream()));
-            fileJournal.setHistoryID(fileJournal.getHistoryID() + 1);
-            entityManager.persist(fileJournal);
+        if (existingVersions.size() == FILE_VERSIONS_MAX) {
+            entityManager.createQuery("DELETE FROM FileJournalModel f " +
+                            "WHERE f.id.version = :version")
+                    .setParameter("version", existingVersions.stream().sorted().findFirst().get())
+                    .executeUpdate();
         }
+
+        var fileJournal = entityManager.createQuery("SELECT f FROM FileJournalModel f " +
+                        "WHERE f.id.workspaceID = ?1 AND f.file.filename = ?2 " +
+                        "ORDER BY f.id.version DESC " +
+                        "FETCH FIRST 1 ROW ONLY", FileJournalModel.class)
+                .setParameter(1, workspace.getId())
+                .setParameter(2, filename)
+                .getSingleResult();
+
+        var file = entityManager.find(FileModel.class, fileJournal.getId().fileID());
+        file.setSize(fileSize);
+        entityManager.merge(file);
+
+        log.debug("Adding " + newBlocks.size() + " new blocks to blockList");
+        var existingBlocks = getBlocksFromBlockList(fileJournal.getBlocklist());
+        existingBlocks.subList(0, existingBlocks.size() - 1)
+                .addAll(newBlocks);
+        fileJournal.setBlocklist(createBlockList(existingBlocks.stream()));
+        fileJournal.setHistoryID(fileJournal.getHistoryID() + 1);
+        entityManager.persist(fileJournal);
     }
 
     public Optional<WorkspaceModel> getWorkspace(Long wsID, UUID userID) {
@@ -185,6 +217,10 @@ public class MetadataService {
         return getWorkspace(Long.valueOf(workspaceID), userID).isPresent();
     }
 
+    public String createLinkForSharing(String fileID, String wsID) {
+        return "";
+    }
+
     public boolean verifyLink(String bareLink) {
         var link = entityManager.find(LinkModel.class, bareLink);
         if (link != null) {
@@ -202,23 +238,27 @@ public class MetadataService {
         }
     }
 
-//    public String blockUploadedEvent(BlocksUploadedEvent event) {
-//        var blocks = event.blocks();
-//        var updates = entityManager.createQuery("UPDATE BlockModel SET status = ?1 WHERE hash IN ?2 ")
-//                .setParameter(1, BlockStatus.UPLOADED)
-//                .setParameter(2, blocks.stream().map(e -> e.hash).toList())
-//                .executeUpdate();
-//        if (updates != event.blocks().size()) {
-//            throw new IllegalArgumentException("Not all uploaded hashes were updated!");
-//        }
-//        return "";
-//    }
+    private void verifyQuotaUsage(UUID userID, Long fileSize) {
+        var statistics = entityManager.createQuery("SELECT s FROM UserStatisticsModel s " +
+                        "WHERE s.id.userID = :userID AND s.id.statisticsID = :statisticsID", UserStatisticsModel.class)
+                .setParameter("userID", userID)
+                .setParameter("statisticsID", Quota.USER_STORAGE_USED.id())
+                .getSingleResult();
 
-    private Long getFileEstimateSize(Long blockCount) {
+        var storageUsed = Long.valueOf(statistics.getValue());
+        var quota = subscriptionQuotaCache.getByQuota(Quota.USER_STORAGE_USED);
+        var remainingQuota = quota.storageLimit() - (storageUsed + fileSize);
+        if (remainingQuota < 0) {
+            throw new InsufficientQuotaException(Quota.USER_STORAGE_USED, String.valueOf(quota.storageLimit()));
+        }
+        log.debug("Verified quota, remaining: " + remainingQuota);
+    }
+
+    private Long calculateFileSize(Integer blockCount, Integer lastBlockSize) {
         if (blockCount == 1) {
-            return 0L; // TODO: get from request the last block's size
+            return lastBlockSize.longValue();
         } else {
-            return BLOCK_SIZE * blockCount-1;
+            return BLOCK_SIZE * blockCount-1 + lastBlockSize.longValue();
         }
     }
 

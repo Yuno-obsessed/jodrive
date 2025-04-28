@@ -28,7 +28,7 @@ public class MetadataServiceRPC extends MetadataServiceGrpc.MetadataServiceImplB
             throw new InvalidParameterException("Invalid request");
         }
 
-        Uni.createFrom().item(() -> metadataService.getFileBlockList(request.getFileID(), request.getWsID()))
+        Uni.createFrom().item(() -> metadataService.getFileBlockList(request.getFileID(), request.getWsID(), 1))
                 .runSubscriptionOn(Infrastructure.getDefaultExecutor())
                 .subscribe().with(
                         blockList -> {
@@ -46,10 +46,25 @@ public class MetadataServiceRPC extends MetadataServiceGrpc.MetadataServiceImplB
 
     @Override
     public void verifyLink(VerifyLinkRequest request, StreamObserver<VerifyLinkResponse> responseObserver) {
-        // TODO: think about logic
-        responseObserver.onNext(VerifyLinkResponse.newBuilder()
-                .setValid(true).setExpired(false).build()
-        );
+        if (request == null || request.getLink().isBlank()) {
+            throw new InvalidParameterException("Invalid request");
+        }
+
+        Uni.createFrom().item(() -> metadataService.verifyLink(request.getLink()))
+                .runSubscriptionOn(Infrastructure.getDefaultExecutor())
+                .subscribe().with(
+                        valid -> {
+                            responseObserver.onNext(VerifyLinkResponse.newBuilder()
+                                    .setValid(valid)
+                                    .setExpired(!valid)
+                                    .build());
+                            responseObserver.onCompleted();
+                        },
+                        failure -> {
+                            log.error("Failed to verify link " + failure);
+                            responseObserver.onError(failure);
+                        }
+                );
     }
 
     @Override

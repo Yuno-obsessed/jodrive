@@ -2,10 +2,9 @@ package sanity.nil.block;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.minio.PutObjectArgs;
-import io.minio.StatObjectArgs;
-import io.minio.errors.ErrorResponseException;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.oidc.server.OidcWiremockTestResource;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.UserTransaction;
@@ -15,7 +14,6 @@ import org.awaitility.Awaitility;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.junit.platform.commons.util.ReflectionUtils;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import sanity.nil.block.consts.TaskStatus;
 import sanity.nil.block.consts.TaskType;
@@ -42,7 +40,10 @@ import java.util.concurrent.TimeUnit;
 @JBossLog
 @QuarkusTest
 @Testcontainers
-@QuarkusTestResource(QuarkusIntegrationTestResources.class)
+@QuarkusTestResource.List({
+        @QuarkusTestResource(QuarkusIntegrationTestResources.class),
+        @QuarkusTestResource(OidcWiremockTestResource.class)
+})
 public class DeleteBlocksScheduledTaskTest {
 
     @Inject

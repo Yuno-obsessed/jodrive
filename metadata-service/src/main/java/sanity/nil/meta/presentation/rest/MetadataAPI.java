@@ -38,15 +38,6 @@ public class MetadataAPI {
         return metadataService.getBlocksMetadata(request);
     }
 
-//    @GET
-//    @Path("/download/{fileId}")
-//    @Produces(MediaType.APPLICATION_OCTET_STREAM)
-//    @RestStreamElementType("application/octet-stream")
-//    @Blocking
-//    public Multi<byte[]> download(@PathParam("fileId") String fileId) {
-//        return metadataService.getFileBlock(fileId);
-//    }
-
     @GET
     @Path("file/{id}")
     @Produces(MediaType.APPLICATION_JSON)
@@ -62,8 +53,11 @@ public class MetadataAPI {
     @GET
     @Path("file/{id}/share")
     @Produces(MediaType.APPLICATION_JSON)
-    public void shareFile(@PathParam("id") String fileID) {
-        // TODO: check perms
+    public String shareFile(
+            @PathParam("id") String fileID,
+            @QueryParam("wsID") String wsID
+    ) {
+        return metadataService.createLinkForSharing(fileID, wsID);
     }
 
 }

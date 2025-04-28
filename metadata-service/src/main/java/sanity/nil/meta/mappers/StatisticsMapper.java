@@ -11,7 +11,7 @@ public interface StatisticsMapper {
 
     @Mappings({
             @Mapping(source = "id.statisticsID", target = "id"),
-            @Mapping(source = "statistics.name", target = "name"),
+            @Mapping(source = "statistics.quota", target = "quota"),
             @Mapping(source = "statistics.description", target = "description"),
     })
     StatisticsDTO entityToDTO(UserStatisticsModel statisticsModel);

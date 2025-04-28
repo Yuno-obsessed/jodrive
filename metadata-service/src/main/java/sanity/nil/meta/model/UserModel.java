@@ -21,7 +21,6 @@ public class UserModel {
     private UUID id;
     private String username;
     private String email;
-    private String password;
     @OneToOne(optional = false, fetch = FetchType.EAGER)
     @JoinColumn(name = "subscription_id")
     private UserSubscriptionModel subscription;
@@ -34,11 +33,10 @@ public class UserModel {
     @Column(name = "updated_at", columnDefinition = "timestamptz")
     private LocalDateTime updatedAt;
 
-    public UserModel(String username, String email, String password, UserSubscriptionModel subscription) {
-        this.id = UUID.randomUUID();
+    public UserModel(UUID id, String username, String email, UserSubscriptionModel subscription) {
+        this.id = id;
         this.username = username;
         this.email = email;
-        this.password = password;
         this.subscription = subscription;
     }
 }

@@ -33,11 +33,9 @@ quarkus:
   devservices:
     enabled: false
   oidc:
-    auth-server-url: http://localhost:7080/realms/jodrive-realm
+    auth-server-url: ${keycloak.url}/realms/quarkus/
+    client-id: quarkus-service-app
     application-type: service
-    authentication.scopes: openid profile email
-    authentication.user-info-required: true
-    token.issuer: http://localhost:7080/realms/jodrive-realm
   http:
     limits:
         max-form-attribute-size: 20M

@@ -8,7 +8,7 @@ public record GetBlockMetadata(
         Long workspaceID,
         String filename,
         Set<BlockInfo> blocks,
-        Integer total
+        Integer lastBlockSize
 ) {
     public static class BlockInfo {
         public String hash;

@@ -6,8 +6,8 @@ import jakarta.inject.Named;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.extern.jbosslog.JBossLog;
-import org.mindrot.jbcrypt.BCrypt;
 import sanity.nil.meta.dto.user.CreateUserDTO;
+import sanity.nil.meta.dto.user.ExtendedUserDTO;
 import sanity.nil.meta.dto.user.UserBaseDTO;
 import sanity.nil.meta.mappers.StatisticsMapper;
 import sanity.nil.meta.mappers.SubscriptionMapper;
@@ -39,8 +39,8 @@ public class UserService {
     public UUID createUser(CreateUserDTO dto) {
         var defaultSubscription = entityManager.find(UserSubscriptionModel.class, (short) 1);
 
-        String hashedPassword = BCrypt.hashpw(dto.password(), BCrypt.gensalt());
-        var newUser = new UserModel(dto.username(), dto.email(), hashedPassword, defaultSubscription);
+        // password is saved in keycloak
+        var newUser = new UserModel(dto.id(), dto.username(), dto.email(), defaultSubscription);
         var defaultStatistics = entityManager.createQuery("SELECT s FROM StatisticsModel s " +
                 "WHERE s.id IN :id", StatisticsModel.class)
                 .setParameter("id", List.of((short) 1, (short) 2))
@@ -55,20 +55,20 @@ public class UserService {
 
     public UserBaseDTO getUser(UUID id) {
         var identity = identityProvider.getCheckedIdentity();
-        if (id.equals(identity.getUserID())) {
-            // TODO: return extended userdto
-        }
         var user = entityManager.createQuery("SELECT u FROM UserModel u " +
-                "WHERE u.id = :id", UserModel.class)
+                        "WHERE u.id = :id", UserModel.class)
                 .setParameter("id", id)
                 .getSingleResult();
-        var statisticsModel = entityManager.createQuery("SELECT s FROM UserStatisticsModel s " +
-                "WHERE s.id.userID = :id", UserStatisticsModel.class)
-                .setParameter("id", id)
-                .getResultList();
-
         var subscriptionDTO = subscriptionMapper.entityToDTO(user.getSubscription());
-        var statisticsDTOs = statisticsModel.stream().map(statisticsMapper::entityToDTO).toList();
-        return new UserBaseDTO(user.getId(), user.getUsername(), user.getEmail(), subscriptionDTO, statisticsDTOs, user.getCreatedAt());
+        if (id.equals(identity.getUserID())) {
+            var statisticsModel = entityManager.createQuery("SELECT s FROM UserStatisticsModel s " +
+                            "WHERE s.id.userID = :id", UserStatisticsModel.class)
+                    .setParameter("id", id)
+                    .getResultList();
+            var statisticsDTOs = statisticsModel.stream().map(statisticsMapper::entityToDTO).toList();
+            return ExtendedUserDTO.builder().statistics(statisticsDTOs).id(id).username(user.getUsername())
+                    .email(user.getEmail()).subscription(subscriptionDTO).createdAt(user.getCreatedAt()).build();
+        }
+        return new UserBaseDTO(user.getId(), user.getUsername(), user.getEmail(), subscriptionDTO, user.getCreatedAt());
     }
 }

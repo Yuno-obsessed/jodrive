@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import sanity.nil.meta.consts.Quota;
 
 @Getter
 @Setter
@@ -17,6 +18,7 @@ public class StatisticsModel {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Short id;
-    private String name;
+    @Enumerated(EnumType.STRING)
+    private Quota quota;
     private String description;
 }

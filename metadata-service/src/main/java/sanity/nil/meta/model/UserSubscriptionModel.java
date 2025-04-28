@@ -22,7 +22,7 @@ public class UserSubscriptionModel {
     private String title;
     private String description;
     @Column(name = "storage_limit")
-    private BigDecimal storageLimit;
+    private Long storageLimit;
     @Column(name = "workspaces_limit")
     private Integer workspacesLimit;
 }

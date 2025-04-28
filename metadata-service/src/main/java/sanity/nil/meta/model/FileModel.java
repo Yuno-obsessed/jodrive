@@ -22,13 +22,13 @@ public class FileModel {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(columnDefinition = "bigint")
     private Long id;
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    private UserWorkspaceModel workspace;
 
     private String filename;
 
     @Column(name = "content_type")
     private String contentType;
+
+    private Long size;
 
     @CreationTimestamp
     @Column(name = "created_at", columnDefinition = "timestamptz")
@@ -37,9 +37,10 @@ public class FileModel {
     @Column(name = "updated_at", columnDefinition = "timestamptz")
     private ZonedDateTime updatedAt;
 
-    public FileModel(String filename, String contentType) {
+    public FileModel(String filename, String contentType, Long size) {
         this.filename = filename;
         this.contentType = contentType;
+        this.size = size;
 //        createdAt = ZonedDateTime.now();
 //        updatedAt = ZonedDateTime.now();
     }

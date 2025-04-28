@@ -16,8 +16,8 @@ create table if not exists metadata_db.files (
 );
 create table if not exists metadata_db.statistics (
     id smallint generated always as identity,
+    quota varchar(255) check (quota in ('USER_STORAGE_USED','USER_WORKSPACES')),
     description varchar(255),
-    name varchar(255),
     primary key (id)
 );
 create table if not exists metadata_db.user_statistics (
@@ -41,7 +41,7 @@ create table if not exists metadata_db.user_workspaces (
     primary key (user_id, ws_id)
 );
 create table if not exists metadata_db.users (
-    id uuid default gen_random_uuid(),
+    id UUID NOT NULL,
     email varchar(255),
     password varchar(255),
     username varchar(255),
@@ -61,6 +61,13 @@ create table if not exists metadata_db.workspaces (
     name varchar(255),
     description varchar(255),
     primary key (id)
+);
+create table if not exists metadata_db.links (
+    link varchar(255) NOT NULL,
+    times_used integer,
+    created_at timestamptz,
+    expires_at timestamptz,
+    primary key (link)
 );
 
 alter table if exists metadata_db.file_journal
@@ -103,5 +110,5 @@ insert into metadata_db.user_workspaces (user_id, ws_id, role) values ('5a9bf3fa
 insert into metadata_db.user_workspaces (user_id, ws_id, role) values ('5a9bf3fa-d99a-4ccc-b64f-b2ddf20ee5e5', 2, 'USER');
 insert into metadata_db.user_workspaces (user_id, ws_id, role) values ('4d70da54-5ec5-4042-b011-b829bff6f8de', 1, 'USER');
 insert into metadata_db.user_workspaces (user_id, ws_id, role) values ('4d70da54-5ec5-4042-b011-b829bff6f8de', 2, 'OWNER');
-insert into metadata_db.statistics(name, description) values ('storage used', 'Indicates how much storage user has used up');
-insert into metadata_db.statistics(name, description) values ('workspaces connected', 'Indicates to how many workspaces user is connected');
+insert into metadata_db.statistics(name, description) values ('USER_STORAGE_USED', 'Indicates how much storage user has used up');
+insert into metadata_db.statistics(name, description) values ('USER_WORKSPACES', 'Indicates to how many workspaces user is connected');

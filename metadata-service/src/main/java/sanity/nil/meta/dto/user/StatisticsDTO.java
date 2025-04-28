@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 public class StatisticsDTO {
 
     public Short id;
-    public String name;
+    public String quota;
     public String description;
     public String value;
 }
