@@ -95,20 +95,20 @@ services:
 #      minio1:
 #        condition: service_started
 
-#  redis:
-#    container_name: redis
-#    image: redis:alpine
-#    command: redis-server
-#    ports:
-#      - "6379:6379"
-#    volumes:
-#      - redis.data:/data
-#    healthcheck:
-#      test: [ "CMD", "redis-cli","ping" ]
-#      interval: 10s
-#      timeout: 4s
-#      retries: 5
-#      start_period: 10s
+  redis:
+    container_name: redis
+    image: redis:alpine
+    command: redis-server
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis.data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli","ping" ]
+      interval: 10s
+      timeout: 4s
+      retries: 5
+      start_period: 10s
 
 #  nginx:
 #    image: nginx:latest

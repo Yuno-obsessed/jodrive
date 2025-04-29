@@ -53,10 +53,10 @@ public class MetadataServiceRPC extends MetadataServiceGrpc.MetadataServiceImplB
         Uni.createFrom().item(() -> metadataService.verifyLink(request.getLink()))
                 .runSubscriptionOn(Infrastructure.getDefaultExecutor())
                 .subscribe().with(
-                        valid -> {
+                        validity -> {
                             responseObserver.onNext(VerifyLinkResponse.newBuilder()
-                                    .setValid(valid)
-                                    .setExpired(!valid)
+                                    .setValid(validity.valid())
+                                    .setExpired(validity.expired())
                                     .build());
                             responseObserver.onCompleted();
                         },

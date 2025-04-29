@@ -47,7 +47,7 @@ quarkus:
       ~: true
       origins: /.*/
       methods: GET, OPTIONS, HEAD, PUT, POST
-      headers: origin, accept, authorization, content-type, content-disposition, user-id
+      headers: origin, accept, authorization, content-type, content-disposition
   arc:
     remove-unused-beans: none
     log-injection-errors: true

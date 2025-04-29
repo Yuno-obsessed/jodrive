@@ -11,6 +11,7 @@ import sanity.nil.meta.dto.user.ExtendedUserDTO;
 import sanity.nil.meta.dto.user.UserBaseDTO;
 import sanity.nil.meta.mappers.StatisticsMapper;
 import sanity.nil.meta.mappers.SubscriptionMapper;
+import sanity.nil.meta.mappers.UserMapper;
 import sanity.nil.meta.model.StatisticsModel;
 import sanity.nil.meta.model.UserModel;
 import sanity.nil.meta.model.UserStatisticsModel;
@@ -30,6 +31,8 @@ public class UserService {
     SubscriptionMapper subscriptionMapper;
     @Inject
     StatisticsMapper statisticsMapper;
+    @Inject
+    UserMapper userMapper;
     @Inject
     @Named("keycloakIdentityProvider")
     IdentityProvider identityProvider;
@@ -60,15 +63,21 @@ public class UserService {
                 .setParameter("id", id)
                 .getSingleResult();
         var subscriptionDTO = subscriptionMapper.entityToDTO(user.getSubscription());
+
         if (id.equals(identity.getUserID())) {
             var statisticsModel = entityManager.createQuery("SELECT s FROM UserStatisticsModel s " +
                             "WHERE s.id.userID = :id", UserStatisticsModel.class)
                     .setParameter("id", id)
                     .getResultList();
             var statisticsDTOs = statisticsModel.stream().map(statisticsMapper::entityToDTO).toList();
-            return ExtendedUserDTO.builder().statistics(statisticsDTOs).id(id).username(user.getUsername())
-                    .email(user.getEmail()).subscription(subscriptionDTO).createdAt(user.getCreatedAt()).build();
+            var userDTO = userMapper.entityToExtendedDTO(user);
+            userDTO.subscription = subscriptionDTO;
+            userDTO.statistics = statisticsDTOs;
+            return userDTO;
+        } else {
+            var userDTO = userMapper.entityToDTO(user);
+            userDTO.subscription = subscriptionDTO;
+            return userDTO;
         }
-        return new UserBaseDTO(user.getId(), user.getUsername(), user.getEmail(), subscriptionDTO, user.getCreatedAt());
     }
 }

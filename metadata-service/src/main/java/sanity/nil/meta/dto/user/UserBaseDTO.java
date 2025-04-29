@@ -10,7 +10,6 @@ import java.util.UUID;
 
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class UserBaseDTO {
     public UUID id;
     public String username;

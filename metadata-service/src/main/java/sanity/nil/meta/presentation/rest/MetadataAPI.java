@@ -7,6 +7,7 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.jbosslog.JBossLog;
+import sanity.nil.meta.consts.TimeUnit;
 import sanity.nil.meta.dto.block.BlockMetadata;
 import sanity.nil.meta.dto.block.GetBlockMetadata;
 import sanity.nil.meta.dto.file.FileInfo;
@@ -50,14 +51,16 @@ public class MetadataAPI {
         return metadataService.getFileInfo(fileID, wsID, link);
     }
 
-    @GET
+    @POST
     @Path("file/{id}/share")
     @Produces(MediaType.APPLICATION_JSON)
     public String shareFile(
             @PathParam("id") String fileID,
-            @QueryParam("wsID") String wsID
+            @QueryParam("wsID") String wsID,
+            @QueryParam("timeUnit") TimeUnit timeUnit,
+            @QueryParam("expiresIn") Long expiresIn
     ) {
-        return metadataService.createLinkForSharing(fileID, wsID);
+        return metadataService.constructLinkForSharing(fileID, wsID, timeUnit, expiresIn);
     }
 
 }

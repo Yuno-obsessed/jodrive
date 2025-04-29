@@ -3,7 +3,6 @@ package sanity.nil.meta.service;
 import io.quarkus.grpc.GrpcClient;
 import io.quarkus.security.ForbiddenException;
 import io.quarkus.security.UnauthorizedException;
-import io.vertx.ext.auth.impl.hash.SHA256;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -16,17 +15,21 @@ import sanity.nil.grpc.block.CheckBlocksExistenceRequest;
 import sanity.nil.grpc.block.Code;
 import sanity.nil.grpc.block.DeleteBlocksRequest;
 import sanity.nil.meta.consts.Quota;
+import sanity.nil.meta.consts.TimeUnit;
 import sanity.nil.meta.dto.block.BlockMetadata;
 import sanity.nil.meta.dto.block.GetBlockMetadata;
 import sanity.nil.meta.dto.file.FileInfo;
+import sanity.nil.meta.dto.file.LinkValidity;
+import sanity.nil.meta.exceptions.CryptoException;
 import sanity.nil.meta.exceptions.InsufficientQuotaException;
 import sanity.nil.meta.infra.cache.SubscriptionQuotaCache;
 import sanity.nil.meta.model.*;
+import sanity.nil.meta.security.LinkEncoder;
 import sanity.nil.security.Role;
 import sanity.nil.security.WorkspaceIdentityProvider;
 
-import java.security.MessageDigest;
-import java.time.ZonedDateTime;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -42,6 +45,8 @@ public class MetadataService {
     WorkspaceIdentityProvider identityProvider;
     @Inject
     SubscriptionQuotaCache subscriptionQuotaCache;
+    @Inject
+    LinkEncoder linkEncoder;
     @GrpcClient("blockService")
     BlockServiceGrpc.BlockServiceBlockingStub blockClient;
 
@@ -202,7 +207,7 @@ public class MetadataService {
     }
 
     public FileInfo getFileInfo(String fileID, String wsID, String link) {
-        if (!hasPermissions(wsID, link)) {
+        if (!hasFileAccessPermissions(wsID, link)) {
             throw new ForbiddenException();
         }
         if (!StringUtils.isNumeric(fileID)) {
@@ -213,29 +218,57 @@ public class MetadataService {
         return new FileInfo(file.getFilename(), file.getContentType(), file.getCreatedAt());
     }
 
-    public boolean existsUserWorkspace(UUID userID, String workspaceID) {
-        return getWorkspace(Long.valueOf(workspaceID), userID).isPresent();
-    }
-
-    public String createLinkForSharing(String fileID, String wsID) {
-        return "";
-    }
-
-    public boolean verifyLink(String bareLink) {
-        var link = entityManager.find(LinkModel.class, bareLink);
-        if (link != null) {
-            return link.getExpiresAt().isBefore(ZonedDateTime.now());
-        }
-        return false;
-    }
-
-    private boolean hasPermissions(String wsID, String link) {
+    private boolean hasFileAccessPermissions(String wsID, String link) {
         if (!link.isBlank()) {
-            return verifyLink(link);
+            var verifiedLink = verifyLink(link);
+            return verifiedLink.valid() && !verifiedLink.expired();
         } else {
             var identity = identityProvider.getIdentity(wsID);
             return identity.hasRole(Role.USER);
         }
+    }
+
+    public boolean existsUserWorkspace(UUID userID, String workspaceID) {
+        return getWorkspace(Long.valueOf(workspaceID), userID).isPresent();
+    }
+
+    @Transactional
+    public String constructLinkForSharing(String fileID, String wsID, TimeUnit timeUnit, Long expiresIn) {
+        // TODO: include device identification (user-agent or fingerprint) in link construction
+        var identity = identityProvider.getIdentity(wsID);
+
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime expiresAt = now.plus(expiresIn, timeUnit.toTemporalUnit());
+        long diff = expiresAt.toInstant(ZoneOffset.UTC).toEpochMilli() - now.toInstant(ZoneOffset.UTC).toEpochMilli();
+        String link = String.format("%s:%s:%s:%s", identity.getUserID(), fileID, wsID, diff);
+
+        String encryptedLink = "";
+        try {
+            encryptedLink = linkEncoder.encrypt(link);
+        } catch (CryptoException e) {
+            log.error("Could not encrypt link " + link, e);
+            return "";
+        }
+        LinkModel linkModel = new LinkModel(identity.getUserID(), link, expiresAt);
+        entityManager.persist(linkModel);
+
+        return encryptedLink;
+    }
+
+    public LinkValidity verifyLink(String bareLink) {
+        String decryptedLink = "";
+        try {
+            decryptedLink = linkEncoder.decrypt(bareLink);
+        } catch (CryptoException e) {
+            log.error("Could not decrypt link " + bareLink, e);
+            return new LinkValidity(false, false);
+        }
+
+        var link = entityManager.find(LinkModel.class, decryptedLink);
+        if (link != null) {
+            return new LinkValidity(true, link.getExpiresAt().isBefore(LocalDateTime.now()));
+        }
+        return new LinkValidity(false, false);
     }
 
     private void verifyQuotaUsage(UUID userID, Long fileSize) {

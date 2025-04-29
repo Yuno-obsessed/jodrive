@@ -10,7 +10,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -23,13 +25,22 @@ public class LinkModel {
     @Id
     private String link;
 
+    // Don't need issuer info so just persist his id
+    private UUID issuer;
+
     @Column(name = "times_used")
     private int timesUsed;
 
-    @CreationTimestamp
     @Column(name = "created_at", columnDefinition = "timestamptz")
-    private ZonedDateTime createdAt;
+    private LocalDateTime createdAt;
 
     @Column(name = "expires_at", columnDefinition = "timestamptz")
-    private ZonedDateTime expiresAt;
+    private LocalDateTime expiresAt;
+
+    public LinkModel(UUID issuer, String link, LocalDateTime expiresAt) {
+        this.issuer = issuer;
+        this.link = link;
+        this.createdAt = LocalDateTime.now();
+        this.expiresAt = expiresAt;
+    }
 }

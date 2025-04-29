@@ -41,7 +41,5 @@ public class FileModel {
         this.filename = filename;
         this.contentType = contentType;
         this.size = size;
-//        createdAt = ZonedDateTime.now();
-//        updatedAt = ZonedDateTime.now();
     }
 }

@@ -18,7 +18,6 @@ import sanity.nil.util.CollectionUtils;
 @ApplicationScoped
 public class SubscriptionQuotaCache {
 
-    @Inject
     ValueCommands<Short, SubscriptionDTO> valueCommands;
     @Inject
     Instance<EntityManager> entityManagerProxy;

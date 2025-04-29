@@ -5,6 +5,7 @@ import io.quarkus.runtime.annotations.ConfigPhase;
 import io.quarkus.runtime.annotations.ConfigRoot;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
+import io.smallrye.config.WithName;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -19,5 +20,6 @@ public interface SecurityConfiguration {
     @WithDefault("true")
     Optional<Boolean> enabled();
     @ConfigDocDefault("UserID for mocked user identity for local env")
+    @WithName("default-user-id")
     Optional<UUID> defaultUserID();
 }
