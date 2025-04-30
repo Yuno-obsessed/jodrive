@@ -5,9 +5,6 @@ quarkus:
       use-separate-server: false
       enable-reflection-service: true
     clients:
-      blockService:
-        host: localhost
-        port: 8081
       metadataService:
         host: localhost
         port: 8083
@@ -60,6 +57,8 @@ quarkus:
         level: DEBUG
       "org.hibernate.type.descriptor.sql":
         level: TRACE
+      "io.lettuce.core.protocol":
+        level: DEBUG
 application:
   crypto:
     iv: some_value

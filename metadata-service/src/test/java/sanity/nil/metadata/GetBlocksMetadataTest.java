@@ -1,0 +1,183 @@
+package sanity.nil.metadata;
+
+import io.quarkus.grpc.GrpcClient;
+import io.quarkus.test.InjectMock;
+import io.quarkus.test.common.QuarkusTestResource;
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.oidc.server.OidcWiremockTestResource;
+import io.restassured.http.ContentType;
+import io.smallrye.mutiny.Uni;
+import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
+import jakarta.transaction.UserTransaction;
+import lombok.extern.jbosslog.JBossLog;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import sanity.nil.grpc.block.BlockService;
+import sanity.nil.grpc.block.CheckBlocksExistenceRequest;
+import sanity.nil.grpc.block.CheckBlocksExistenceResponse;
+import sanity.nil.meta.dto.block.BlockMetadata;
+import sanity.nil.meta.dto.block.GetBlocksMetadata;
+import sanity.nil.meta.model.FileJournalModel;
+import sanity.nil.meta.model.FileModel;
+import sanity.nil.meta.model.WorkspaceModel;
+
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
+
+import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
+
+@JBossLog
+@QuarkusTest
+@QuarkusTestResource.List({
+        @QuarkusTestResource(IntegrationTestResource.class),
+        @QuarkusTestResource(OidcWiremockTestResource.class)
+})
+public class GetBlocksMetadataTest {
+
+    @InjectMock
+    @GrpcClient("blockService")
+    BlockService blockClient;
+    @Inject
+    EntityManager entityManager;
+    @Inject
+    UserTransaction userTransaction;
+    @ConfigProperty(name = "application.security.default-user-id")
+    UUID defaultUserID;
+    private final static Long BLOCK_SIZE = (long) (4 * 1024 * 1024);
+    private final static String DEFAULT_STATISTICS_VALUE = "0";
+
+    @BeforeEach
+    public void setUp() throws Exception {
+        userTransaction.begin();
+        entityManager.createQuery("DELETE FROM FileJournalModel f").executeUpdate();
+        entityManager.createQuery("DELETE FROM FileModel f").executeUpdate();
+        entityManager.createQuery("UPDATE UserStatisticsModel us " +
+                        "SET us.value = :defaultValue WHERE us.id.userID = :userID")
+                .setParameter("defaultValue", DEFAULT_STATISTICS_VALUE)
+                .setParameter("userID", defaultUserID)
+                .executeUpdate();
+        userTransaction.commit();
+    }
+
+    @Test
+    public void given_Valid_Request_When_New_File_Then_Create_FileJournal_And_File_With_Correct_Size() {
+
+        var lastBlockSize = 12000;
+        var blocks = IntStream.range(1, 100)
+                .mapToObj(e -> new GetBlocksMetadata.BlockInfo(UUID.randomUUID().toString(), e))
+                .sorted(Comparator.comparing(a -> a.position()))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        var newBlocks = blocks.stream().map(e -> e.hash())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        var expectedFileSize = 411053792L;
+        var expectedBlockList = String.join(",", newBlocks);
+
+        var blockServiceRequest = CheckBlocksExistenceRequest.newBuilder()
+                .addAllHash(newBlocks).build();
+        var blockServiceResponse = CheckBlocksExistenceResponse.newBuilder()
+                .addAllMissingBlocks(newBlocks).build();
+        Mockito.when(blockClient.checkBlocksExistence(blockServiceRequest))
+                .thenReturn(Uni.createFrom().item(blockServiceResponse));
+
+        var request = new GetBlocksMetadata(UUID.randomUUID(), 1L, "newFile.png", blocks, lastBlockSize);
+        var response = given()
+                .contentType(ContentType.JSON)
+                .body(request)
+                .when().post("/api/v1/metadata")
+                .then()
+                .statusCode(200)
+                .extract().body().as(BlockMetadata.class);
+
+        assertThat(response.missingBlocks().size()).isEqualTo(blocks.size());
+
+        var insertedJournal = entityManager.createQuery("SELECT f FROM FileJournalModel f " +
+                        "WHERE f.id.workspaceID = :wsID AND f.file.filename = :filename", FileJournalModel.class)
+                .setParameter("wsID", 1L)
+                .setParameter("filename", "newFile")
+                .getSingleResult();
+
+        assertThat(insertedJournal).isNotNull();
+        assertThat(insertedJournal.getFile().getSize()).isEqualTo(expectedFileSize);
+        assertThat(insertedJournal.getFile().getContentType()).isEqualTo("png");
+        assertThat(insertedJournal.getBlocklist()).isEqualTo(expectedBlockList);
+    }
+
+    @Test
+    public void given_Valid_Request_When_File_Exists_Then_Update() throws Exception {
+        userTransaction.begin();
+        var existingFile = createExistingFile();
+        userTransaction.commit();
+
+        var lastBlockSize = 14000;
+
+        var existingFileBlocks = Arrays.stream(existingFile.getBlocklist().split(","))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        List<String> addedBlocks = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            var block = UUID.randomUUID().toString();
+            addedBlocks.add(block);
+        }
+
+        // when file is updated adding new blocks at the end, the latter block should be ovewritten
+        // (cause it's not less than blocksize, so it's hash is changed)
+        Set<String> newFileVersionBlocks = Stream.concat(existingFileBlocks.stream().limit(existingFileBlocks.size()-1), addedBlocks.stream())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        List<String> orderedBlocks = new ArrayList<>(newFileVersionBlocks);
+        var blocks = IntStream.range(0, orderedBlocks.size())
+                .mapToObj(i -> new GetBlocksMetadata.BlockInfo(orderedBlocks.get(i), i))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        var expectedFileSize = (newFileVersionBlocks.size()-1) * BLOCK_SIZE + lastBlockSize;
+        var expectedBlockList = String.join(",", newFileVersionBlocks);
+
+        var blockServiceRequest = CheckBlocksExistenceRequest.newBuilder()
+                .addAllHash(newFileVersionBlocks).build();
+        var blockServiceResponse = CheckBlocksExistenceResponse.newBuilder()
+                .addAllMissingBlocks(addedBlocks).build();
+        Mockito.when(blockClient.checkBlocksExistence(blockServiceRequest))
+                .thenReturn(Uni.createFrom().item(blockServiceResponse));
+
+        var request = new GetBlocksMetadata(UUID.randomUUID(), 1L, "testFile.png", blocks, lastBlockSize);
+        var response = given()
+                .contentType(ContentType.JSON)
+                .body(request)
+                .when().post("/api/v1/metadata")
+                .then()
+                .statusCode(200)
+                .extract().body().as(BlockMetadata.class);
+
+        assertThat(response.missingBlocks().size()).isEqualTo(addedBlocks.size());
+
+        var insertedJournal = entityManager.createQuery("SELECT f FROM FileJournalModel f " +
+                        "WHERE f.id.workspaceID = :wsID AND f.file.filename = :filename", FileJournalModel.class)
+                .setParameter("wsID", 1L)
+                .setParameter("filename", "testFile")
+                .getSingleResult();
+
+        assertThat(insertedJournal).isNotNull();
+        assertThat(insertedJournal.getFile().getSize()).isEqualTo(expectedFileSize);
+        assertThat(insertedJournal.getFile().getContentType()).isEqualTo("png");
+        assertThat(insertedJournal.getBlocklist()).isEqualTo(expectedBlockList);
+    }
+
+    private FileJournalModel createExistingFile() {
+        var workspace = entityManager.find(WorkspaceModel.class, 1L);
+        var blockList = IntStream.range(1, 101)
+                .mapToObj(e -> UUID.randomUUID().toString())
+                .collect(Collectors.joining(","));
+        var file = new FileModel("testFile", "png", 411053792L);
+
+        var fileJournal = new FileJournalModel(workspace, file, blockList, 0, 0);
+        entityManager.persist(fileJournal);
+        return fileJournal;
+    }
+}

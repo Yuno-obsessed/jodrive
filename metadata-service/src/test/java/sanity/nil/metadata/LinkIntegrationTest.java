@@ -43,7 +43,7 @@ public class LinkIntegrationTest {
     @Inject
     UserTransaction userTransaction;
 
-    @GrpcClient("metadata-service")
+    @GrpcClient("metadataService")
     MetadataServiceGrpc.MetadataServiceBlockingStub stub;
 
     @BeforeAll

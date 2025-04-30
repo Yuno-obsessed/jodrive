@@ -9,7 +9,7 @@ import jakarta.ws.rs.core.Response;
 import lombok.extern.jbosslog.JBossLog;
 import sanity.nil.meta.consts.TimeUnit;
 import sanity.nil.meta.dto.block.BlockMetadata;
-import sanity.nil.meta.dto.block.GetBlockMetadata;
+import sanity.nil.meta.dto.block.GetBlocksMetadata;
 import sanity.nil.meta.dto.file.FileInfo;
 import sanity.nil.meta.service.MetadataService;
 
@@ -34,7 +34,7 @@ public class MetadataAPI {
     @Path("")
     @Produces(MediaType.APPLICATION_JSON)
     @Blocking
-    public BlockMetadata getBlocksMetadata(GetBlockMetadata request) {
+    public BlockMetadata getBlocksMetadata(GetBlocksMetadata request) {
         log.info("Rest Endpoint thread: " + Thread.currentThread().getName());
         return metadataService.getBlocksMetadata(request);
     }

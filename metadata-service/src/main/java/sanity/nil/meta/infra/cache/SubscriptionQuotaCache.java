@@ -2,6 +2,7 @@ package sanity.nil.meta.infra.cache;
 
 import io.quarkus.redis.datasource.RedisDataSource;
 import io.quarkus.redis.datasource.value.ValueCommands;
+import io.quarkus.runtime.Startup;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Instance;
@@ -15,6 +16,7 @@ import sanity.nil.meta.model.UserSubscriptionModel;
 import sanity.nil.util.CollectionUtils;
 
 @JBossLog
+@Startup
 @ApplicationScoped
 public class SubscriptionQuotaCache {
 
@@ -46,11 +48,11 @@ public class SubscriptionQuotaCache {
         var subscriptions = entityManager.createQuery("SELECT s FROM UserSubscriptionModel s", UserSubscriptionModel.class)
                 .getResultList();
 
-        if (CollectionUtils.isEmpty(subscriptions)) {
+        if (CollectionUtils.isNotEmpty(subscriptions)) {
             subscriptions.forEach(subscription -> {
                 valueCommands.set(subscription.getId(), subscriptionMapper.entityToDTO(subscription));
             });
+            log.debug("Loaded " + subscriptions.size() + " subscriptions from database");
         }
-        log.debug("Loaded " + subscriptions.size() + " subscriptions from database");
     }
 }

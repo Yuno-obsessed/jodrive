@@ -10,14 +10,11 @@ import jakarta.transaction.Transactional;
 import lombok.extern.jbosslog.JBossLog;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.faulttolerance.Retry;
-import sanity.nil.grpc.block.BlockServiceGrpc;
-import sanity.nil.grpc.block.CheckBlocksExistenceRequest;
-import sanity.nil.grpc.block.Code;
-import sanity.nil.grpc.block.DeleteBlocksRequest;
+import sanity.nil.grpc.block.*;
 import sanity.nil.meta.consts.Quota;
 import sanity.nil.meta.consts.TimeUnit;
 import sanity.nil.meta.dto.block.BlockMetadata;
-import sanity.nil.meta.dto.block.GetBlockMetadata;
+import sanity.nil.meta.dto.block.GetBlocksMetadata;
 import sanity.nil.meta.dto.file.FileInfo;
 import sanity.nil.meta.dto.file.LinkValidity;
 import sanity.nil.meta.exceptions.CryptoException;
@@ -28,6 +25,7 @@ import sanity.nil.meta.security.LinkEncoder;
 import sanity.nil.security.Role;
 import sanity.nil.security.WorkspaceIdentityProvider;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
@@ -48,7 +46,7 @@ public class MetadataService {
     @Inject
     LinkEncoder linkEncoder;
     @GrpcClient("blockService")
-    BlockServiceGrpc.BlockServiceBlockingStub blockClient;
+    BlockService blockClient;
 
     private final static Long BLOCK_SIZE = (long) (4 * 1024 * 1024);
     private final static Integer FILE_VERSIONS_MAX = 3;
@@ -91,7 +89,7 @@ public class MetadataService {
 
         var response = blockClient.deleteBlocks(DeleteBlocksRequest.newBuilder()
                 .addAllHash(blockList).build()
-        );
+        ).await().atMost(Duration.ofSeconds(2L));
         if (response.getCode().equals(Code.failure)) {
             throw new RuntimeException("Error calling delete blocks");
         }
@@ -106,7 +104,7 @@ public class MetadataService {
                 .executeUpdate();
     }
 
-    public BlockMetadata getBlocksMetadata(GetBlockMetadata request) {
+    public BlockMetadata getBlocksMetadata(GetBlocksMetadata request) {
         var identity = identityProvider.getIdentity(String.valueOf(request.workspaceID()));
         if (!identity.hasRole(Role.USER)) {
             throw new UnauthorizedException();
@@ -117,14 +115,15 @@ public class MetadataService {
         log.debug("MetadataService thread: " + Thread.currentThread().getName());
 
         var requestBlocks = request.blocks().stream()
-                .sorted(Comparator.comparing(a -> a.position))
-                .map(e -> e.hash).collect(Collectors.toSet());
+                .sorted(Comparator.comparing(a -> a.position()))
+                .map(e -> e.hash())
+                .collect(Collectors.toCollection(LinkedHashSet::new));;
 
         List<String> missingBlocks = new ArrayList<>();
         try {
             var response = blockClient.checkBlocksExistence(CheckBlocksExistenceRequest.newBuilder()
                     .addAllHash(requestBlocks).build()
-            );
+            ).await().atMost(Duration.ofSeconds(2L));
             missingBlocks = response.getMissingBlocksList();
         } catch (Exception e) {
             log.error("Error checking blocks existence", e);
@@ -139,7 +138,8 @@ public class MetadataService {
         if (missingBlocks.size() == requestBlocks.size()) {
             postProcessNewFile(request.filename(), missingBlocks, workspace, fileSize);
         } else {
-            postProcessUpdateFile(request.filename(), missingBlocks, workspace, fileSize);
+            var rawFilename = StringUtils.substringBeforeLast(request.filename(), ".");
+            postProcessUpdateFile(rawFilename, missingBlocks, workspace, fileSize);
         }
 
         return new BlockMetadata(request.correlationID(), missingBlocks);
@@ -159,7 +159,7 @@ public class MetadataService {
     protected void postProcessUpdateFile(String filename, List<String> newBlocks, WorkspaceModel workspace, Long fileSize) {
         // TODO: maybe we also need to know at which position this block already exists?
         // F.e. it exists at pos 2, now we are inserting it at pos 3
-        // TODO: check block-by-block for any changes, because they can occur at any block
+        // TODO: check block-by-block for any changes, because they can occur at any block (current logic is wrong)
         var existingVersions = entityManager.createQuery("SELECT f.id.version FROM FileJournalModel f " +
                     "WHERE f.id.workspaceID = ?1 AND f.file.filename = ?2", Integer.class)
                 .setParameter(1, workspace.getId())
@@ -187,9 +187,8 @@ public class MetadataService {
 
         log.debug("Adding " + newBlocks.size() + " new blocks to blockList");
         var existingBlocks = getBlocksFromBlockList(fileJournal.getBlocklist());
-        existingBlocks.subList(0, existingBlocks.size() - 1)
-                .addAll(newBlocks);
-        fileJournal.setBlocklist(createBlockList(existingBlocks.stream()));
+        var updatedBlocks = Stream.concat(existingBlocks.stream().limit(existingBlocks.size()-1), newBlocks.stream());
+        fileJournal.setBlocklist(createBlockList(updatedBlocks));
         fileJournal.setHistoryID(fileJournal.getHistoryID() + 1);
         entityManager.persist(fileJournal);
     }
@@ -291,7 +290,7 @@ public class MetadataService {
         if (blockCount == 1) {
             return lastBlockSize.longValue();
         } else {
-            return BLOCK_SIZE * blockCount-1 + lastBlockSize.longValue();
+            return BLOCK_SIZE * (blockCount-1) + lastBlockSize.longValue();
         }
     }
 
@@ -300,6 +299,6 @@ public class MetadataService {
     }
 
     private List<String> getBlocksFromBlockList(String blocklist) {
-        return Arrays.asList(blocklist.split(","));
+        return Arrays.stream(blocklist.split(",")).collect(Collectors.toList());
     }
 }

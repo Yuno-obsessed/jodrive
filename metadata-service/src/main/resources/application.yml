@@ -9,7 +9,8 @@ quarkus:
         host: localhost
         port: 8081
   redis:
-    hosts: redis://localhost:6379
+    hosts:
+      - redis://:@localhost:6379/0
   hibernate-orm:
     log:
       sql: true
@@ -65,6 +66,10 @@ quarkus:
       "quarkus.error":
         level: DEBUG
       "io.quarkus.rest":
+        level: DEBUG
+      "sanity.nil":
+        level: DEBUG
+      "io.quarkus.redis":
         level: DEBUG
 application:
   crypto:
