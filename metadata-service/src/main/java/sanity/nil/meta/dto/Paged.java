@@ -4,7 +4,7 @@ import java.util.List;
 
 public class Paged<T> {
 
-    List<T> elements;
+    public List<T> elements;
     public int totalPages;
     public boolean next;
     public boolean previous;

@@ -7,11 +7,15 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.jbosslog.JBossLog;
+import org.jboss.resteasy.reactive.RestResponse;
 import sanity.nil.meta.consts.TimeUnit;
+import sanity.nil.meta.dto.Paged;
 import sanity.nil.meta.dto.block.BlockMetadata;
 import sanity.nil.meta.dto.block.GetBlocksMetadata;
 import sanity.nil.meta.dto.file.FileInfo;
 import sanity.nil.meta.service.MetadataService;
+
+import java.util.UUID;
 
 @Path("/api/v1/metadata/")
 @JBossLog
@@ -49,6 +53,18 @@ public class MetadataAPI {
             @QueryParam("link") String link
     ) {
         return metadataService.getFileInfo(fileID, wsID, link);
+    }
+
+    @GET
+    @Path("file/search")
+    @Produces(MediaType.APPLICATION_JSON)
+    public RestResponse<Paged<FileInfo>> getFilesByFilters(
+            @QueryParam("wsID") Long wsID,
+            @QueryParam("userID") UUID userID,
+            @QueryParam("page") Integer page,
+            @QueryParam("size") Integer size
+    ) {
+        return RestResponse.ok(metadataService.searchFiles(wsID, userID, page, size));
     }
 
     @POST

@@ -1,7 +1,6 @@
 package sanity.nil.meta.security;
 
 import javax.crypto.SecretKey;
-import java.io.File;
 import java.io.FileInputStream;
 import java.net.URL;
 import java.nio.file.Path;

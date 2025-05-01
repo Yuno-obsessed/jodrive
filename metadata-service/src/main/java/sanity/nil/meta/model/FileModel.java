@@ -8,7 +8,7 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.time.ZonedDateTime;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -23,6 +23,9 @@ public class FileModel {
     @Column(columnDefinition = "bigint")
     private Long id;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    private UserModel uploader;
+
     private String filename;
 
     @Column(name = "content_type")
@@ -32,12 +35,13 @@ public class FileModel {
 
     @CreationTimestamp
     @Column(name = "created_at", columnDefinition = "timestamptz")
-    private ZonedDateTime createdAt;
+    private LocalDateTime createdAt;
     @UpdateTimestamp
     @Column(name = "updated_at", columnDefinition = "timestamptz")
-    private ZonedDateTime updatedAt;
+    private LocalDateTime updatedAt;
 
-    public FileModel(String filename, String contentType, Long size) {
+    public FileModel(UserModel uploader, String filename, String contentType, Long size) {
+        this.uploader = uploader;
         this.filename = filename;
         this.contentType = contentType;
         this.size = size;

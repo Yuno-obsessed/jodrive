@@ -17,12 +17,12 @@ public class FileJournalModel {
     @EmbeddedId
     private FileJournalIDModel id;
 
-    @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @ManyToOne
     @MapsId("workspaceID")
     @JoinColumn(name = "ws_id", columnDefinition = "bigint")
     private WorkspaceModel workspace;
 
-    @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE, CascadeType.REMOVE})
+    @ManyToOne(cascade = {CascadeType.MERGE, CascadeType.REMOVE})
     @MapsId("fileID")
     @JoinColumn(name = "file_id", columnDefinition = "bigint ")
     private FileModel file;

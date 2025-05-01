@@ -7,7 +7,6 @@ import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.extern.jbosslog.JBossLog;
 import sanity.nil.meta.dto.user.CreateUserDTO;
-import sanity.nil.meta.dto.user.ExtendedUserDTO;
 import sanity.nil.meta.dto.user.UserBaseDTO;
 import sanity.nil.meta.mappers.StatisticsMapper;
 import sanity.nil.meta.mappers.SubscriptionMapper;

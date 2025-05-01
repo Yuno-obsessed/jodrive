@@ -8,6 +8,7 @@ create table if not exists metadata_db.file_journal (
 );
 create table if not exists metadata_db.files (
     id bigint generated always as identity,
+    uploader_id uuid not null,
     content_type varchar(255),
     filename varchar(255),
     size bigint,
@@ -103,6 +104,10 @@ alter table if exists metadata_db.users
 alter table if exists metadata_db.links
     add constraint link_issuer
         foreign key (issuer)
+            references metadata_db.users;
+alter table if exists metadata_db.files
+    add constraint file_uploader
+        foreign key (uploader_id)
             references metadata_db.users;
 
 insert into metadata_db.user_subscriptions (title, description, storage_limit, workspaces_limit) values ('Normal', 'Default subscription', 10737418240, 3); -- 10GiB
