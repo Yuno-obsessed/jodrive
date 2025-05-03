@@ -11,6 +11,7 @@ import jakarta.transaction.UserTransaction;
 import lombok.extern.jbosslog.JBossLog;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import sanity.nil.grpc.meta.MetadataServiceGrpc;
 import sanity.nil.grpc.meta.VerifyLinkRequest;
@@ -51,6 +52,14 @@ public class LinkIntegrationTest {
     static void beforeAll() {
         TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
         RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
+    }
+
+    @BeforeEach
+    public void setup() throws Exception {
+        userTransaction.begin();
+        entityManager.createQuery("DELETE FROM FileJournalModel f").executeUpdate();
+        entityManager.createQuery("DELETE FROM FileModel f").executeUpdate();
+        userTransaction.commit();
     }
 
     @Test

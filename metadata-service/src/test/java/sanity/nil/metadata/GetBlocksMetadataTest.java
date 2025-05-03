@@ -21,10 +21,7 @@ import sanity.nil.grpc.block.CheckBlocksExistenceResponse;
 import sanity.nil.meta.consts.Quota;
 import sanity.nil.meta.dto.block.BlockMetadata;
 import sanity.nil.meta.dto.block.GetBlocksMetadata;
-import sanity.nil.meta.model.FileJournalModel;
-import sanity.nil.meta.model.FileModel;
-import sanity.nil.meta.model.UserModel;
-import sanity.nil.meta.model.WorkspaceModel;
+import sanity.nil.meta.model.*;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -109,12 +106,13 @@ public class GetBlocksMetadataTest {
         assertThat(insertedJournal.getFile().getSize()).isEqualTo(expectedFileSize);
         assertThat(insertedJournal.getFile().getContentType()).isEqualTo("png");
         assertThat(insertedJournal.getBlocklist()).isEqualTo(expectedBlockList);
+        assertThat(getStorageLimitQuota()).isEqualTo(expectedFileSize);
     }
 
     @Test
     public void given_Valid_Request_When_File_Exists_Then_Update() throws Exception {
         userTransaction.begin();
-        var existingFile = createExistingFile();
+        var existingFile = createExistingFile(0);
         userTransaction.commit();
 
         var lastBlockSize = 14000;
@@ -128,9 +126,7 @@ public class GetBlocksMetadataTest {
             addedBlocks.add(block);
         }
 
-        // when file is updated adding new blocks at the end, the latter block should be ovewritten
-        // (cause it's not less than blocksize, so it's hash is changed)
-        Set<String> newFileVersionBlocks = Stream.concat(existingFileBlocks.stream().limit(existingFileBlocks.size()-1), addedBlocks.stream())
+        Set<String> newFileVersionBlocks = Stream.concat(existingFileBlocks.stream().limit(existingFileBlocks.size()-10), addedBlocks.stream())
                 .collect(Collectors.toCollection(LinkedHashSet::new));
 
         List<String> orderedBlocks = new ArrayList<>(newFileVersionBlocks);
@@ -175,6 +171,7 @@ public class GetBlocksMetadataTest {
         assertThat(updatedFile.getSize()).isEqualTo(expectedFileSize);
         assertThat(updatedFile.getContentType()).isEqualTo("png");
         assertThat(updatedFile.getUploader().getId()).isEqualTo(defaultUserID);
+        assertThat(getStorageLimitQuota()).isEqualTo(expectedFileSize);
     }
 
     @Test
@@ -225,7 +222,75 @@ public class GetBlocksMetadataTest {
         assertThat(insertedJournal).isEmpty();
     }
 
-    private FileJournalModel createExistingFile() {
+    @Test
+    public void given_Valid_Request_When_Max_File_Versions_Limit_Reached_Override_Oldest_Version_With_New() throws Exception {
+        userTransaction.begin();
+        var existingFileVersion1 = createExistingFile(0);
+        var existingFileVersion2 = createExistingFile(1);
+        var existingFileVersion3 = createExistingFile(2);
+        userTransaction.commit();
+
+        var lastBlockSize = 14000;
+
+        var existingFileBlocks = Arrays.stream(existingFileVersion3.getBlocklist().split(","))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        List<String> addedBlocks = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            var block = UUID.randomUUID().toString();
+            addedBlocks.add(block);
+        }
+
+        Set<String> newFileVersionBlocks = Stream.concat(existingFileBlocks.stream().limit(existingFileBlocks.size()-10), addedBlocks.stream())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        List<String> orderedBlocks = new ArrayList<>(newFileVersionBlocks);
+        var blocks = IntStream.range(0, orderedBlocks.size())
+                .mapToObj(i -> new GetBlocksMetadata.BlockInfo(orderedBlocks.get(i), i))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        var expectedFileSize = (newFileVersionBlocks.size()-1) * BLOCK_SIZE + lastBlockSize;
+        var expectedBlockList = String.join(",", newFileVersionBlocks);
+
+        var blockServiceRequest = CheckBlocksExistenceRequest.newBuilder()
+                .addAllHash(newFileVersionBlocks).build();
+        var blockServiceResponse = CheckBlocksExistenceResponse.newBuilder()
+                .addAllMissingBlocks(addedBlocks).build();
+        Mockito.when(blockClient.checkBlocksExistence(blockServiceRequest))
+                .thenReturn(Uni.createFrom().item(blockServiceResponse));
+
+        var request = new GetBlocksMetadata(UUID.randomUUID(), 1L, "testFile.png", blocks, lastBlockSize);
+        var response = given()
+                .contentType(ContentType.JSON)
+                .body(request)
+                .when().post("/api/v1/metadata")
+                .then()
+                .statusCode(200)
+                .extract().body().as(BlockMetadata.class);
+
+        assertThat(response.missingBlocks().size()).isEqualTo(addedBlocks.size());
+
+        var journals = entityManager.createQuery("SELECT f FROM FileJournalModel f " +
+                        "WHERE f.id.workspaceID = :wsID AND f.file.filename = :filename", FileJournalModel.class)
+                .setParameter("wsID", 1L)
+                .setParameter("filename", "testFile")
+                .getResultList();
+
+        var latestInsertedVersion = journals.stream().max((a, b) -> a.getHistoryID() - b.getHistoryID()).get();
+        assertThat(journals.stream().filter(j -> j.getId().version() == 0).findAny()).isEmpty(); // oldest was deleted
+        assertThat(latestInsertedVersion).isNotNull();
+        assertThat(latestInsertedVersion.getBlocklist()).isEqualTo(expectedBlockList);
+        assertThat(latestInsertedVersion.getHistoryID()).isEqualTo(3);
+        assertThat(latestInsertedVersion.getId().version()).isEqualTo(3);
+
+        var latestInsertedFile = latestInsertedVersion.getFile();
+        assertThat(latestInsertedFile.getSize()).isEqualTo(expectedFileSize);
+        assertThat(latestInsertedFile.getContentType()).isEqualTo("png");
+        assertThat(latestInsertedFile.getUploader().getId()).isEqualTo(defaultUserID);
+        assertThat(getStorageLimitQuota()).isEqualTo(expectedFileSize);
+    }
+
+    private FileJournalModel createExistingFile(Integer version) {
         var workspace = entityManager.find(WorkspaceModel.class, 1L);
         var uploadUser = entityManager.find(UserModel.class, defaultUserID);
         var blockList = IntStream.range(1, 101)
@@ -233,8 +298,15 @@ public class GetBlocksMetadataTest {
                 .collect(Collectors.joining(","));
         var file = new FileModel(uploadUser, "testFile", "png", 411053792L);
 
-        var fileJournal = new FileJournalModel(workspace, file, blockList, 0, 0);
+        var fileJournal = new FileJournalModel(workspace, file, blockList, version, version);
         entityManager.persist(fileJournal);
         return fileJournal;
+    }
+
+    private Long getStorageLimitQuota() {
+        var userStatistics = entityManager.find(UserStatisticsModel.class, new UserStatisticsModel.UserStatisticsIDModel(
+                defaultUserID, Quota.USER_STORAGE_USED.id())
+        );
+        return Long.parseLong(userStatistics.getValue());
     }
 }

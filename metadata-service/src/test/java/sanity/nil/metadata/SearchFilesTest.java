@@ -46,6 +46,14 @@ public class SearchFilesTest {
     @ConfigProperty(name = "application.security.default-user-id")
     UUID defaultUserID;
 
+    @BeforeEach
+    public void setup() throws Exception {
+        userTransaction.begin();
+        entityManager.createQuery("DELETE FROM FileJournalModel f").executeUpdate();
+        entityManager.createQuery("DELETE FROM FileModel f").executeUpdate();
+        userTransaction.commit();
+    }
+
     @Test
     public void given_Three_Files_When_Queried_Then_Return_All_Elements_And_Correct_Pagination() throws Exception {
         generateTestData(3);

@@ -141,6 +141,7 @@ public class MetadataService {
 
         if (missingBlocks.isEmpty()) {
             log.debug("All blocks already exist");
+            // TODO: check if file is in state uploaded, if not, update it so it is
             return new BlockMetadata(request.correlationID());
         }
 
@@ -149,7 +150,7 @@ public class MetadataService {
             postProcessNewFile(request.filename(), userUploader, missingBlocks, workspace, fileSize);
         } else {
             var rawFilename = StringUtils.substringBeforeLast(request.filename(), ".");
-            postProcessUpdateFile(rawFilename, userUploader, missingBlocks, workspace, fileSize);
+            postProcessUpdateFile(rawFilename, userUploader, requestBlocks, workspace, fileSize);
         }
 
         return new BlockMetadata(request.correlationID(), missingBlocks);
@@ -163,13 +164,17 @@ public class MetadataService {
         entityManager.persist(newFile);
         FileJournalModel fileJournal = new FileJournalModel(workspace, newFile, createBlockList(newBlocks.stream()),0, 0);
         entityManager.merge(fileJournal);
+        var userStatistics = entityManager.find(UserStatisticsModel.class, new UserStatisticsModel.UserStatisticsIDModel(
+                identityProvider.getCheckedIdentity().getUserID(), Quota.USER_STORAGE_USED.id())
+        );
+        userStatistics.setValue(String.valueOf(
+                Long.parseLong(userStatistics.getValue()) + fileSize)
+        );
+        entityManager.persist(userStatistics);
     }
 
     @Transactional
-    protected void postProcessUpdateFile(String filename, UserModel userUploader, List<String> newBlocks, WorkspaceModel workspace, Long fileSize) {
-        // TODO: maybe we also need to know at which position this block already exists?
-        // F.e. it exists at pos 2, now we are inserting it at pos 3
-        // TODO: check block-by-block for any changes, because they can occur at any block (current logic is wrong)
+    protected void postProcessUpdateFile(String filename, UserModel userUploader, Set<String> newBlocks, WorkspaceModel workspace, Long fileSize) {
         var existingVersions = entityManager.createQuery("SELECT f.id.version FROM FileJournalModel f " +
                     "WHERE f.id.workspaceID = ?1 AND f.file.filename = ?2", Integer.class)
                 .setParameter(1, workspace.getId())
@@ -197,15 +202,18 @@ public class MetadataService {
         file.setUploader(userUploader);
         entityManager.merge(file);
 
-        log.debug("Adding " + newBlocks.size() + " new blocks to blockList");
-        var existingBlocks = getBlocksFromBlockList(fileJournal.getBlocklist());
-        var updatedBlocks = Stream.concat(existingBlocks.stream().limit(existingBlocks.size()-1), newBlocks.stream());
-
-        var newFileJournalEntry = new FileJournalModel(entityManager.merge(workspace), entityManager.merge(file), createBlockList(updatedBlocks),
+        var newFileJournalEntry = new FileJournalModel(entityManager.merge(workspace), entityManager.merge(file), createBlockList(newBlocks.stream()),
                 fileJournal.getHistoryID()+1, fileJournal.getId().version()+1
         );
         entityManager.persist(newFileJournalEntry);
         log.debug("FileJournal entry history updated to: " + fileJournal.getHistoryID());
+        var userStatistics = entityManager.find(UserStatisticsModel.class, new UserStatisticsModel.UserStatisticsIDModel(
+                identityProvider.getCheckedIdentity().getUserID(), Quota.USER_STORAGE_USED.id())
+        );
+        userStatistics.setValue(String.valueOf(
+                Long.parseLong(userStatistics.getValue()) + fileSize)
+        );
+        entityManager.persist(userStatistics);
     }
 
     public Optional<WorkspaceModel> getWorkspace(Long wsID, UUID userID) {
@@ -233,7 +241,10 @@ public class MetadataService {
     }
 
     public Paged<FileInfo> searchFiles(Long wsID, UUID userID, int page, int size) {
-        // TODO: add file permissions check
+        var identity = identityProvider.getIdentity(String.valueOf(wsID));
+        if (!identity.hasRole(Role.USER)) {
+            throw new ForbiddenException();
+        }
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
         CriteriaQuery<FileJournalModel> selectQuery = cb.createQuery(FileJournalModel.class);
         Root<FileJournalModel> selectRoot = selectQuery.from(FileJournalModel.class);
