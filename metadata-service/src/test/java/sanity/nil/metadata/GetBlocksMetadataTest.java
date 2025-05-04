@@ -18,6 +18,7 @@ import org.mockito.Mockito;
 import sanity.nil.grpc.block.BlockService;
 import sanity.nil.grpc.block.CheckBlocksExistenceRequest;
 import sanity.nil.grpc.block.CheckBlocksExistenceResponse;
+import sanity.nil.meta.consts.FileState;
 import sanity.nil.meta.consts.Quota;
 import sanity.nil.meta.dto.block.BlockMetadata;
 import sanity.nil.meta.dto.block.GetBlocksMetadata;
@@ -30,6 +31,7 @@ import java.util.stream.Stream;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
+import static sanity.nil.meta.consts.Constants.BLOCK_SIZE;
 
 @JBossLog
 @QuarkusTest
@@ -48,7 +50,6 @@ public class GetBlocksMetadataTest {
     UserTransaction userTransaction;
     @ConfigProperty(name = "application.security.default-user-id")
     UUID defaultUserID;
-    private final static Long BLOCK_SIZE = (long) (4 * 1024 * 1024);
     private final static String DEFAULT_STATISTICS_VALUE = "0";
 
     @BeforeEach
@@ -103,9 +104,13 @@ public class GetBlocksMetadataTest {
                 .getSingleResult();
 
         assertThat(insertedJournal).isNotNull();
-        assertThat(insertedJournal.getFile().getSize()).isEqualTo(expectedFileSize);
-        assertThat(insertedJournal.getFile().getContentType()).isEqualTo("png");
         assertThat(insertedJournal.getBlocklist()).isEqualTo(expectedBlockList);
+
+        var insertedFile = insertedJournal.getFile();
+        assertThat(insertedFile.getSize()).isEqualTo(expectedFileSize);
+        assertThat(insertedFile.getContentType()).isEqualTo("png");
+        assertThat(insertedFile.getUploader().getId()).isEqualTo(defaultUserID);
+        assertThat(insertedFile.getVersion()).isEqualTo(0L);
         assertThat(getStorageLimitQuota()).isEqualTo(expectedFileSize);
     }
 
@@ -165,12 +170,12 @@ public class GetBlocksMetadataTest {
         assertThat(updatedJournal).isNotNull();
         assertThat(updatedJournal.getBlocklist()).isEqualTo(expectedBlockList);
         assertThat(updatedJournal.getHistoryID()).isEqualTo(1);
-        assertThat(updatedJournal.getId().version()).isEqualTo(1);
 
         var updatedFile = updatedJournal.getFile();
         assertThat(updatedFile.getSize()).isEqualTo(expectedFileSize);
         assertThat(updatedFile.getContentType()).isEqualTo("png");
         assertThat(updatedFile.getUploader().getId()).isEqualTo(defaultUserID);
+        assertThat(updatedFile.getVersion()).isEqualTo(1);
         assertThat(getStorageLimitQuota()).isEqualTo(expectedFileSize);
     }
 
@@ -277,11 +282,11 @@ public class GetBlocksMetadataTest {
                 .getResultList();
 
         var latestInsertedVersion = journals.stream().max((a, b) -> a.getHistoryID() - b.getHistoryID()).get();
-        assertThat(journals.stream().filter(j -> j.getId().version() == 0).findAny()).isEmpty(); // oldest was deleted
+        assertThat(journals.stream().filter(j -> j.getFile().getVersion() == 0).findAny()).isEmpty(); // oldest was deleted
         assertThat(latestInsertedVersion).isNotNull();
         assertThat(latestInsertedVersion.getBlocklist()).isEqualTo(expectedBlockList);
         assertThat(latestInsertedVersion.getHistoryID()).isEqualTo(3);
-        assertThat(latestInsertedVersion.getId().version()).isEqualTo(3);
+        assertThat(latestInsertedVersion.getFile().getVersion()).isEqualTo(3);
 
         var latestInsertedFile = latestInsertedVersion.getFile();
         assertThat(latestInsertedFile.getSize()).isEqualTo(expectedFileSize);
@@ -290,15 +295,17 @@ public class GetBlocksMetadataTest {
         assertThat(getStorageLimitQuota()).isEqualTo(expectedFileSize);
     }
 
+    // TODO: add test with imitated failed upload and retry upload
+
     private FileJournalModel createExistingFile(Integer version) {
         var workspace = entityManager.find(WorkspaceModel.class, 1L);
         var uploadUser = entityManager.find(UserModel.class, defaultUserID);
         var blockList = IntStream.range(1, 101)
                 .mapToObj(e -> UUID.randomUUID().toString())
                 .collect(Collectors.joining(","));
-        var file = new FileModel(uploadUser, "testFile", "png", 411053792L);
+        var file = new FileModel(version, uploadUser, FileState.IN_UPLOAD, "testFile", "png", 411053792L);
 
-        var fileJournal = new FileJournalModel(workspace, file, blockList, version, version);
+        var fileJournal = new FileJournalModel(workspace, file, blockList, version);
         entityManager.persist(fileJournal);
         return fileJournal;
     }

@@ -15,6 +15,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.resteasy.reactive.RestResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import sanity.nil.meta.consts.FileState;
 import sanity.nil.meta.consts.TimeUnit;
 import sanity.nil.meta.dto.Paged;
 import sanity.nil.meta.dto.block.BlockMetadata;
@@ -100,8 +101,10 @@ public class SearchFilesTest {
         var workspace = entityManager.find(WorkspaceModel.class, 1L);
         IntStream.range(0, quantity)
                 .forEach(i -> {
-                    var file = new FileModel(userUploader, UUID.randomUUID().toString().substring(0, 30), "png", 4256400L);
-                    var journal = new FileJournalModel(workspace, file, UUID.randomUUID().toString(), 0, 0);
+                    var file = new FileModel(0, userUploader, FileState.IN_UPLOAD,
+                            UUID.randomUUID().toString().substring(0, 30), "png", 4256400L
+                    );
+                    var journal = new FileJournalModel(workspace, file, UUID.randomUUID().toString(), 0);
                     entityManager.persist(journal);
                 });
         userTransaction.commit();

@@ -27,29 +27,25 @@ public class FileJournalModel {
     @JoinColumn(name = "file_id", columnDefinition = "bigint ")
     private FileModel file;
 
-//    @Column(columnDefinition = "tinyint(1)")
-//    private Short latest;
     @Column(columnDefinition = "text")
     private String blocklist;
     @Column(name = "history_id")
     private Integer historyID;
 
     public FileJournalModel(WorkspaceModel workspace, FileModel file, String blocklist,
-                            Integer historyID, Integer version) {
-        this.id = new FileJournalIDModel(workspace.getId(), file.getId(), version);
+                            Integer historyID) {
+        this.id = new FileJournalIDModel(workspace.getId(), file.getId());
         this.workspace = workspace;
         this.file = file;
         this.blocklist = blocklist;
         this.historyID = historyID;
     }
 
-    //PK workspaceID, id
     @Embeddable
     public record FileJournalIDModel (
             @Column(name = "ws_id")
             Long workspaceID,
             @Column(name = "file_id")
-            Long fileID,
-            Integer version
+            Long fileID
     ) { }
 }

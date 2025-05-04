@@ -1,4 +1,4 @@
-package sanity.nil.block.presentation.scheduled;
+package sanity.nil.meta.presentation.scheduled;
 
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -6,7 +6,6 @@ import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import lombok.extern.jbosslog.JBossLog;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.postgresql.shaded.com.ongres.stringprep.ProfileName;
 import org.quartz.*;
 
 @JBossLog
@@ -14,18 +13,18 @@ import org.quartz.*;
 public class DelayedTaskOrchestrator {
 
     @Inject
-    org.quartz.Scheduler scheduler;
+    Scheduler scheduler;
     @ConfigProperty(name = "application.scheduler.interval", defaultValue = "3")
     int intervalInSeconds;
 
     void onStart(@Observes StartupEvent event) throws SchedulerException {
-        JobKey jobKey = new JobKey("deleteBlocks", "block-service");
+        JobKey jobKey = new JobKey("deleteFile", "metadata-service");
         if (!scheduler.checkExists(jobKey)) {
-            JobDetail job = JobBuilder.newJob(DeleteBlocksJob.class)
-                    .withIdentity("deleteBlocks", "block-service")
+            JobDetail job = JobBuilder.newJob(DeleteFileJob.class)
+                    .withIdentity("deleteFile", "metadata-service")
                     .build();
             Trigger trigger = TriggerBuilder.newTrigger()
-                    .withIdentity("deleteBlocks-tg", "block-service")
+                    .withIdentity("deleteFile-tg", "metadata-service")
                     .startNow()
                     .withSchedule(
                             SimpleScheduleBuilder.simpleSchedule()

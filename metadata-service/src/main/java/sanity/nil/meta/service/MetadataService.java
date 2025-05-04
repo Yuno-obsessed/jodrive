@@ -1,5 +1,6 @@
 package sanity.nil.meta.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.grpc.GrpcClient;
 import io.quarkus.security.ForbiddenException;
 import io.quarkus.security.UnauthorizedException;
@@ -18,8 +19,7 @@ import sanity.nil.grpc.block.BlockService;
 import sanity.nil.grpc.block.CheckBlocksExistenceRequest;
 import sanity.nil.grpc.block.Code;
 import sanity.nil.grpc.block.DeleteBlocksRequest;
-import sanity.nil.meta.consts.Quota;
-import sanity.nil.meta.consts.TimeUnit;
+import sanity.nil.meta.consts.*;
 import sanity.nil.meta.dto.Paged;
 import sanity.nil.meta.dto.block.BlockMetadata;
 import sanity.nil.meta.dto.block.GetBlocksMetadata;
@@ -32,6 +32,7 @@ import sanity.nil.meta.model.*;
 import sanity.nil.meta.security.LinkEncoder;
 import sanity.nil.security.Role;
 import sanity.nil.security.WorkspaceIdentityProvider;
+import sanity.nil.util.CollectionUtils;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -40,6 +41,9 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static sanity.nil.meta.consts.Constants.BLOCK_SIZE;
+import static sanity.nil.meta.consts.Constants.FILE_VERSIONS_MAX;
 
 @JBossLog
 @ApplicationScoped
@@ -53,17 +57,16 @@ public class MetadataService {
     SubscriptionQuotaCache subscriptionQuotaCache;
     @Inject
     LinkEncoder linkEncoder;
+    @Inject
+    ObjectMapper objectMapper;
     @GrpcClient("blockService")
     BlockService blockClient;
 
-    private final static Long BLOCK_SIZE = (long) (4 * 1024 * 1024);
-    private final static Integer FILE_VERSIONS_MAX = 3;
-
     public List<String> getFileBlockList(String fileID, String workspaceID, Integer versions) {
         log.info("MetadataService thread: " + Thread.currentThread().getName());
-        var fileJournal = entityManager.createQuery("SELECT f.blocklist FROM FileJournalModel f " +
-                        "WHERE f.id.fileID = :fileID AND f.id.workspaceID = :wsID " +
-                        "ORDER BY f.id.version DESC " +
+        var fileJournal = entityManager.createQuery("SELECT fj.blocklist FROM FileJournalModel fj " +
+                        "WHERE fj.id.fileID = :fileID AND fj.id.workspaceID = :wsID " +
+                        "ORDER BY fj.historyID DESC " +
                         "FETCH FIRST :versions ONLY ", FileJournalModel.class)
                 .setParameter("fileID", fileID)
                 .setParameter("wsID", workspaceID)
@@ -82,13 +85,11 @@ public class MetadataService {
             throw new UnauthorizedException();
         }
 
-        Long fileID = Long.valueOf(fileIDParam);
-        Long workspaceID = Long.valueOf(workspaceIDParam);
-        // get all file versions blocks to delete
-        var blockList = getFileBlockList(fileIDParam, workspaceIDParam, FILE_VERSIONS_MAX);
-
-        deleteFileJournal(fileID, workspaceID);
-        deleteBlocksWithRetry(blockList);
+        var metadata = objectMapper.createObjectNode();
+        metadata.put("workspace",workspaceIDParam);
+        var performAt = LocalDateTime.now().plusDays(Constants.FILE_RETENTION_DAYS);
+        var task = new TaskModel(fileIDParam, TaskType.DELETE_FILE, metadata, performAt, TaskStatus.CREATED);
+        entityManager.persist(task);
     }
 
     //    @CircuitBreaker()
@@ -105,6 +106,7 @@ public class MetadataService {
 
     @Transactional
     public void deleteFileJournal(Long fileID, Long workspaceID) {
+        // TODO add irrevocable deletion in 30 days?
         var deleted = entityManager.createQuery("DELETE FROM FileJournalModel f " +
                         "WHERE f.id.fileID = :fileID AND f.id.workspaceID = :wsID ")
                 .setParameter("fileID", fileID)
@@ -117,6 +119,7 @@ public class MetadataService {
         if (!identity.hasRole(Role.USER)) {
             throw new UnauthorizedException();
         }
+        var rawFilename = StringUtils.substringBeforeLast(request.filename(), ".");
         var fileSize = calculateFileSize(request.blocks().size(), request.lastBlockSize());
         verifyQuotaUsage(identity.getUserID(), fileSize);
 
@@ -141,7 +144,20 @@ public class MetadataService {
 
         if (missingBlocks.isEmpty()) {
             log.debug("All blocks already exist");
-            // TODO: check if file is in state uploaded, if not, update it so it is
+            var uploadedFile = entityManager.createQuery("SELECT fj.file FROM FileJournalModel fj " +
+                            "WHERE fj.id.workspaceID = :wsID AND fj.file.filename = :filename AND fj.file.state = :state " +
+                            "ORDER BY fj.historyID DESC " +
+                            "FETCH FIRST 1 ROW ONLY ", FileModel.class)
+                    .setParameter("wsID", request.workspaceID())
+                    .setParameter("filename", rawFilename)
+                    .setParameter("state", FileState.IN_UPLOAD)
+                    .getResultList();
+            if (CollectionUtils.isNotEmpty(uploadedFile)) {
+                var fileToUpdateState = uploadedFile.getFirst();
+                fileToUpdateState.setState(FileState.UPLOADED);
+                entityManager.persist(fileToUpdateState);
+                log.debug("File was uploaded before, now updated state");
+            }
             return new BlockMetadata(request.correlationID());
         }
 
@@ -149,8 +165,7 @@ public class MetadataService {
         if (missingBlocks.size() == requestBlocks.size()) {
             postProcessNewFile(request.filename(), userUploader, missingBlocks, workspace, fileSize);
         } else {
-            var rawFilename = StringUtils.substringBeforeLast(request.filename(), ".");
-            postProcessUpdateFile(rawFilename, userUploader, requestBlocks, workspace, fileSize);
+            postProcessUpdateFile(request.filename(), userUploader, requestBlocks, workspace, fileSize);
         }
 
         return new BlockMetadata(request.correlationID(), missingBlocks);
@@ -160,9 +175,9 @@ public class MetadataService {
     protected void postProcessNewFile(String filename, UserModel userUploader, List<String> newBlocks, WorkspaceModel workspace, Long fileSize) {
         var rawFilename = StringUtils.substringBeforeLast(filename, ".");
         var contentType = StringUtils.substringAfterLast(filename, ".");
-        FileModel newFile = new FileModel(userUploader, rawFilename, contentType, fileSize);
+        FileModel newFile = new FileModel(0, userUploader, FileState.IN_UPLOAD, rawFilename, contentType, fileSize);
         entityManager.persist(newFile);
-        FileJournalModel fileJournal = new FileJournalModel(workspace, newFile, createBlockList(newBlocks.stream()),0, 0);
+        FileJournalModel fileJournal = new FileJournalModel(workspace, newFile, createBlockList(newBlocks.stream()),0);
         entityManager.merge(fileJournal);
         var userStatistics = entityManager.find(UserStatisticsModel.class, new UserStatisticsModel.UserStatisticsIDModel(
                 identityProvider.getCheckedIdentity().getUserID(), Quota.USER_STORAGE_USED.id())
@@ -175,35 +190,40 @@ public class MetadataService {
 
     @Transactional
     protected void postProcessUpdateFile(String filename, UserModel userUploader, Set<String> newBlocks, WorkspaceModel workspace, Long fileSize) {
-        var existingVersions = entityManager.createQuery("SELECT f.id.version FROM FileJournalModel f " +
-                    "WHERE f.id.workspaceID = ?1 AND f.file.filename = ?2", Integer.class)
-                .setParameter(1, workspace.getId())
-                .setParameter(2, filename)
+        var rawFilename = StringUtils.substringBeforeLast(filename, ".");
+        var contentType = StringUtils.substringAfterLast(filename, ".");
+        var existingVersions = entityManager.createQuery("SELECT fj.file.version FROM FileJournalModel fj " +
+                        "WHERE fj.id.workspaceID = :wsID AND fj.file.filename = :filename " +
+                        "AND fj.file.state <> :state", Integer.class)
+                .setParameter("wsID", workspace.getId())
+                .setParameter("filename", rawFilename)
+                .setParameter("state", FileState.DELETED)
                 .getResultList();
 
         if (existingVersions.size() == FILE_VERSIONS_MAX) {
             // TODO: delete blocks for file versions that are cleaned up
-            entityManager.createQuery("DELETE FROM FileJournalModel f " +
-                            "WHERE f.id.version = :version")
+            // or to maintain a policy of soft deletes?
+            entityManager.createQuery("DELETE FROM FileJournalModel fj " +
+                            "WHERE fj.file.version = :version")
                     .setParameter("version", existingVersions.stream().sorted().findFirst().get())
                     .executeUpdate();
         }
 
-        var fileJournal = entityManager.createQuery("SELECT f FROM FileJournalModel f " +
-                        "WHERE f.id.workspaceID = ?1 AND f.file.filename = ?2 " +
-                        "ORDER BY f.id.version DESC " +
+        var fileJournal = entityManager.createQuery("SELECT fj FROM FileJournalModel fj " +
+                        "WHERE fj.id.workspaceID = ?1 AND fj.file.filename = ?2 " +
+                        "ORDER BY fj.historyID DESC " +
                         "FETCH FIRST 1 ROW ONLY", FileJournalModel.class)
                 .setParameter(1, workspace.getId())
-                .setParameter(2, filename)
+                .setParameter(2, rawFilename)
                 .getSingleResult();
 
-        var file = entityManager.find(FileModel.class, fileJournal.getId().fileID());
-        file.setSize(fileSize);
-        file.setUploader(userUploader);
-        entityManager.merge(file);
+        var file = fileJournal.getFile();
+        var newFileVersion = new FileModel(file.getVersion() + 1, userUploader, FileState.IN_UPLOAD, rawFilename, contentType, fileSize);
+        entityManager.persist(newFileVersion);
+        log.debug("File version incremented from " + file.getVersion() + " to " + newFileVersion.getVersion());
 
-        var newFileJournalEntry = new FileJournalModel(entityManager.merge(workspace), entityManager.merge(file), createBlockList(newBlocks.stream()),
-                fileJournal.getHistoryID()+1, fileJournal.getId().version()+1
+        var newFileJournalEntry = new FileJournalModel(entityManager.merge(workspace), newFileVersion,
+                createBlockList(newBlocks.stream()), fileJournal.getHistoryID()+1
         );
         entityManager.persist(newFileJournalEntry);
         log.debug("FileJournal entry history updated to: " + fileJournal.getHistoryID());

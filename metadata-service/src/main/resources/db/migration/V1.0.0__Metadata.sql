@@ -2,13 +2,14 @@ create table if not exists metadata_db.file_journal (
     ws_id bigint not null,
     file_id bigint not null,
     blocklist text,
-    version integer not null,
     history_id integer,
-    primary key (ws_id, file_id, version)
+    primary key (ws_id, file_id)
 );
 create table if not exists metadata_db.files (
     id bigint generated always as identity,
+    version integer not null,
     uploader_id uuid not null,
+    state varchar(50) check (state in ('UPLOADED', 'IN_UPLOAD', 'DELETED')),
     content_type varchar(255),
     filename varchar(255),
     size bigint,
@@ -71,6 +72,17 @@ create table if not exists metadata_db.links (
     created_at timestamptz,
     expires_at timestamptz,
     primary key (link)
+);
+
+create table if not exists metadata_db.tasks (
+    id integer generated always as identity,
+    action varchar(255) check (action in ('DELETE_FILE')),
+    status varchar(255) check (status in ('CREATED','FINISHED','FAILED')),
+    object_id varchar(255),
+    metadata jsonb,
+    updated_at timestamptz,
+    perform_at timestamptz,
+    primary key (id)
 );
 
 alter table if exists metadata_db.file_journal

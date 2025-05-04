@@ -30,7 +30,6 @@ quarkus:
   quartz:
     clustered: true
     store-type: jdbc-cmt
-#    driver-delegate: io.quarkus.quartz.runtime.jdbc.QuarkusPostgreSQLDelegate
     thread-count: 2
     table-prefix: quartz.QRTZ_
   live-reload:

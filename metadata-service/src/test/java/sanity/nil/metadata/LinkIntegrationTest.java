@@ -15,6 +15,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import sanity.nil.grpc.meta.MetadataServiceGrpc;
 import sanity.nil.grpc.meta.VerifyLinkRequest;
+import sanity.nil.meta.consts.FileState;
 import sanity.nil.meta.consts.TimeUnit;
 import sanity.nil.meta.model.FileModel;
 import sanity.nil.meta.model.LinkModel;
@@ -66,7 +67,7 @@ public class LinkIntegrationTest {
     public void given_Valid_Params_When_Construct_Link_Then_Returned_Encrypted_Link_Equal_To_Its_Decrypted_Value() throws Exception {
         userTransaction.begin();
         var uploader = entityManager.find(UserModel.class, defaultUserID);
-        var file = new FileModel(uploader, "testFile", "png", 45000L);
+        var file = new FileModel(0, uploader, FileState.IN_UPLOAD, "testFile", "png", 45000L);
         entityManager.persist(file);
         userTransaction.commit();
 

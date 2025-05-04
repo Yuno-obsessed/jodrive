@@ -1,3 +1,5 @@
+CREATE SCHEMA IF NOT EXISTS block_db;
+
 create table if not exists block_db.blocks (
     created_at timestamptz,
     hash varchar(255) not null,
@@ -16,7 +18,6 @@ create table if not exists block_db.tasks (
     primary key (id)
 );
 
-CREATE SCHEMA IF NOT EXISTS block_db;
 CREATE SCHEMA IF NOT EXISTS quartz;
 
 DROP TABLE IF EXISTS quartz.QRTZ_FIRED_TRIGGERS;
