@@ -68,6 +68,8 @@ application:
       key:
         alias: super_secret_28_key
         password: worpass_secret
+  scheduler:
+    interval: 2
   security:
     enabled: false
     default-user-id: '5a9bf3fa-d99a-4ccc-b64f-b2ddf20ee5e5'

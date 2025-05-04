@@ -22,7 +22,11 @@ import sanity.nil.meta.consts.FileState;
 import sanity.nil.meta.consts.Quota;
 import sanity.nil.meta.dto.block.BlockMetadata;
 import sanity.nil.meta.dto.block.GetBlocksMetadata;
-import sanity.nil.meta.model.*;
+import sanity.nil.meta.model.FileJournalModel;
+import sanity.nil.meta.model.UserModel;
+import sanity.nil.meta.model.UserStatisticsModel;
+import sanity.nil.meta.model.WorkspaceModel;
+import sanity.nil.meta.service.FileJournalRepo;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -41,6 +45,8 @@ import static sanity.nil.meta.consts.Constants.BLOCK_SIZE;
 })
 public class GetBlocksMetadataTest {
 
+    @Inject
+    FileJournalRepo fileJournalRepo;
     @InjectMock
     @GrpcClient("blockService")
     BlockService blockClient;
@@ -51,12 +57,12 @@ public class GetBlocksMetadataTest {
     @ConfigProperty(name = "application.security.default-user-id")
     UUID defaultUserID;
     private final static String DEFAULT_STATISTICS_VALUE = "0";
+    private final static String defaultFileName = "testFile.png";
 
     @BeforeEach
     public void setUp() throws Exception {
         userTransaction.begin();
         entityManager.createQuery("DELETE FROM FileJournalModel f").executeUpdate();
-        entityManager.createQuery("DELETE FROM FileModel f").executeUpdate();
         entityManager.createQuery("UPDATE UserStatisticsModel us " +
                         "SET us.value = :defaultValue WHERE us.id.userID = :userID")
                 .setParameter("defaultValue", DEFAULT_STATISTICS_VALUE)
@@ -86,7 +92,7 @@ public class GetBlocksMetadataTest {
         Mockito.when(blockClient.checkBlocksExistence(blockServiceRequest))
                 .thenReturn(Uni.createFrom().item(blockServiceResponse));
 
-        var request = new GetBlocksMetadata(UUID.randomUUID(), 1L, "newFile.png", blocks, lastBlockSize);
+        var request = new GetBlocksMetadata(UUID.randomUUID(), 1L, defaultFileName, blocks, lastBlockSize);
         var response = given()
                 .contentType(ContentType.JSON)
                 .body(request)
@@ -97,20 +103,9 @@ public class GetBlocksMetadataTest {
 
         assertThat(response.missingBlocks().size()).isEqualTo(blocks.size());
 
-        var insertedJournal = entityManager.createQuery("SELECT f FROM FileJournalModel f " +
-                        "WHERE f.id.workspaceID = :wsID AND f.file.filename = :filename", FileJournalModel.class)
-                .setParameter("wsID", 1L)
-                .setParameter("filename", "newFile")
-                .getSingleResult();
+        var insertedFile = getFileJournal(defaultFileName);
 
-        assertThat(insertedJournal).isNotNull();
-        assertThat(insertedJournal.getBlocklist()).isEqualTo(expectedBlockList);
-
-        var insertedFile = insertedJournal.getFile();
-        assertThat(insertedFile.getSize()).isEqualTo(expectedFileSize);
-        assertThat(insertedFile.getContentType()).isEqualTo("png");
-        assertThat(insertedFile.getUploader().getId()).isEqualTo(defaultUserID);
-        assertThat(insertedFile.getVersion()).isEqualTo(0L);
+        assertFileState(insertedFile,defaultFileName, expectedBlockList, expectedFileSize, defaultUserID, FileState.IN_UPLOAD, 0);
         assertThat(getStorageLimitQuota()).isEqualTo(expectedFileSize);
     }
 
@@ -149,7 +144,7 @@ public class GetBlocksMetadataTest {
         Mockito.when(blockClient.checkBlocksExistence(blockServiceRequest))
                 .thenReturn(Uni.createFrom().item(blockServiceResponse));
 
-        var request = new GetBlocksMetadata(UUID.randomUUID(), 1L, "testFile.png", blocks, lastBlockSize);
+        var request = new GetBlocksMetadata(UUID.randomUUID(), 1L, defaultFileName, blocks, lastBlockSize);
         var response = given()
                 .contentType(ContentType.JSON)
                 .body(request)
@@ -160,22 +155,10 @@ public class GetBlocksMetadataTest {
 
         assertThat(response.missingBlocks().size()).isEqualTo(addedBlocks.size());
 
-        var journals = entityManager.createQuery("SELECT f FROM FileJournalModel f " +
-                        "WHERE f.id.workspaceID = :wsID AND f.file.filename = :filename", FileJournalModel.class)
-                .setParameter("wsID", 1L)
-                .setParameter("filename", "testFile")
-                .getResultList();
+        var files = getFileJournals(defaultFileName);
+        var updatedJournal = files.stream().filter(file -> file.getHistoryID() > 0).findFirst().get();
 
-        var updatedJournal = journals.stream().filter(e -> e.getHistoryID() > 0).findFirst().get();
-        assertThat(updatedJournal).isNotNull();
-        assertThat(updatedJournal.getBlocklist()).isEqualTo(expectedBlockList);
-        assertThat(updatedJournal.getHistoryID()).isEqualTo(1);
-
-        var updatedFile = updatedJournal.getFile();
-        assertThat(updatedFile.getSize()).isEqualTo(expectedFileSize);
-        assertThat(updatedFile.getContentType()).isEqualTo("png");
-        assertThat(updatedFile.getUploader().getId()).isEqualTo(defaultUserID);
-        assertThat(updatedFile.getVersion()).isEqualTo(1);
+        assertFileState(updatedJournal, defaultFileName, expectedBlockList, expectedFileSize, defaultUserID, FileState.IN_UPLOAD, 1);
         assertThat(getStorageLimitQuota()).isEqualTo(expectedFileSize);
     }
 
@@ -207,7 +190,7 @@ public class GetBlocksMetadataTest {
         Mockito.when(blockClient.checkBlocksExistence(blockServiceRequest))
                 .thenReturn(Uni.createFrom().item(blockServiceResponse));
 
-        var request = new GetBlocksMetadata(UUID.randomUUID(), 1L, "newFile.png", blocks, lastBlockSize);
+        var request = new GetBlocksMetadata(UUID.randomUUID(), 1L, defaultFileName, blocks, lastBlockSize);
         var response = given()
                 .contentType(ContentType.JSON)
                 .body(request)
@@ -218,11 +201,7 @@ public class GetBlocksMetadataTest {
 
         assertThat(response).contains("Exceeded quota USER_STORAGE_USED with limit ");
 
-        var insertedJournal = entityManager.createQuery("SELECT f FROM FileJournalModel f " +
-                        "WHERE f.id.workspaceID = :wsID AND f.file.filename = :filename", FileJournalModel.class)
-                .setParameter("wsID", 1L)
-                .setParameter("filename", "newFile")
-                .getResultList();
+        var insertedJournal = getFileJournals(defaultFileName);
 
         assertThat(insertedJournal).isEmpty();
     }
@@ -264,7 +243,7 @@ public class GetBlocksMetadataTest {
         Mockito.when(blockClient.checkBlocksExistence(blockServiceRequest))
                 .thenReturn(Uni.createFrom().item(blockServiceResponse));
 
-        var request = new GetBlocksMetadata(UUID.randomUUID(), 1L, "testFile.png", blocks, lastBlockSize);
+        var request = new GetBlocksMetadata(UUID.randomUUID(), 1L, defaultFileName, blocks, lastBlockSize);
         var response = given()
                 .contentType(ContentType.JSON)
                 .body(request)
@@ -275,27 +254,74 @@ public class GetBlocksMetadataTest {
 
         assertThat(response.missingBlocks().size()).isEqualTo(addedBlocks.size());
 
-        var journals = entityManager.createQuery("SELECT f FROM FileJournalModel f " +
-                        "WHERE f.id.workspaceID = :wsID AND f.file.filename = :filename", FileJournalModel.class)
-                .setParameter("wsID", 1L)
-                .setParameter("filename", "testFile")
-                .getResultList();
+        var files = getFileJournals(defaultFileName);
 
-        var latestInsertedVersion = journals.stream().max((a, b) -> a.getHistoryID() - b.getHistoryID()).get();
-        assertThat(journals.stream().filter(j -> j.getFile().getVersion() == 0).findAny()).isEmpty(); // oldest was deleted
-        assertThat(latestInsertedVersion).isNotNull();
-        assertThat(latestInsertedVersion.getBlocklist()).isEqualTo(expectedBlockList);
-        assertThat(latestInsertedVersion.getHistoryID()).isEqualTo(3);
-        assertThat(latestInsertedVersion.getFile().getVersion()).isEqualTo(3);
+        var latestInsertedVersion = files.stream().max((a, b) -> a.getHistoryID() - b.getHistoryID()).get();
+        assertThat(files.stream().filter(j -> j.getHistoryID() == 0).findAny()).isEmpty(); // oldest was deleted
 
-        var latestInsertedFile = latestInsertedVersion.getFile();
-        assertThat(latestInsertedFile.getSize()).isEqualTo(expectedFileSize);
-        assertThat(latestInsertedFile.getContentType()).isEqualTo("png");
-        assertThat(latestInsertedFile.getUploader().getId()).isEqualTo(defaultUserID);
+        assertFileState(latestInsertedVersion, defaultFileName, expectedBlockList, expectedFileSize, defaultUserID, FileState.IN_UPLOAD, 3);
         assertThat(getStorageLimitQuota()).isEqualTo(expectedFileSize);
     }
 
-    // TODO: add test with imitated failed upload and retry upload
+    @Test
+    public void given_Valid_Requests_To_Upload_File_When_Called_Second_Time_Update_File_State_To_Uploaded() throws Exception {
+        var lastBlockSize = 12000;
+        var blocks = IntStream.range(1, 100)
+                .mapToObj(e -> new GetBlocksMetadata.BlockInfo(UUID.randomUUID().toString(), e))
+                .sorted(Comparator.comparing(a -> a.position()))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        var newBlocks = blocks.stream().map(e -> e.hash())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        var expectedFileSize = 411053792L;
+        var expectedBlockList = String.join(",", newBlocks);
+
+        var blockServiceRequest = CheckBlocksExistenceRequest.newBuilder()
+                .addAllHash(newBlocks).build();
+        var blockServiceResponse = CheckBlocksExistenceResponse.newBuilder()
+                .addAllMissingBlocks(newBlocks).build();
+        Mockito.when(blockClient.checkBlocksExistence(blockServiceRequest))
+                .thenReturn(Uni.createFrom().item(blockServiceResponse));
+
+        var request = new GetBlocksMetadata(UUID.randomUUID(), 1L, defaultFileName, blocks, lastBlockSize);
+        var responseFirst = given()
+                .contentType(ContentType.JSON)
+                .body(request)
+                .when().post("/api/v1/metadata")
+                .then()
+                .statusCode(200)
+                .extract().body().as(BlockMetadata.class);
+
+        var blockServiceFinalResponse = CheckBlocksExistenceResponse.newBuilder()
+                .addAllMissingBlocks(Collections.EMPTY_LIST).build();
+        Mockito.when(blockClient.checkBlocksExistence(blockServiceRequest))
+                .thenReturn(Uni.createFrom().item(blockServiceFinalResponse));
+
+        var responseFinal = given()
+                .contentType(ContentType.JSON)
+                .body(request)
+                .when().post("/api/v1/metadata")
+                .then()
+                .statusCode(200)
+                .extract().body().as(BlockMetadata.class);
+
+        assertThat(responseFirst.missingBlocks().size()).isEqualTo(blocks.size());
+        assertThat(responseFinal.missingBlocks()).isEmpty();
+
+        var insertedJournal = getFileJournal(defaultFileName);
+
+        assertFileState(insertedJournal, defaultFileName, expectedBlockList, expectedFileSize, defaultUserID, FileState.UPLOADED, 0);
+        assertThat(getStorageLimitQuota()).isEqualTo(expectedFileSize);
+    }
+
+    private void assertFileState(FileJournalModel file, String name, String blocklist, Long filesize, UUID uploader, FileState state, Integer historyID) {
+        assertThat(file.getFilename()).isEqualTo(name);
+        assertThat(file.getBlocklist()).isEqualTo(blocklist);
+        assertThat(file.getSize()).isEqualTo(filesize);
+        assertThat(file.getUploader().getId()).isEqualTo(uploader);
+        assertThat(file.getState()).isEqualTo(state);
+        assertThat(file.getHistoryID()).isEqualTo(historyID);
+    }
 
     private FileJournalModel createExistingFile(Integer version) {
         var workspace = entityManager.find(WorkspaceModel.class, 1L);
@@ -303,11 +329,26 @@ public class GetBlocksMetadataTest {
         var blockList = IntStream.range(1, 101)
                 .mapToObj(e -> UUID.randomUUID().toString())
                 .collect(Collectors.joining(","));
-        var file = new FileModel(version, uploadUser, FileState.IN_UPLOAD, "testFile", "png", 411053792L);
-
-        var fileJournal = new FileJournalModel(workspace, file, blockList, version);
-        entityManager.persist(fileJournal);
+        var fileJournal = new FileJournalModel(workspace, defaultFileName, uploadUser, FileState.IN_UPLOAD,
+                411053792L, blockList, version);
+        fileJournalRepo.insert(fileJournal);
         return fileJournal;
+    }
+
+    private FileJournalModel getFileJournal(String filename) {
+        return entityManager.createQuery("SELECT f FROM FileJournalModel f " +
+                        "WHERE f.id.workspaceID = :wsID AND f.filename = :filename", FileJournalModel.class)
+                .setParameter("wsID", 1L)
+                .setParameter("filename", filename)
+                .getSingleResult();
+    }
+
+    private List<FileJournalModel> getFileJournals(String filename) {
+        return entityManager.createQuery("SELECT f FROM FileJournalModel f " +
+                        "WHERE f.id.workspaceID = :wsID AND f.filename = :filename", FileJournalModel.class)
+                .setParameter("wsID", 1L)
+                .setParameter("filename", filename)
+                .getResultList();
     }
 
     private Long getStorageLimitQuota() {

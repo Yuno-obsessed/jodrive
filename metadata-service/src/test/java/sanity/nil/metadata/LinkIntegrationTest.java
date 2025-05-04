@@ -17,10 +17,12 @@ import sanity.nil.grpc.meta.MetadataServiceGrpc;
 import sanity.nil.grpc.meta.VerifyLinkRequest;
 import sanity.nil.meta.consts.FileState;
 import sanity.nil.meta.consts.TimeUnit;
-import sanity.nil.meta.model.FileModel;
+import sanity.nil.meta.model.FileJournalModel;
 import sanity.nil.meta.model.LinkModel;
 import sanity.nil.meta.model.UserModel;
+import sanity.nil.meta.model.WorkspaceModel;
 import sanity.nil.meta.security.LinkEncoder;
+import sanity.nil.meta.service.FileJournalRepo;
 
 import java.time.LocalDateTime;
 import java.util.TimeZone;
@@ -37,6 +39,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 })
 public class LinkIntegrationTest {
 
+    @Inject
+    FileJournalRepo fileJournalRepo;
     @ConfigProperty(name = "application.security.default-user-id")
     UUID defaultUserID;
     @Inject
@@ -59,29 +63,24 @@ public class LinkIntegrationTest {
     public void setup() throws Exception {
         userTransaction.begin();
         entityManager.createQuery("DELETE FROM FileJournalModel f").executeUpdate();
-        entityManager.createQuery("DELETE FROM FileModel f").executeUpdate();
         userTransaction.commit();
     }
 
     @Test
     public void given_Valid_Params_When_Construct_Link_Then_Returned_Encrypted_Link_Equal_To_Its_Decrypted_Value() throws Exception {
-        userTransaction.begin();
-        var uploader = entityManager.find(UserModel.class, defaultUserID);
-        var file = new FileModel(0, uploader, FileState.IN_UPLOAD, "testFile", "png", 45000L);
-        entityManager.persist(file);
-        userTransaction.commit();
+        var file = generateTestFile("testFile.png");
 
         String workspaceID = "1";
         var expiration = 60000L;
 
-        var expectedLink = String.format("%s:%s:%s:%s", defaultUserID, file.getId(), workspaceID, expiration);
+        var expectedLink = String.format("%s:%s:%s:%s", defaultUserID, file.getFileID(), workspaceID, expiration);
 
         String constructedLink = given()
                 .queryParam("wsID", workspaceID)
                 .queryParam("timeUnit", TimeUnit.MINUTE.name())
                 .queryParam("expiresIn", 1)
                 .when()
-                .post("/api/v1/metadata/file/{id}/share", file.getId())
+                .post("/api/v1/metadata/file/{id}/share", file.getFileID())
                 .then()
                 .statusCode(200)
                 .extract().asString();
@@ -153,5 +152,15 @@ public class LinkIntegrationTest {
         assertThat(response.getExpired()).isFalse();
     }
 
+    private FileJournalModel generateTestFile(String filename) throws Exception {
+        userTransaction.begin();
+        var userUploader = entityManager.find(UserModel.class, defaultUserID);
+        var workspace = entityManager.find(WorkspaceModel.class, 1L);
+        var journal = new FileJournalModel(workspace, UUID.randomUUID().toString(), userUploader, FileState.UPLOADED,
+                4256400L, UUID.randomUUID().toString(), 0);
+        fileJournalRepo.insert(journal);
+        userTransaction.commit();
+        return journal;
+    }
 
 }

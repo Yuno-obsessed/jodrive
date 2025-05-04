@@ -14,7 +14,7 @@ public class DelayedTaskOrchestrator {
 
     @Inject
     Scheduler scheduler;
-    @ConfigProperty(name = "application.scheduler.interval", defaultValue = "3")
+    @ConfigProperty(name = "application.scheduler.interval", defaultValue = "2")
     int intervalInSeconds;
 
     void onStart(@Observes StartupEvent event) throws SchedulerException {

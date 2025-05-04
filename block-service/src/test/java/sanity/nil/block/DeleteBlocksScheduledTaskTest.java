@@ -14,7 +14,6 @@ import org.awaitility.Awaitility;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import sanity.nil.block.consts.TaskStatus;
 import sanity.nil.block.consts.TaskType;
 import sanity.nil.block.infra.minio.MinioOperations;
@@ -39,7 +38,6 @@ import java.util.concurrent.TimeUnit;
 
 @JBossLog
 @QuarkusTest
-@Testcontainers
 @QuarkusTestResource.List({
         @QuarkusTestResource(QuarkusIntegrationTestResources.class),
         @QuarkusTestResource(OidcWiremockTestResource.class)

@@ -6,7 +6,6 @@ import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import lombok.extern.jbosslog.JBossLog;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.postgresql.shaded.com.ongres.stringprep.ProfileName;
 import org.quartz.*;
 
 @JBossLog

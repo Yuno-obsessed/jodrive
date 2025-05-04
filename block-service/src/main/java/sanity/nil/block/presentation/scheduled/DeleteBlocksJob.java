@@ -8,7 +8,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
-import jakarta.transaction.Transactional;
+import jakarta.transaction.UserTransaction;
 import lombok.extern.jbosslog.JBossLog;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
@@ -27,6 +27,8 @@ import java.util.stream.StreamSupport;
 public class DeleteBlocksJob implements Job {
 
     @Inject
+    UserTransaction userTransaction;
+    @Inject
     MinioOperations minioOperations;
     @Inject
     EntityManager entityManager;
@@ -34,39 +36,60 @@ public class DeleteBlocksJob implements Job {
     int pageSize = 100;
 
     @Override
-    @Transactional
     public void execute(JobExecutionContext context) throws JobExecutionException {
         log.info("Job DELETE_BLOCKS is running");
-        var tasks = entityManager.createQuery("SELECT t FROM TaskModel t WHERE " +
-                        "t.action = :action AND (t.status IN :normalStatus " +
-                        "OR (t.status IN :retry AND t.retries < :retryThreshold)) " +
-                        "ORDER BY t.updatedAt " +
-                        "FETCH FIRST :limit ROWS ONLY ", TaskModel.class)
-                .setParameter("action", TaskType.DELETE_BLOCKS)
-                .setParameter("normalStatus", TaskStatus.CREATED)
-                .setParameter("retry", TaskStatus.IN_RETRY)
-                .setParameter("retryThreshold", 3)
-                .setParameter("limit", 1)
-                .setLockMode(LockModeType.PESSIMISTIC_WRITE)
-                .getResultList();
-        if (CollectionUtils.isNotEmpty(tasks)) {
-            log.info("Job DELETE_BLOCKS is deleting " + tasks.size() + " tasks");
-            tasks.forEach(task -> {
-                var metadata = task.getMetadata();
-                var blockToDeleteMeta = (ArrayNode) metadata.get("blocksToDelete");
-                List<String> blocksToDelete = StreamSupport.stream(blockToDeleteMeta.spliterator(), false)
-                        .map(JsonNode::asText)
-                        .toList();
-                int i = 0;
-                log.info("Blocks to delete: " + blocksToDelete.size());
-                deleteBlocks(blocksToDelete);
-                log.info("Job DELETE_BLOCKS for task " + task.getId() + " is completed");
-                task.setStatus(TaskStatus.FINISHED);
-            });
+        try {
+            userTransaction.begin();
+            var tasks = entityManager.createQuery("SELECT t FROM TaskModel t WHERE " +
+                            "t.action = :action AND (t.status IN :normalStatus " +
+                            "OR (t.status IN :retry AND t.retries < :retryThreshold)) " +
+                            "ORDER BY t.updatedAt ", TaskModel.class)
+                    .setParameter("action", TaskType.DELETE_BLOCKS)
+                    .setParameter("normalStatus", TaskStatus.CREATED)
+                    .setParameter("retry", TaskStatus.IN_RETRY)
+                    .setParameter("retryThreshold", 3)
+                    .setMaxResults(1)
+                    .setLockMode(LockModeType.PESSIMISTIC_WRITE)
+                    .getResultList();
+            userTransaction.commit();
+            if (CollectionUtils.isNotEmpty(tasks)) {
+                log.info("Job DELETE_BLOCKS is deleting " + tasks.size() + " tasks");
+                for (var task : tasks) {
+                    performTask(task);
+                }
+            }
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
         }
     }
 
-    public void deleteBlocks(List<String> blockHashes) {
+    public void performTask(TaskModel task) throws Exception {
+        userTransaction.begin();
+        try {
+            var metadata = task.getMetadata();
+            var blockToDeleteMeta = (ArrayNode) metadata.get("blocksToDelete");
+            List<String> blocksToDelete = StreamSupport.stream(blockToDeleteMeta.spliterator(), false)
+                    .map(JsonNode::asText)
+                    .toList();
+            int i = 0;
+            log.info("Blocks to delete: " + blocksToDelete.size());
+            deleteBlocks(blocksToDelete);
+            log.info("Job DELETE_BLOCKS for task " + task.getId() + " is completed");
+        } catch (Exception e) {
+            userTransaction.rollback();
+            log.info("Error deleting blocks for object " + task.getObjectID(), e);
+
+            userTransaction.begin();
+            task.setStatus(TaskStatus.FAILED);
+            entityManager.merge(task);
+            userTransaction.commit();
+        }
+        task.setStatus(TaskStatus.FINISHED);
+        entityManager.merge(task);
+        userTransaction.commit();
+    }
+
+    public void deleteBlocks(List<String> blockHashes) throws Exception {
         try {
             int deletes = entityManager.createQuery("DELETE FROM BlockModel b WHERE b.hash IN :hashes")
                     .setParameter("hashes", blockHashes)

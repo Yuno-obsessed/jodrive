@@ -1,10 +1,13 @@
 package sanity.nil.meta.model;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+import sanity.nil.meta.consts.FileState;
+
+import java.io.Serializable;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -22,30 +25,61 @@ public class FileJournalModel {
     @JoinColumn(name = "ws_id", columnDefinition = "bigint")
     private WorkspaceModel workspace;
 
-    @ManyToOne(cascade = {CascadeType.MERGE, CascadeType.REMOVE})
-    @MapsId("fileID")
-    @JoinColumn(name = "file_id", columnDefinition = "bigint ")
-    private FileModel file;
+    @Column(name = "file_id", insertable = false, updatable = false)
+    private Long fileID;
+
+    @Column(columnDefinition = "smallint")
+    private Short latest;
+
+    private String filename;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    private UserModel uploader;
+
+    @Enumerated(EnumType.STRING)
+    private FileState state;
+
+    private Long size;
 
     @Column(columnDefinition = "text")
     private String blocklist;
     @Column(name = "history_id")
     private Integer historyID;
 
-    public FileJournalModel(WorkspaceModel workspace, FileModel file, String blocklist,
-                            Integer historyID) {
-        this.id = new FileJournalIDModel(workspace.getId(), file.getId());
+    @CreationTimestamp
+    @Column(name = "created_at", columnDefinition = "timestamptz")
+    private LocalDateTime createdAt;
+    @UpdateTimestamp
+    @Column(name = "updated_at", columnDefinition = "timestamptz")
+    private LocalDateTime updatedAt;
+
+    public FileJournalModel(WorkspaceModel workspace, String filename, UserModel uploader, FileState state,
+                            Long size, String blocklist, Integer historyID) {
+        this.id = new FileJournalIDModel(workspace.getId(), null);
         this.workspace = workspace;
-        this.file = file;
+        this.filename = filename;
+        this.uploader = uploader;
+        this.state = state;
+        this.size = size;
         this.blocklist = blocklist;
         this.historyID = historyID;
     }
 
+    public void setNewID(Long workspaceID, Long fileID) {
+        this.id = new FileJournalIDModel(workspaceID, fileID);
+        this.fileID = fileID;
+    }
+
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @EqualsAndHashCode
     @Embeddable
-    public record FileJournalIDModel (
-            @Column(name = "ws_id")
-            Long workspaceID,
-            @Column(name = "file_id")
-            Long fileID
-    ) { }
+    public static class FileJournalIDModel implements Serializable {
+        @Column(name = "ws_id")
+        private Long workspaceID;
+        @Column(name = "file_id")
+        private Long fileID;
+    }
 }

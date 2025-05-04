@@ -1,21 +1,40 @@
+create table if not exists metadata_db.file_id_sequence (
+    ws_id bigint primary key,
+    next_id bigint not null default 1
+);
+create or replace function metadata_db.next_file_id(p_ws_id bigint)
+    returns bigint
+    language plpgsql
+as $$
+declare
+    result bigint;
+begin
+    insert into metadata_db.file_id_sequence(ws_id)
+    values (p_ws_id)
+    on conflict do nothing;
+
+    update metadata_db.file_id_sequence
+    set next_id = next_id + 1
+    where ws_id = p_ws_id
+    returning next_id - 1 into result;
+
+    return result;
+end;
+$$;
+
 create table if not exists metadata_db.file_journal (
     ws_id bigint not null,
     file_id bigint not null,
-    blocklist text,
-    history_id integer,
-    primary key (ws_id, file_id)
-);
-create table if not exists metadata_db.files (
-    id bigint generated always as identity,
-    version integer not null,
+    latest smallint,
+    filename varchar(255) NOT NULL,
     uploader_id uuid not null,
     state varchar(50) check (state in ('UPLOADED', 'IN_UPLOAD', 'DELETED')),
-    content_type varchar(255),
-    filename varchar(255),
     size bigint,
+    blocklist text,
+    history_id integer,
     created_at timestamptz,
     updated_at timestamptz,
-    primary key (id)
+    primary key (ws_id, file_id)
 );
 create table if not exists metadata_db.statistics (
     id smallint generated always as identity,
@@ -86,13 +105,13 @@ create table if not exists metadata_db.tasks (
 );
 
 alter table if exists metadata_db.file_journal
-    add constraint file_journal_file
-        foreign key (file_id)
-            references metadata_db.files;
-alter table if exists metadata_db.file_journal
     add constraint file_journal_ws
         foreign key (ws_id)
             references metadata_db.workspaces;
+alter table if exists metadata_db.file_journal
+    add constraint file_uploader
+        foreign key (uploader_id)
+            references metadata_db.users;
 alter table if exists metadata_db.user_statistics
     add constraint user_statistics_statistics
         foreign key (statistics_id)
@@ -116,10 +135,6 @@ alter table if exists metadata_db.users
 alter table if exists metadata_db.links
     add constraint link_issuer
         foreign key (issuer)
-            references metadata_db.users;
-alter table if exists metadata_db.files
-    add constraint file_uploader
-        foreign key (uploader_id)
             references metadata_db.users;
 
 insert into metadata_db.user_subscriptions (title, description, storage_limit, workspaces_limit) values ('Normal', 'Default subscription', 10737418240, 3); -- 10GiB

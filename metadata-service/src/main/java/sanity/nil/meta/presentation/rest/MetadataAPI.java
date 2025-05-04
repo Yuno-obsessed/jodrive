@@ -61,10 +61,11 @@ public class MetadataAPI {
     public RestResponse<Paged<FileInfo>> getFilesByFilters(
             @QueryParam("wsID") Long wsID,
             @QueryParam("userID") UUID userID,
+            @QueryParam("deleted") Boolean deleted,
             @QueryParam("page") Integer page,
             @QueryParam("size") Integer size
     ) {
-        return RestResponse.ok(metadataService.searchFiles(wsID, userID, page, size));
+        return RestResponse.ok(metadataService.searchFiles(wsID, userID, deleted, page, size));
     }
 
     @POST
