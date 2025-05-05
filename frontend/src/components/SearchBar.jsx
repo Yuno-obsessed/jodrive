@@ -1,5 +1,5 @@
-import React, {use, useState} from 'react';
-import './SearchBar.css';
+import React, {useState} from 'react';
+import styles from './SearchBar.module.css';
 
 export const SearchBar = () => {
     const [searchText, setText] = useState('');
@@ -14,16 +14,16 @@ export const SearchBar = () => {
     }
 
     return (
-        <div className="search-bar">
-            <button className="btn-search" onClick={search}>
-                <img src="./search.svg" alt="Search" className="icon-search"/>
+        <div className={styles.searchBar}>
+            <button className={styles.btnSearch} onClick={search}>
+                <img src="./search.svg" alt="Search" className={styles.iconSearch}/>
             </button>
-            <input type="text" placeholder="Seach in Jodrive" className="search-input"
+            <input type="text" placeholder="Seach in Jodrive" className={styles.searchInput}
                    value={searchText}
                    onChange={(e) => setText(e.target.value)}
             />
-            <button className="btn-clear" onClick={clear}>
-                <img src="./close.svg" alt="Clear" className="icon-close"/>
+            <button className={styles.btnClear} onClick={clear}>
+                <img src="./close.svg" alt="Clear" className={styles.iconClose}/>
             </button>
         </div>
     );

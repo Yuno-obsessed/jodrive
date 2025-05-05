@@ -1,40 +1,40 @@
 import React from "react";
-import './Sidebar.css'
+import styles from './Sidebar.module.css'
 
 export const Sidebar = () => {
     return (
-        <aside className="sidebar">
+        <aside className={styles.sidebar}>
             {/*<aside className="w-50 bg-white border-r p-4">*/}
             {/*<div className="mb-5">*/}
-            <button className="btn-new">
+            <button className={styles.btnNew}>
                 <span>
-                    <img src="plus.svg" alt="Plus-New" className="btn-new-img"/>
+                    <img src="plus.svg" alt="Plus-New" className={styles.btnNewImg}/>
                 </span>
-                <span className="btn-new-txt">
+                <span className={styles.btnNewText}>
                     <a>New</a>
                 </span>
             </button>
-            <ul className="sidebar-list">
-                <li className="sidebar-el">
-                    <img src="home.svg" alt="Home" className="sidebar-images"/>
-                    <a href="/" className="sidebar-links">Home</a>
+            <ul className={styles.sidebarList}>
+                <li className={styles.sidebarEl}>
+                    <img src="home.svg" alt="Home" className={styles.sidebarImages}/>
+                    <a href="/" className={styles.sidebarLinks}>Home</a>
                 </li>
-                <li className="sidebar-el">
-                    <img src="drive.svg" alt="Drive" className="sidebar-images"/>
-                    <a href="/my-drive" className="sidebar-links">My Drive</a>
+                <li className={styles.sidebarEl}>
+                    <img src="drive.svg" alt="Drive" className={styles.sidebarImages}/>
+                    <a href="/my-drive" className={styles.sidebarLinks}>My Drive</a>
                 </li>
-                <li className="sidebar-el">
-                    <img src="workspaces.svg" alt="Workspaces" className="sidebar-images"/>
-                    <a href="/workspaces" className="sidebar-links">Workspaces</a>
+                <li className={styles.sidebarEl}>
+                    <img src="workspaces.svg" alt="Workspaces" className={styles.sidebarImages}/>
+                    <a href="/workspaces" className={styles.sidebarLinks}>Workspaces</a>
                 </li>
-                <li className="sidebar-el">
-                    <img src="cloud.svg" alt="Storage" className="sidebar-images"/>
-                    <a href="/storage" className="sidebar-links">Storage</a>
+                <li className={styles.sidebarEl}>
+                    <img src="cloud.svg" alt="Storage" className={styles.sidebarImages}/>
+                    <a href="/storage" className={styles.sidebarLinks}>Storage</a>
                 </li>
-                <li className="sidebar-el">
-                    <div className="storage-bar">
-                        <div className="storage-bar-progress"/>
-                        <a className="storage-info">X GB of y GB used</a>
+                <li className={styles.sidebarEl}>
+                    <div className={styles.storageBar}>
+                        <div className={styles.storageBarProgress}/>
+                        <a className={styles.storageInfo}>X GB of y GB used</a>
                     </div>
                 </li>
             </ul>

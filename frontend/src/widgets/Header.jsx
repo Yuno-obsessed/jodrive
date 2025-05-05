@@ -1,11 +1,12 @@
+import React from "react";
 import {SearchBar} from "../components/SearchBar.jsx";
-import './Header.css'
+import styles from './Header.module.css'
 import Profile from "../components/Profile.jsx";
 
 export const Header = () => {
     return (
-        <header className="header-main">
-            <div className="logo">
+        <header className={styles.headerMain}>
+            <div className={styles.logo}>
                 <img src="jodrive-logo.png" alt="logo"/>
             </div>
             <SearchBar/>

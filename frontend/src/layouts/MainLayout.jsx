@@ -1,11 +1,19 @@
-import {Header} from "../widgets/Header.jsx";
 import Sidebar from "../widgets/Sidebar.jsx";
+import {FileSearchPage} from "../pages/FileSearchPage.jsx";
+import styles from './MainLayout.module.css'
+import React from "react";
+import {Header} from "../widgets/Header.jsx";
 
-export const MainLayout = () => {
+export const MainLayout = ({ children }) => {
     return (
-        <div className="layout">
+        <div className={styles.layout}>
             <Header/>
-            <Sidebar/>
+            <div className={styles.content}>
+                <Sidebar/>
+                <main className={styles.main}>
+                    {children}
+                </main>
+            </div>
         </div>
     )
 }
