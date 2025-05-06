@@ -1,0 +1,37 @@
+/*.fileEntry {*/
+/*    margin: 0 2.5%;*/
+/*    display: flex;*/
+/*    align-items: center;*/
+/*    justify-content: space-evenly;*/
+/*    border-bottom: 1px solid gray;*/
+/*    padding: 5px 0;*/
+/*    height: 40px;*/
+/*}*/
+
+td, th {
+    /*border: 1px solid #dddddd;*/
+    text-align: left;
+    padding: 8px;
+}
+
+/*.fileEntry:nth-child(1) {*/
+/*    border-top: 1px solid gray;*/
+/*}*/
+
+.fileEntryIcon {
+    width: 20px;
+    margin-right: 10px;
+}
+
+.fileIcons {
+    margin-top: 2px;
+}
+
+.fileIcons button {
+    all: unset;
+    cursor: pointer;
+}
+
+.fileIcons button:hover {
+    opacity: 0.7;
+}

@@ -4,7 +4,7 @@
     flex-direction: column;
     width: 250px;
     padding: 20px 20px 0 20px;
-    background: white;
+    background: whitesmoke;
 }
 
 .btnNew {
@@ -16,7 +16,7 @@
     margin-left: 5px;
     border-radius: 15px;
     border-color: black;
-    background: white;
+    background: whitesmoke;
 }
 
 .btnNew:hover {

@@ -1,0 +1,26 @@
+table {
+    display: block;
+    border-collapse: collapse;
+    width: 80%;
+    margin: 0 2.5%;
+}
+
+tbody, thead {
+    border: 1px solid #dddddd;
+    text-align: left;
+    padding: 8px;
+}
+
+
+/*.columns {*/
+/*    display: flex;*/
+/*    flex-wrap: wrap;*/
+/*    justify-content: space-evenly;*/
+/*    padding: 10px;*/
+/*}*/
+
+/*.filesList {*/
+/*    display: flex;*/
+/*    flex: auto;*/
+/*    flex-direction: column;*/
+/*}*/

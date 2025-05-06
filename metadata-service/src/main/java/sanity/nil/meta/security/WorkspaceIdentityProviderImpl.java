@@ -1,5 +1,6 @@
 package sanity.nil.meta.security;
 
+import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import sanity.nil.meta.service.MetadataService;
@@ -14,7 +15,7 @@ public class WorkspaceIdentityProviderImpl extends KeycloakIdentityProvider impl
     @Inject
     MetadataService metadataService;
 
-    public boolean identityBelongsToWorkspace(UUID userID, String workspaceID) {
-        return metadataService.existsUserWorkspace(userID, workspaceID);
+    public Uni<Boolean> identityBelongsToWorkspace(UUID userID, String workspaceID) {
+        return Uni.createFrom().item(metadataService.existsUserWorkspace(userID, workspaceID));
     }
 }

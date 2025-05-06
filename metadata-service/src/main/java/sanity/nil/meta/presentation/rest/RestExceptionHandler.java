@@ -1,6 +1,7 @@
 package sanity.nil.meta.presentation.rest;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.core.Response;
 import org.jboss.resteasy.reactive.RestResponse;
 import org.jboss.resteasy.reactive.server.ServerExceptionMapper;
@@ -20,5 +21,10 @@ public class RestExceptionHandler {
     @ServerExceptionMapper
     public RestResponse<String> mapException(InvalidParametersException ex) {
         return RestResponse.status(Response.Status.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ServerExceptionMapper
+    public RestResponse<String> mapException(NotFoundException ex) {
+        return RestResponse.status(Response.Status.NOT_FOUND, ex.getMessage());
     }
 }

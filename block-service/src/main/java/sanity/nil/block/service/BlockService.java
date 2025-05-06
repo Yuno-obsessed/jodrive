@@ -1,18 +1,22 @@
 package sanity.nil.block.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.grpc.StatusRuntimeException;
 import io.minio.PutObjectArgs;
 import io.quarkus.grpc.GrpcClient;
 import io.quarkus.security.ForbiddenException;
 import io.quarkus.security.UnauthorizedException;
 import io.smallrye.mutiny.Multi;
+import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.transaction.Transactional;
+import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.WebApplicationException;
 import lombok.extern.jbosslog.JBossLog;
+import org.apache.commons.lang3.StringUtils;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 import sanity.nil.block.consts.BlockStatus;
 import sanity.nil.block.consts.TaskStatus;
@@ -25,6 +29,7 @@ import sanity.nil.block.model.TaskModel;
 import sanity.nil.grpc.meta.GetFileBlockListRequest;
 import sanity.nil.grpc.meta.MutinyMetadataServiceGrpc;
 import sanity.nil.grpc.meta.VerifyLinkRequest;
+import sanity.nil.security.Identity;
 import sanity.nil.security.Role;
 import sanity.nil.security.WorkspaceIdentityProvider;
 
@@ -114,17 +119,21 @@ public class BlockService {
     }
 
     public Multi<byte[]> getFileBlock(String fileID, String wsID, String link) {
-        if (!hasPermissions(wsID, link)) {
-            throw new ForbiddenException();
-        }
-        return metadataClient.getFileBlockList(GetFileBlockListRequest.newBuilder()
-                        .setFileID(fileID).setWsID(wsID).build())
-                .ifNoItem().after(Duration.ofSeconds(2)).failWith(NoResultException::new)
-                .onItem().transformToMulti(blockListResponse -> {
-                    return Multi.createFrom().iterable(blockListResponse.getBlockList())
-                            .onItem().transformToMulti(hash -> getBlock(hash))
-                            .concatenate();
-                });
+        return hasPermissions(wsID, link)
+                .flatMap(permission -> {
+                    if (!permission) {
+                        return Uni.createFrom().failure(new ForbiddenException());
+                    }
+                    return metadataClient.getFileBlockList(GetFileBlockListRequest.newBuilder()
+                                    .setFileID(fileID).setWsID(wsID).build())
+                            .ifNoItem().after(Duration.ofSeconds(2)).failWith(NoResultException::new)
+                            .onFailure(StatusRuntimeException.class).transform(failure -> new NotFoundException());
+                })
+                .onItem().transformToMulti(blockListResponse ->
+                        Multi.createFrom().iterable(blockListResponse.getBlockList())
+                                .onItem().transformToMulti(this::getBlock)
+                                .concatenate()
+                );
     }
 
     public Multi<byte[]> getBlock(String hash)  {
@@ -135,15 +144,13 @@ public class BlockService {
         }
     }
 
-    private boolean hasPermissions(String wsID, String link) {
-        if (!link.isBlank()) {
-            var response = metadataClient.verifyLink(
-                    VerifyLinkRequest.newBuilder().setLink(link).build()
-            ).await().atMost(Duration.ofSeconds(2));
-            return response.getValid() && !response.getExpired();
+    private Uni<Boolean> hasPermissions(String wsID, String link) {
+        if (StringUtils.isNotEmpty(link)) {
+            return metadataClient.verifyLink(VerifyLinkRequest.newBuilder().setLink(link).build())
+                    .onItem().transform(response -> response.getValid() && !response.getExpired());
         } else {
-            var identity = identityProvider.getIdentity(wsID);
-            return identity.hasRole(Role.USER);
+            return identityProvider.getIdentityUni(wsID)
+                    .onItem().transform(identity -> identity.hasRole(Role.USER));
         }
     }
 
