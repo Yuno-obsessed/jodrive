@@ -1,5 +1,4 @@
 import Sidebar from "../widgets/Sidebar.jsx";
-import {FileSearchPage} from "../pages/FileSearchPage.jsx";
 import styles from './MainLayout.module.css'
 import React from "react";
 import {Header} from "../widgets/Header.jsx";

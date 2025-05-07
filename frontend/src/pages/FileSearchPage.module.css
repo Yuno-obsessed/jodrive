@@ -1,26 +1,19 @@
 table {
-    display: block;
+    margin-top: 40px;
+    margin-left: auto;
+    margin-right: auto;
     border-collapse: collapse;
-    width: 80%;
-    margin: 0 2.5%;
+    width: 90%;
+    font-size: 14px;
 }
 
 tbody, thead {
-    border: 1px solid #dddddd;
+    border-top: 1px solid #dddddd;
+    border-bottom: 1px solid #dddddd;
     text-align: left;
     padding: 8px;
 }
 
-
-/*.columns {*/
-/*    display: flex;*/
-/*    flex-wrap: wrap;*/
-/*    justify-content: space-evenly;*/
-/*    padding: 10px;*/
-/*}*/
-
-/*.filesList {*/
-/*    display: flex;*/
-/*    flex: auto;*/
-/*    flex-direction: column;*/
-/*}*/
+tr:not(.theader):hover {
+    background-color: lightgray;
+}
