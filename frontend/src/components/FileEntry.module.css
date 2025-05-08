@@ -1,24 +1,28 @@
-td, th {
-    text-align: left;
-    padding: 8px;
-    border-top: 1px solid #dddddd;
-    border-bottom: 1px solid #dddddd;
-}
-
-.fileEntryIcon {
-    width: 20px;
-    margin-right: 10px;
-}
-
-.fileIcons {
-    margin-top: 2px;
+td,
+th {
+  text-align: left;
+  padding: 8px;
+  border-top: 1px solid #dddddd;
+  border-bottom: 1px solid #dddddd;
 }
 
 .fileIcons button {
-    all: unset;
-    cursor: pointer;
+  all: unset;
+  cursor: pointer;
+  height: 20px;
+  padding: 4px;
 }
 
 .fileIcons button:hover {
-    opacity: 0.7;
+  background: #d8d2d2;
+  border-radius: 50%;
+  opacity: 0.8;
+  transition: opacity 0.4s ease;
+  z-index: 0;
+}
+
+.fileIcons img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
 }

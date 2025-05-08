@@ -1,12 +1,9 @@
-import styles from './Profile.module.css'
+import styles from "./Profile.module.css";
 
 export default function Profile() {
-    return (
-        <div className={styles.headerProfile}>
-            <img
-                src="vite.svg"
-                alt="Profile"
-            />
-        </div>
-    )
+  return (
+    <div className={styles.headerProfile}>
+      <img src="vite.svg" alt="Profile" />
+    </div>
+  );
 }

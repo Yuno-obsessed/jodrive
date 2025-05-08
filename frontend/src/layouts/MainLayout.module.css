@@ -1,20 +1,20 @@
 .layout {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
 }
 
 .content {
-    position: relative;
-    display: flex;
-    flex: 1;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    width: 100%;
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  width: 100%;
 }
 
 .main {
-    background-color: white;
-    flex-grow: 1;
-    padding: 10px;
+  background-color: white;
+  flex-grow: 1;
+  padding: 10px;
 }
