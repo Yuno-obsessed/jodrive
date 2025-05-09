@@ -1,9 +1,10 @@
 import styles from "./FileSearchPage.module.css";
 import React, { useEffect, useState } from "react";
 import { FileEntry } from "../components/FileEntry.jsx";
-import { ShareModal } from "../components/ShareModal.jsx";
-import { ConstructLink } from "../api/ConstructLink.jsx";
+import { ShareModal } from "../features/ShareModal.jsx";
+import { ConstructLink } from "../api/ConstructLink.js";
 import useAuthStore from "../util/authStore.js";
+import { downloadFile } from "../api/DownloadFile.js";
 
 export const FileSearchPage = (searchParams) => {
   const getFiles = (params) => {
@@ -47,6 +48,15 @@ export const FileSearchPage = (searchParams) => {
     );
   };
 
+  const handleDownload = (file) => {
+    downloadFile(file, token).then(
+      () => {
+        console.log("File downloaded");
+      },
+      (err) => console.log("error", err),
+    );
+  };
+
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.ctrlKey) {
@@ -85,6 +95,7 @@ export const FileSearchPage = (searchParams) => {
               key={file.id}
               isSelected={selected.has(file.id)}
               onShare={() => handleShare(file)}
+              onDownload={() => handleDownload(file)}
               onClick={() => {
                 console.log(`selected ${selectMode}`);
                 console.log(`before ${selected.size}`);

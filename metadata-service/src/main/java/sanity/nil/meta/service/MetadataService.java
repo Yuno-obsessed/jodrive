@@ -12,6 +12,7 @@ import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.transaction.Transactional;
+import jakarta.ws.rs.NotFoundException;
 import lombok.extern.jbosslog.JBossLog;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.faulttolerance.Retry;
@@ -148,6 +149,7 @@ public class MetadataService {
         if (missingBlocks.isEmpty()) {
             log.debug("All blocks already exist");
             updateFileState(request.workspaceID(), request.filename());
+            // TODO: send a request to block service to update block states
             return new BlockMetadata(request.correlationID());
         }
 
@@ -255,7 +257,11 @@ public class MetadataService {
             return null;
         }
         // TODO: optimize reads by not selecting not needed columns (blocklist)
-        var file = entityManager.find(FileJournalModel.class, Long.valueOf(fileID));
+        var fileOp = fileJournalRepo.findById(Long.valueOf(fileID), Long.valueOf(wsID));
+        if (fileOp.isEmpty()) {
+            throw new NotFoundException();
+        }
+        var file = fileOp.get();
 
         return new FileInfo(file.getFilename(), file.getSize(), file.getUploader().getId(), file.getCreatedAt());
     }

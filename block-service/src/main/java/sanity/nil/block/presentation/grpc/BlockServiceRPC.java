@@ -23,7 +23,7 @@ public class BlockServiceRPC extends BlockServiceGrpc.BlockServiceImplBase {
     @Override
     @Blocking
     public void checkBlocksExistence(CheckBlocksExistenceRequest request, StreamObserver<CheckBlocksExistenceResponse> responseObserver) {
-        Uni.createFrom().item(() -> blockService.checkBlocksExistence(request.getHashList()))
+        Uni.createFrom().item(() -> blockService.checkBlocksExistence(request.getHashList().stream().toList()))
                 .runSubscriptionOn(Infrastructure.getDefaultExecutor())
                 .subscribe().with(
                         missingBlocks -> {
