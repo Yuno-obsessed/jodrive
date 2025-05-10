@@ -88,13 +88,13 @@ a:visited {
   background-color: lightgray;
   border-radius: 10px;
   width: 80%;
-  height: 8px;
+  height: 6px;
 }
 
 .storageBarProgress {
   background-color: royalblue;
   border-radius: 10px;
-  height: 8px;
+  height: 6px;
   width: 50%;
 }
 

@@ -6,6 +6,7 @@ export const FileEntry = ({
   onClick,
   onShare,
   onDownload,
+  onDelete,
   onMouseEnter,
   onMouseLeave,
 }) => {
@@ -43,7 +44,7 @@ export const FileEntry = ({
             alt="Download"
             callback={onDownload}
           />
-          <FileEntryButton src="delete.svg" alt="Delete" callback={onShare} />
+          <FileEntryButton src="delete.svg" alt="Delete" callback={onDelete} />
         </div>
       </td>
     </tr>

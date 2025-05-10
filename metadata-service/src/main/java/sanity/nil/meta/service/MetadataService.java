@@ -24,6 +24,7 @@ import sanity.nil.meta.consts.*;
 import sanity.nil.meta.dto.Paged;
 import sanity.nil.meta.dto.block.BlockMetadata;
 import sanity.nil.meta.dto.block.GetBlocksMetadata;
+import sanity.nil.meta.dto.file.FileFilters;
 import sanity.nil.meta.dto.file.FileInfo;
 import sanity.nil.meta.dto.file.LinkValidity;
 import sanity.nil.meta.exceptions.CryptoException;
@@ -263,11 +264,11 @@ public class MetadataService {
         }
         var file = fileOp.get();
 
-        return new FileInfo(file.getFilename(), file.getSize(), file.getUploader().getId(), file.getCreatedAt());
+        return new FileInfo(file.getId().getWorkspaceID(), file.getFilename(), file.getSize(), file.getUploader().getId(), file.getCreatedAt());
     }
 
-    public Paged<FileInfo> searchFiles(Long wsID, UUID userID, Boolean deleted, int page, int size) {
-        var identity = identityProvider.getIdentity(String.valueOf(wsID));
+    public Paged<FileInfo> searchFiles(FileFilters filters) {
+        var identity = identityProvider.getIdentity(String.valueOf(filters.wsID()));
         if (!identity.hasRole(Role.USER)) {
             throw new ForbiddenException();
         }
@@ -275,13 +276,13 @@ public class MetadataService {
         CriteriaQuery<FileJournalModel> selectQuery = cb.createQuery(FileJournalModel.class);
         Root<FileJournalModel> selectRoot = selectQuery.from(FileJournalModel.class);
 
-        var selectPredicates = buildPredicates(cb, selectRoot, deleted, wsID, userID);
+        var selectPredicates = buildPredicates(cb, selectRoot, filters);
 
         selectQuery.select(selectRoot).where(cb.and(selectPredicates.toArray(new Predicate[0])));
 
         CriteriaQuery<Long> countQuery = cb.createQuery(Long.class);
         Root<FileJournalModel> countRoot = countQuery.from(FileJournalModel.class);
-        var countPredicates = buildPredicates(cb, countRoot, deleted, wsID, userID);
+        var countPredicates = buildPredicates(cb, countRoot, filters);
         countQuery.select(cb.count(countRoot)).where(cb.and(countPredicates.toArray(new Predicate[0])));
 
         var filesFound = entityManager.createQuery(selectQuery).getResultList();
@@ -289,31 +290,35 @@ public class MetadataService {
 
         List<FileInfo> dtos = filesFound.stream()
                 .map(f -> new FileInfo(
+                        f.getId().getWorkspaceID(),
                         f.getFilename(),
                         f.getSize(),
                         f.getUploader().getId(),
                         f.getCreatedAt()
                 )).toList();
 
-        int totalPages = (int) Math.ceil((double) filesCount / size);
-        boolean hasNext = (page + 1) < totalPages;
-        boolean hasPrevious = page > 0;
+        int totalPages = (int) Math.ceil((double) filesCount / filters.size());
+        boolean hasNext = (filters.page() + 1) < totalPages;
+        boolean hasPrevious = filters.page() > 0;
 
         return new Paged<FileInfo>().of(dtos, totalPages, hasNext, hasPrevious);
     }
 
-    private List<Predicate> buildPredicates(CriteriaBuilder cb, Root<FileJournalModel> root, Boolean deleted, Long wsID, UUID userID) {
+    private List<Predicate> buildPredicates(CriteriaBuilder cb, Root<FileJournalModel> root, FileFilters filters) {
         List<Predicate> predicates = new ArrayList<>();
-        if (wsID != null) {
-            predicates.add(cb.equal(root.get("id").get("workspaceID"), wsID));
+        if (filters.wsID() != null) {
+            predicates.add(cb.equal(root.get("id").get("workspaceID"), filters.wsID()));
         }
-        if (deleted != null && deleted) {
+        if (StringUtils.isNotEmpty(filters.name())) {
+            predicates.add(cb.equal(root.get("filename"), filters.name()));
+        }
+        if (filters.deleted() != null && filters.deleted()) {
             predicates.add(cb.equal(root.get("state"), FileState.DELETED));
         } else {
             predicates.add(cb.notEqual(root.get("state"), FileState.DELETED));
         }
-        if (userID != null) {
-            predicates.add(cb.equal(root.get("uploader").get("id"), userID));
+        if (filters.userID() != null) {
+            predicates.add(cb.equal(root.get("uploader").get("id"), filters.userID()));
         }
         return predicates;
     }

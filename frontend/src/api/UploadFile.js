@@ -1,12 +1,10 @@
 import { getSHA256Hash } from "../util/HashUtils.js";
 import { METADATA_URI, BLOCK_URI } from "../consts/Constants.js";
 
-const CHUNK_SIZE = 4 * 1024 * 1024;
-const MAX_BODY_SIZE = 8096 * 1024;
+const CHUNK_SIZE = 4_000_000; // 4 MB
+const MAX_BODY_SIZE = 8_000_000; // 8 MB
 const HASH_SIZE = 64;
 const MAX_HASHES_PER_REQUEST = Math.floor(MAX_BODY_SIZE / HASH_SIZE);
-
-// TODO: maybe uncouple these functions to provide easier access to create a progress bar
 
 export async function getFileChunksToUpload(file) {
   const totalChunks = Math.ceil(file.size / CHUNK_SIZE);

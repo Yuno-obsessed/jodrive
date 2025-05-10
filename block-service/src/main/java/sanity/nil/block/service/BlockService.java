@@ -82,8 +82,6 @@ public class BlockService {
             entityManager.persist(newBlock);
             results.add(new BlockUpload.UploadResult(block.fileName(), true));
         }
-//        client.blockUploadedEvent(new BlocksUploadedEvent(String.valueOf(request.correlationID()),
-//                files.stream().map(file -> new BlocksUploadedEvent.UploadedBlock(file.fileName(), file.size())).toList()));
         return new BlockUpload(request.correlationID(), results);
     }
 

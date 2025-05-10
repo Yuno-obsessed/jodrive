@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import Keycloak from "keycloak-js";
+import { getUserInfo } from "../api/UserInfo.js";
 
 const keycloak = new Keycloak({
   url: "http://localhost:7080",
@@ -17,13 +18,13 @@ const useAuthStore = create((set) => ({
     const authenticated = await keycloak.init({ onLoad: "login-required" });
 
     if (authenticated) {
+      const userInfo = await keycloak.loadUserInfo();
+      const user = await getUserInfo(userInfo.sub, keycloak.token);
       set({
         token: keycloak.token,
         authenticated: true,
+        userInfo: user,
       });
-
-      const userInfo = await keycloak.loadUserInfo();
-      set({ userInfo });
     }
     setInterval(() => {
       keycloak.updateToken(5).then((refreshed) => {

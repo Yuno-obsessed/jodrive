@@ -9,8 +9,9 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class FileInfo {
+    public Long workspaceID;
     public String filename;
     public long size;
     public UUID uploader;
-    public LocalDateTime createdAt;
+    public LocalDateTime uploadedAt;
 }

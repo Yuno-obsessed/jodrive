@@ -1,9 +1,27 @@
 import React, { useState } from "react";
 import styles from "./Sidebar.module.css";
 import { UploadModal } from "../features/UploadModal.jsx";
+import useAuthStore from "../util/authStore.js";
 
 export const Sidebar = () => {
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const { userInfo } = useAuthStore();
+
+  const mapToGB = (bytes) => {
+    const gb = bytes / 1_000_000_000;
+    return parseFloat(gb.toFixed(2));
+  };
+
+  console.log(userInfo);
+  let usedStorage = userInfo.statistics
+    .filter((s) => s.quota === "USER_STORAGE_USED")
+    .map((s) => mapToGB(s.value));
+  let storageLimit = mapToGB(userInfo.subscription.storageLimit);
+  console.log(`Used ${usedStorage} of ${storageLimit}`);
+
+  const calculateStorageUsagePercentage = () => {
+    return (storageLimit / 100) * usedStorage;
+  };
 
   return (
     <>
@@ -54,8 +72,13 @@ export const Sidebar = () => {
           </li>
           <li className={styles.sidebarEl}>
             <div className={styles.storageBar}>
-              <div className={styles.storageBarProgress} />
-              <a className={styles.storageInfo}>X GB of y GB used</a>
+              <div
+                className={styles.storageBarProgress}
+                style={{ width: `${calculateStorageUsagePercentage()}%` }}
+              />
+              <a className={styles.storageInfo}>
+                {usedStorage} GB of {storageLimit} GB used
+              </a>
             </div>
           </li>
         </ul>

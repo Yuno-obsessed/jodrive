@@ -5,42 +5,36 @@ import { ShareModal } from "../features/ShareModal.jsx";
 import { ConstructLink } from "../api/ConstructLink.js";
 import useAuthStore from "../util/authStore.js";
 import { downloadFile } from "../api/DownloadFile.js";
+import { deleteFile } from "../api/DeleteFile.js";
+import { searchFile } from "../api/SearchFile.js";
 
 export const FileSearchPage = (searchParams) => {
-  const getFiles = (params) => {
-    return [
-      {
-        id: 1,
-        name: "testfile.png",
-        uploadedAt: "05/05/2025",
-        size: 200,
-        uploader: "Some UUID",
-        workspaceID: 1,
-      },
-      {
-        id: 2,
-        name: "testfile2.png",
-        uploadedAt: "05/06/2025",
-        size: 400,
-        uploader: "Some UUID@12123",
-        workspaceID: 1,
-      },
-    ];
-  };
-
+  const [files, setFiles] = useState([]);
   const [hovered, setHovered] = useState(null);
   const [selected, setSelected] = useState(new Set());
   const [selectMode, setSelectMode] = useState(false);
-  const [sharedFile, setSharedFile] = useState(null);
+  // const [sharedFile, setSharedFile] = useState(null);
   const [shareLink, setShareLink] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const { token } = useAuthStore();
+
+  const getFiles = async (params) => {
+    return await searchFile(params, token)
+      .then((res) => {
+        console.log(`before ${files}`);
+        setFiles(files, ...res);
+        console.log(`after ${files}`);
+      })
+      .catch((err) => {
+        console.log("err", err);
+      });
+  };
 
   const handleShare = (file) => {
     ConstructLink(file, "MINUTE", 60, token).then(
       (link) => {
         console.log(`Success: ${link}`);
-        setSharedFile(file);
+        // setSharedFile(file);
         setShareLink(link);
         setShowModal(true);
       },
@@ -52,6 +46,15 @@ export const FileSearchPage = (searchParams) => {
     downloadFile(file, token).then(
       () => {
         console.log("File downloaded");
+      },
+      (err) => console.log("error", err),
+    );
+  };
+
+  const handleDelete = (file) => {
+    deleteFile(file, token).then(
+      () => {
+        console.log("File deleted");
       },
       (err) => console.log("error", err),
     );
@@ -89,13 +92,14 @@ export const FileSearchPage = (searchParams) => {
           </tr>
         </thead>
         <tbody>
-          {getFiles(searchParams).map((file) => (
+          {files.map((file) => (
             <FileEntry
               file={file}
               key={file.id}
               isSelected={selected.has(file.id)}
               onShare={() => handleShare(file)}
               onDownload={() => handleDownload(file)}
+              onDelete={() => handleDelete(file)}
               onClick={() => {
                 console.log(`selected ${selectMode}`);
                 console.log(`before ${selected.size}`);

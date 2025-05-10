@@ -82,7 +82,7 @@ public class GetBlocksMetadataTest {
 
         var newBlocks = blocks.stream().map(e -> e.hash())
                 .collect(Collectors.toCollection(LinkedHashSet::new));
-        var expectedFileSize = 411053792L;
+        var expectedFileSize = 392012000L;
         var expectedBlockList = String.join(",", newBlocks);
 
         var blockServiceRequest = CheckBlocksExistenceRequest.newBuilder()
@@ -273,7 +273,7 @@ public class GetBlocksMetadataTest {
 
         var newBlocks = blocks.stream().map(e -> e.hash())
                 .collect(Collectors.toCollection(LinkedHashSet::new));
-        var expectedFileSize = 411053792L;
+        var expectedFileSize = 392012000L;
         var expectedBlockList = String.join(",", newBlocks);
 
         var blockServiceRequest = CheckBlocksExistenceRequest.newBuilder()

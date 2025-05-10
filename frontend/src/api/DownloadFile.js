@@ -1,6 +1,9 @@
 import { BLOCK_URI, METADATA_URI } from "../consts/Constants.js";
 
 export async function downloadFile(file, token) {
+  if (file === null || file.id === null || file.workspaceID === null) {
+    return new Error("Invalid parameters");
+  }
   try {
     const headers = {
       Authorization: `Bearer ${token}`,
