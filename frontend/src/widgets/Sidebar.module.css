@@ -2,7 +2,7 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  width: 250px;
+  width: 13%;
   padding: 20px 20px 0 20px;
   background: whitesmoke;
 }
@@ -10,9 +10,10 @@
 .btnNew {
   display: flex;
   align-items: center;
-  height: 70px;
-  width: 120px;
-  margin-top: 20px;
+  justify-content: center;
+  height: 60px;
+  width: 100px;
+  margin-top: 10px;
   margin-left: 5px;
   border-radius: 15px;
   border-color: black;
@@ -33,7 +34,7 @@ a:visited {
 }
 
 .btnNewImg {
-  height: 35px;
+  height: 25px;
 }
 
 .sidebarList {
@@ -78,6 +79,7 @@ a:visited {
 }
 
 .sidebarLinks {
+  font-size: 14px;
   margin-left: 10px;
   margin-top: 6px;
   margin-bottom: 6px;
@@ -99,6 +101,7 @@ a:visited {
 }
 
 .storageInfo {
+  font-size: 12px;
   display: block;
-  padding-top: 5px;
+  padding-top: 8px;
 }

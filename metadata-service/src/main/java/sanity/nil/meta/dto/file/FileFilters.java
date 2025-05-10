@@ -7,6 +7,6 @@ public record FileFilters(
         UUID userID,
         String name,
         Boolean deleted,
-        int page,
-        int size
+        Integer page,
+        Integer size
 ) { }

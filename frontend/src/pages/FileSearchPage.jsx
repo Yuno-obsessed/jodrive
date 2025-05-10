@@ -7,8 +7,9 @@ import useAuthStore from "../util/authStore.js";
 import { downloadFile } from "../api/DownloadFile.js";
 import { deleteFile } from "../api/DeleteFile.js";
 import { searchFile } from "../api/SearchFile.js";
+import { useLocation } from "react-router-dom";
 
-export const FileSearchPage = (searchParams) => {
+export const FileSearchPage = () => {
   const [files, setFiles] = useState([]);
   const [hovered, setHovered] = useState(null);
   const [selected, setSelected] = useState(new Set());
@@ -16,19 +17,44 @@ export const FileSearchPage = (searchParams) => {
   // const [sharedFile, setSharedFile] = useState(null);
   const [shareLink, setShareLink] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const { token } = useAuthStore();
+  const { token, userInfo } = useAuthStore();
+  const location = useLocation();
 
   const getFiles = async (params) => {
     return await searchFile(params, token)
       .then((res) => {
         console.log(`before ${files}`);
-        setFiles(files, ...res);
+        console.log(res.elements);
+        setFiles([...res.elements]);
         console.log(`after ${files}`);
       })
       .catch((err) => {
         console.log("err", err);
       });
   };
+  const params = new URLSearchParams(location.search);
+  const name = params.get("name");
+  console.log(name);
+  const handleKeyDown = (event) => {
+    if (event.ctrlKey) {
+      setSelectMode(true);
+      console.log(`Ctrl key is down`);
+    }
+  };
+
+  const handleKeyUp = (event) => {
+    if (!event.ctrlKey) {
+      setSelectMode(false);
+      console.log(`Ctrl key released`);
+    }
+  };
+
+  window.addEventListener("keydown", handleKeyDown);
+  window.addEventListener("keyup", handleKeyUp);
+
+  useEffect(() => {
+    getFiles({ name: name, wsID: 1, userID: userInfo.id });
+  }, [name]);
 
   const handleShare = (file) => {
     ConstructLink(file, "MINUTE", 60, token).then(
@@ -60,24 +86,7 @@ export const FileSearchPage = (searchParams) => {
     );
   };
 
-  useEffect(() => {
-    const handleKeyDown = (event) => {
-      if (event.ctrlKey) {
-        setSelectMode(true);
-        console.log(`Ctrl key is down`);
-      }
-    };
-
-    const handleKeyUp = (event) => {
-      if (!event.ctrlKey) {
-        setSelectMode(false);
-        console.log(`Ctrl key released`);
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
-  }, []);
+  useEffect(() => {}, []);
 
   return (
     <>

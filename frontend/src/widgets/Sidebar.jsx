@@ -17,7 +17,6 @@ export const Sidebar = () => {
     .filter((s) => s.quota === "USER_STORAGE_USED")
     .map((s) => mapToGB(s.value));
   let storageLimit = mapToGB(userInfo.subscription.storageLimit);
-  console.log(`Used ${usedStorage} of ${storageLimit}`);
 
   const calculateStorageUsagePercentage = () => {
     return (storageLimit / 100) * usedStorage;
@@ -30,9 +29,7 @@ export const Sidebar = () => {
           className={styles.btnNew}
           onClick={() => setShowUploadModal(true)}
         >
-          <span>
-            <img src="plus.svg" alt="Plus-New" className={styles.btnNewImg} />
-          </span>
+          <img src="plus.svg" alt="Plus-New" className={styles.btnNewImg} />
           <span className={styles.btnNewText}>
             <a>New</a>
           </span>

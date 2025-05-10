@@ -2,6 +2,8 @@ import React, { useEffect } from "react";
 import "./App.css";
 import { MainLayout } from "./layouts/MainLayout.jsx";
 import useAuthStore from "./util/authStore.js";
+import { FileSearchPage } from "./pages/FileSearchPage.jsx";
+import { HomePage } from "./pages/HomePage.jsx";
 import { Route, Routes } from "react-router-dom";
 
 function App() {
@@ -18,8 +20,8 @@ function App() {
       {authenticated ? (
         <MainLayout>
           <Routes>
-            <Route path="/files" element=<FileSearchPage /> />
-            <Route path="/" element=<HomePage /> />
+            <Route path="/files" element={<FileSearchPage />} />
+            <Route path="/" element={<HomePage />} />
           </Routes>
         </MainLayout>
       ) : (

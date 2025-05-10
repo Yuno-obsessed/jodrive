@@ -264,7 +264,8 @@ public class MetadataService {
         }
         var file = fileOp.get();
 
-        return new FileInfo(file.getId().getWorkspaceID(), file.getFilename(), file.getSize(), file.getUploader().getId(), file.getCreatedAt());
+        return new FileInfo(file.getFileID(), file.getId().getWorkspaceID(), file.getFilename(),
+                file.getSize(), file.getUploader().getId(), file.getCreatedAt());
     }
 
     public Paged<FileInfo> searchFiles(FileFilters filters) {
@@ -272,6 +273,8 @@ public class MetadataService {
         if (!identity.hasRole(Role.USER)) {
             throw new ForbiddenException();
         }
+        var page = filters.page() == null ? 0 : filters.page();
+        var size = filters.size() == null ? 10 : filters.size();
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
         CriteriaQuery<FileJournalModel> selectQuery = cb.createQuery(FileJournalModel.class);
         Root<FileJournalModel> selectRoot = selectQuery.from(FileJournalModel.class);
@@ -285,11 +288,12 @@ public class MetadataService {
         var countPredicates = buildPredicates(cb, countRoot, filters);
         countQuery.select(cb.count(countRoot)).where(cb.and(countPredicates.toArray(new Predicate[0])));
 
-        var filesFound = entityManager.createQuery(selectQuery).getResultList();
+        var filesFound = entityManager.createQuery(selectQuery).setMaxResults(size).getResultList();
         var filesCount = entityManager.createQuery(countQuery).getSingleResult();
 
         List<FileInfo> dtos = filesFound.stream()
                 .map(f -> new FileInfo(
+                        f.getFileID(),
                         f.getId().getWorkspaceID(),
                         f.getFilename(),
                         f.getSize(),
@@ -297,9 +301,9 @@ public class MetadataService {
                         f.getCreatedAt()
                 )).toList();
 
-        int totalPages = (int) Math.ceil((double) filesCount / filters.size());
-        boolean hasNext = (filters.page() + 1) < totalPages;
-        boolean hasPrevious = filters.page() > 0;
+        int totalPages = (int) Math.ceil((double) filesCount / size);
+        boolean hasNext = (page + 1) < totalPages;
+        boolean hasPrevious = page > 0;
 
         return new Paged<FileInfo>().of(dtos, totalPages, hasNext, hasPrevious);
     }
@@ -310,7 +314,7 @@ public class MetadataService {
             predicates.add(cb.equal(root.get("id").get("workspaceID"), filters.wsID()));
         }
         if (StringUtils.isNotEmpty(filters.name())) {
-            predicates.add(cb.equal(root.get("filename"), filters.name()));
+            predicates.add(cb.like(cb.upper(root.get("filename")), "%" + filters.name().toUpperCase() + "%"));
         }
         if (filters.deleted() != null && filters.deleted()) {
             predicates.add(cb.equal(root.get("state"), FileState.DELETED));

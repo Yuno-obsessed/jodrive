@@ -23,6 +23,18 @@ export const FileEntry = ({
     );
   };
 
+  const formatByteSize = (size) => {
+    if (size >= 1_000_000_000) {
+      return (size / 1_000_000_000).toFixed(2) + " GB";
+    } else if (size >= 1_000_000) {
+      return (size / 1_000_000).toFixed(2) + " MB";
+    } else if (size >= 1_000) {
+      return (size / 1_000).toFixed(2) + " KB";
+    } else {
+      return size + " B";
+    }
+  };
+
   return (
     <tr
       className={styles.fileEntry}
@@ -30,9 +42,9 @@ export const FileEntry = ({
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
-      <td>{file.name}</td>
+      <td>{file.filename}</td>
       <td>{file.uploadedAt}</td>
-      <td>{file.size}</td>
+      <td>{formatByteSize(file.size)}</td>
       <td>{file.uploader}</td>
       <td>{file.workspaceID}</td>
       <td>
