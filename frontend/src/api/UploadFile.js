@@ -1,5 +1,5 @@
-import { getSHA256Hash } from "../util/HashUtils.js";
 import { METADATA_URI, BLOCK_URI } from "../consts/Constants.js";
+import { parallelHashChunks } from "../util/HashUtils.js";
 
 const CHUNK_SIZE = 4_000_000; // 4 MB
 const MAX_BODY_SIZE = 8_000_000; // 8 MB
@@ -16,11 +16,11 @@ export async function getFileChunksToUpload(file) {
   for (let i = 0; i < totalChunks; i++) {
     const start = i * CHUNK_SIZE;
     const end = Math.min(start + CHUNK_SIZE, file.size);
-    const chunk = file.slice(start, end);
-    const hash = await getSHA256Hash(chunk);
-    chunkList.chunks.push({ file: chunk, hash, position: i, toUpload: false });
+    const fileChunk = file.slice(start, end);
+    chunkList.chunks.push({ file: fileChunk, position: i });
   }
 
+  chunkList.chunks = await parallelHashChunks(chunkList.chunks, 8);
   return chunkList;
 }
 
@@ -50,6 +50,7 @@ export async function checkChunkExistence(
   lastChunkSize,
   token,
 ) {
+  console.log(chunks);
   const hashes = chunks.map(({ hash, position }) => ({ hash, position }));
   let missingBlocks = [];
   let index = 0;

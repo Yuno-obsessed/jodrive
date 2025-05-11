@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import styles from "./UploadModal.module.css";
 import {
   getFileChunksToUpload,
@@ -6,6 +6,7 @@ import {
   checkChunkExistence,
 } from "../api/UploadFile.js";
 import useAuthStore from "../util/authStore.js";
+import { uploadChunksWithRetry, UploadObserver } from "../util/chunkUpload.js";
 
 export const UploadModal = ({ onClose }) => {
   const [progress, setProgress] = useState(0);
@@ -23,34 +24,27 @@ export const UploadModal = ({ onClose }) => {
       chunkList.lastChunkSize,
       token,
     );
+
     const total = chunks.length;
-    console.log(`Got ${chunks} to upload`);
-
+    console.log(`Got ${total} to upload`);
+    const observer = new UploadObserver();
     let uploaded = 0;
-    let batch = [];
-    for (let chunk of chunks) {
-      batch.push(chunk);
 
-      if (batch.length === 2) {
-        await uploadBatch(batch);
-        batch = [];
-      }
-    }
-
-    if (batch.length > 0) {
-      await uploadBatch(batch);
-    }
-
-    async function uploadBatch(batch) {
-      try {
-        await uploadBatchOfChunks(batch, token);
-        uploaded += batch.length;
+    observer.subscribe(({ type, count }) => {
+      if (type === "batchUploaded") {
+        uploaded += count;
         setProgress((uploaded / total) * 100);
-      } catch (e) {
-        console.error("Upload failed:", e);
       }
-    }
-    // TODO: add errors handling
+    });
+
+    await uploadChunksWithRetry({
+      chunks,
+      token,
+      batchSize: 5,
+      poolSize: 8,
+      maxRetries: 3,
+      observer,
+    });
 
     // commit uploaded blocks
     await checkChunkExistence(

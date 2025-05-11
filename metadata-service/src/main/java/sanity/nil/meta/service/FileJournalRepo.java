@@ -3,6 +3,7 @@ package sanity.nil.meta.service;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import sanity.nil.meta.consts.FileState;
 import sanity.nil.meta.model.FileJournalModel;
 import sanity.nil.util.CollectionUtils;
 
@@ -29,6 +30,17 @@ public class FileJournalRepo {
                 "WHERE id.fileID = :fileID AND id.workspaceID = :wsID", FileJournalModel.class)
                 .setParameter("fileID", fileID)
                 .setParameter("wsID", wsID)
+                .getResultList();
+        return CollectionUtils.isEmpty(res) ? Optional.empty() : Optional.of(res.getFirst());
+    }
+
+    public Optional<FileJournalModel> findByIdAndStateIn(Long fileID, Long wsID, FileState states) {
+        var res = entityManager.createQuery("SELECT f FROM FileJournalModel f " +
+                        "WHERE id.fileID = :fileID AND id.workspaceID = :wsID " +
+                        "AND state in :states", FileJournalModel.class)
+                .setParameter("fileID", fileID)
+                .setParameter("wsID", wsID)
+                .setParameter("states", states)
                 .getResultList();
         return CollectionUtils.isEmpty(res) ? Optional.empty() : Optional.of(res.getFirst());
     }

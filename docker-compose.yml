@@ -65,35 +65,31 @@ services:
     volumes:
       - ./config/keycloak/keycloak.conf:/opt/keycloak/conf/keycloak.conf
 
-#  block-service:
-#    hostname: block-service
-#    container_name: block-service
-#    build:
-#      dockerfile: block-service/src/main/docker/Dockerfile.jvm
-##    env_file:
-##      - .env.prod
-#    expose:
-#      - 8081
-#    depends_on:
-#      jodrive-db:
-#        condition: service_healthy
-#      minio1:
-#        condition: service_started
-#
-#  metadata-service:
-#    hostname: metadata-service
-#    container_name: metadata-service
-#    build:
-#      dockerfile: metadata-service/src/main/docker/Dockerfile.jvm
-#    #    env_file:
-#    #      - .env.prod
-#    expose:
-#      - 8082
-#    depends_on:
-#      jodrive-db:
-#        condition: service_healthy
-#      minio1:
-#        condition: service_started
+  block-service:
+    hostname: block-service
+    container_name: block-service
+    build:
+      dockerfile: block-service/src/main/docker/Dockerfile.jvm
+    ports:
+      - "8081:8081"
+    depends_on:
+      jodrive-db:
+        condition: service_healthy
+      minio1:
+        condition: service_started
+
+  metadata-service:
+    hostname: metadata-service
+    container_name: metadata-service
+    build:
+      dockerfile: metadata-service/src/main/docker/Dockerfile.jvm
+    ports:
+      - "8082:8082"
+    depends_on:
+      jodrive-db:
+        condition: service_healthy
+      minio1:
+        condition: service_started
 
   redis:
     container_name: redis
@@ -109,6 +105,18 @@ services:
       timeout: 4s
       retries: 5
       start_period: 10s
+
+  test-data-script:
+    build:
+      context: ./test
+    container_name: test-data-script
+#    depends_on:
+#      metadata-service:
+#        condition: service_healthy
+#      block-service:
+#        condition: service_healthy
+#      keycloak2:
+#        condition: service_healthy
 
 #  nginx:
 #    image: nginx:latest

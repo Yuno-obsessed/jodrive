@@ -30,10 +30,6 @@ public class SubscriptionQuotaCache {
         return valueCommands.get(id);
     }
 
-    public SubscriptionDTO getByQuota(Quota quota) {
-        return valueCommands.get(quota.id());
-    }
-
     public SubscriptionQuotaCache(RedisDataSource redisDataSource) {
         valueCommands = redisDataSource.value(Short.class, SubscriptionDTO.class);
     }

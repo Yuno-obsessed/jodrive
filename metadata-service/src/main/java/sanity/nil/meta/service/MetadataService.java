@@ -125,9 +125,6 @@ public class MetadataService {
         if (!identity.hasRole(Role.USER)) {
             throw new UnauthorizedException();
         }
-        var fileSize = calculateFileSize(request.blocks().size(), request.lastBlockSize());
-        verifyQuotaUsage(identity.getUserID(), fileSize);
-
         var userUploader = entityManager.find(UserModel.class, identity.getUserID());
 
         log.debug("MetadataService thread: " + Thread.currentThread().getName());
@@ -153,6 +150,8 @@ public class MetadataService {
             // TODO: send a request to block service to update block states
             return new BlockMetadata(request.correlationID());
         }
+        var fileSize = calculateFileSize(request.blocks().size(), request.lastBlockSize());
+        verifyQuotaUsage(identity.getUserID(), userUploader.getSubscription().getId(), fileSize);
 
         var workspace = getWorkspace(request.workspaceID(), identity.getUserID()).get();
         if (missingBlocks.size() == requestBlocks.size()) {
@@ -258,7 +257,7 @@ public class MetadataService {
             return null;
         }
         // TODO: optimize reads by not selecting not needed columns (blocklist)
-        var fileOp = fileJournalRepo.findById(Long.valueOf(fileID), Long.valueOf(wsID));
+        var fileOp = fileJournalRepo.findByIdAndStateIn(Long.valueOf(fileID), Long.valueOf(wsID), FileState.UPLOADED);
         if (fileOp.isEmpty()) {
             throw new NotFoundException();
         }
@@ -319,7 +318,7 @@ public class MetadataService {
         if (filters.deleted() != null && filters.deleted()) {
             predicates.add(cb.equal(root.get("state"), FileState.DELETED));
         } else {
-            predicates.add(cb.notEqual(root.get("state"), FileState.DELETED));
+            predicates.add(cb.equal(root.get("state"), FileState.UPLOADED));
         }
         if (filters.userID() != null) {
             predicates.add(cb.equal(root.get("uploader").get("id"), filters.userID()));
@@ -398,7 +397,7 @@ public class MetadataService {
         return new LinkValidity(false, false);
     }
 
-    private void verifyQuotaUsage(UUID userID, Long fileSize) {
+    private void verifyQuotaUsage(UUID userID, Short subscriptionID, Long fileSize) {
         var statistics = entityManager.createQuery("SELECT s FROM UserStatisticsModel s " +
                         "WHERE s.id.userID = :userID AND s.id.statisticsID = :statisticsID", UserStatisticsModel.class)
                 .setParameter("userID", userID)
@@ -406,7 +405,7 @@ public class MetadataService {
                 .getSingleResult();
 
         var storageUsed = Long.valueOf(statistics.getValue());
-        var quota = subscriptionQuotaCache.getByQuota(Quota.USER_STORAGE_USED);
+        var quota = subscriptionQuotaCache.getByID(subscriptionID);
         var remainingQuota = quota.storageLimit() - (storageUsed + fileSize);
         if (remainingQuota < 0) {
             throw new InsufficientQuotaException(Quota.USER_STORAGE_USED, String.valueOf(quota.storageLimit()));

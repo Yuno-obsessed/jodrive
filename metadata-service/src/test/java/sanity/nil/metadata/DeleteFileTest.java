@@ -84,7 +84,7 @@ public class DeleteFileTest {
     }
 
     @Test
-    public void given_Delete_File_When_Delete_Job_Executed_And_Block_Service_Returns_Error_Rollback_Changes() throws Exception {
+    public void given_Delete_File_When_Delete_Job_Executed_And_Block_Service_Returns_Error_Then_Rollback_Changes() throws Exception {
         var file = generateTestData("testFile.png");
 
         var blocklist = Arrays.asList(file.getBlocklist().split(","));
@@ -119,7 +119,7 @@ public class DeleteFileTest {
     }
 
     @Test
-    public void test3() throws Exception {
+    public void given_Delete_File_When_Delete_Job_Executed_And_Block_Service_Returns_Success_Then_Consider_Task_Finished() throws Exception {
         var file = generateTestData("testFile.png");
 
         var blocklist = Arrays.asList(file.getBlocklist().split(","));

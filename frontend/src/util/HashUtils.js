@@ -1,6 +1,42 @@
-export async function getSHA256Hash(blob) {
-  const buffer = await blob.arrayBuffer();
-  const hashBuffer = await window.crypto.subtle.digest("SHA-256", buffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+export async function parallelHashChunks(chunks, workerCount = 4) {
+  const workers = Array.from(
+    { length: workerCount },
+    () =>
+      new Worker(new URL("./hashWorker.js", import.meta.url), {
+        type: "module",
+      }),
+  );
+  const result = new Array(chunks.length);
+  let current = 0;
+
+  return new Promise((resolve, reject) => {
+    let completed = 0;
+
+    function assignWork(worker) {
+      if (current >= chunks.length) return;
+
+      const index = current++;
+      worker.postMessage({ chunk: chunks[index].file, index });
+
+      worker.onmessage = (e) => {
+        result[e.data.index] = {
+          ...chunks[e.data.index],
+          hash: e.data.hash,
+        };
+        console.log(result);
+
+        completed++;
+        if (completed === chunks.length) {
+          workers.forEach((w) => w.terminate());
+          resolve(result);
+        } else {
+          assignWork(worker);
+        }
+      };
+
+      worker.onerror = reject;
+    }
+
+    workers.forEach(assignWork);
+  });
 }

@@ -1,11 +1,16 @@
 import { create } from "zustand";
 import Keycloak from "keycloak-js";
 import { getUserInfo } from "../api/UserInfo.js";
+import {
+  KEYCLOAK_CLIENT,
+  KEYCLOAK_REALM,
+  KEYCLOAK_URI,
+} from "../consts/Constants.js";
 
 const keycloak = new Keycloak({
-  url: "http://localhost:7080",
-  realm: "jodrive-realm",
-  clientId: "jodrive",
+  url: KEYCLOAK_URI,
+  realm: KEYCLOAK_REALM,
+  clientId: KEYCLOAK_CLIENT,
 });
 
 const useAuthStore = create((set) => ({
