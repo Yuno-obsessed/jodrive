@@ -84,4 +84,14 @@ public class MetadataAPI {
         return metadataService.constructLinkForSharing(fileID, wsID, timeUnit, expiresIn);
     }
 
+    @PATCH
+    @Path("file/{id}")
+    public String renameFile(
+            @PathParam("id") String fileID,
+            @QueryParam("wsID") Long wsID,
+            @QueryParam("newName") String newName
+    ) {
+        return metadataService.renameFile(fileID, wsID, newName);
+    }
+
 }

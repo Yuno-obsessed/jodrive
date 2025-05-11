@@ -10,7 +10,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class FileInfo {
-    public Long fileID;
+    public Long id;
     public Long workspaceID;
     public String filename;
     public long size;

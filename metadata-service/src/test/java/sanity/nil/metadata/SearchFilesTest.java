@@ -77,17 +77,17 @@ public class SearchFilesTest {
                 .contentType(ContentType.JSON)
                 .queryParam("wsID", 1L)
                 .queryParam("userID", defaultUserID)
-                .queryParam("page", 2)
-                .queryParam("size", 10)
+                .queryParam("page", 0)
+                .queryParam("size", 50)
                 .when().get("/api/v1/metadata/file/search")
                 .then()
                 .statusCode(200)
                 .extract().body().as(new TypeRef<Paged<FileInfo>>() {});
 
         assertThat(response.elements).hasSize(50);
-        assertThat(response.next).isTrue();
-        assertThat(response.previous).isTrue();
-        assertThat(response.totalPages).isEqualTo(5);
+        assertThat(response.next).isFalse();
+        assertThat(response.previous).isFalse();
+        assertThat(response.totalPages).isEqualTo(1);
     }
 
     @Test

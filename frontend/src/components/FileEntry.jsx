@@ -5,6 +5,7 @@ export const FileEntry = ({
   file,
   onClick,
   onShare,
+  onRename,
   onDownload,
   onDelete,
   onMouseEnter,
@@ -50,7 +51,7 @@ export const FileEntry = ({
       <td>
         <div className={styles.fileIcons}>
           <FileEntryButton src="share.svg" alt="Share" callback={onShare} />
-          <FileEntryButton src="edit.svg" alt="Edit" callback={onShare} />
+          <FileEntryButton src="edit.svg" alt="Rename" callback={onRename} />
           <FileEntryButton
             src="download.svg"
             alt="Download"

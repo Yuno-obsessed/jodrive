@@ -8,17 +8,20 @@ import { downloadFile } from "../api/DownloadFile.js";
 import { deleteFile } from "../api/DeleteFile.js";
 import { searchFile } from "../api/SearchFile.js";
 import { useLocation } from "react-router-dom";
+import { RenameModal } from "../features/RenameModal.jsx";
 
 export const FileSearchPage = () => {
   const [files, setFiles] = useState([]);
   const [hovered, setHovered] = useState(null);
   const [selected, setSelected] = useState(new Set());
+
   const [selectMode, setSelectMode] = useState(false);
-  // const [sharedFile, setSharedFile] = useState(null);
   const [shareLink, setShareLink] = useState(null);
-  const [showModal, setShowModal] = useState(false);
   const { token, userInfo } = useAuthStore();
   const location = useLocation();
+
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [showRenameModal, setShowRenameModal] = useState(false);
 
   const getFiles = async (params) => {
     return await searchFile(params, token)
@@ -60,9 +63,8 @@ export const FileSearchPage = () => {
     ConstructLink(file, "MINUTE", 60, token).then(
       (link) => {
         console.log(`Success: ${link}`);
-        // setSharedFile(file);
         setShareLink(link);
-        setShowModal(true);
+        setShowShareModal(true);
       },
       (err) => console.error("error", err),
     );
@@ -86,8 +88,6 @@ export const FileSearchPage = () => {
     );
   };
 
-  useEffect(() => {}, []);
-
   return (
     <>
       <table className={styles.filesList}>
@@ -104,9 +104,10 @@ export const FileSearchPage = () => {
           {files.map((file) => (
             <FileEntry
               file={file}
-              key={file.id}
+              key={`${file.id}_${file.workspaceID}`}
               isSelected={selected.has(file.id)}
               onShare={() => handleShare(file)}
+              onRename={() => setShowRenameModal(true)}
               onDownload={() => handleDownload(file)}
               onDelete={() => handleDelete(file)}
               onClick={() => {
@@ -122,10 +123,10 @@ export const FileSearchPage = () => {
                 }
                 console.log(`after ${selected.size}`);
               }}
-              onMouseEnter={(e) => {
+              onMouseEnter={() => {
                 setHovered(file);
               }}
-              onMouseLeave={(e) => {
+              onMouseLeave={() => {
                 setHovered(null);
               }}
             />
@@ -133,8 +134,11 @@ export const FileSearchPage = () => {
         </tbody>
       </table>
 
-      {showModal && (
-        <ShareModal link={shareLink} onClose={() => setShowModal(false)} />
+      {showShareModal && (
+        <ShareModal link={shareLink} onClose={() => setShowShareModal(false)} />
+      )}
+      {showRenameModal && (
+        <RenameModal file={hovered} onClose={() => setShowRenameModal(false)} />
       )}
     </>
   );

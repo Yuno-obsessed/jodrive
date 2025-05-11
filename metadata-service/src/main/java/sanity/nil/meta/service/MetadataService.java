@@ -288,7 +288,7 @@ public class MetadataService {
         var countPredicates = buildPredicates(cb, countRoot, filters);
         countQuery.select(cb.count(countRoot)).where(cb.and(countPredicates.toArray(new Predicate[0])));
 
-        var filesFound = entityManager.createQuery(selectQuery).setMaxResults(size).getResultList();
+        var filesFound = entityManager.createQuery(selectQuery).setFirstResult(page*size).setMaxResults(size).getResultList();
         var filesCount = entityManager.createQuery(countQuery).getSingleResult();
 
         List<FileInfo> dtos = filesFound.stream()
@@ -362,6 +362,24 @@ public class MetadataService {
         entityManager.persist(linkModel);
 
         return encryptedLink;
+    }
+
+    @Transactional
+    public String renameFile(String fileID, Long wsID, String newName) {
+        var identity = identityProvider.getIdentity(String.valueOf(wsID));
+
+        var fileJournalOp = fileJournalRepo.findById(Long.valueOf(fileID), wsID);
+        if (fileJournalOp.isEmpty()) {
+            throw new NotFoundException();
+        }
+        var fileJournal = fileJournalOp.get();
+        if (!fileJournal.getUploader().getId().equals(identity.getUserID())) {
+            throw new UnauthorizedException("File wasn't uploaded by current user");
+        }
+
+        fileJournal.setFilename(newName);
+        entityManager.persist(fileJournal);
+        return newName;
     }
 
     public LinkValidity verifyLink(String bareLink) {

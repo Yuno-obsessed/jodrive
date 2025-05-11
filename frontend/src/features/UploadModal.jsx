@@ -59,6 +59,7 @@ export const UploadModal = ({ onClose }) => {
       chunkList.lastChunkSize,
       token,
     );
+    onClose();
   };
 
   return (
