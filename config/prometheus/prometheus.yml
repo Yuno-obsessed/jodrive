@@ -1,0 +1,32 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+
+  - job_name: 'metadata-service'
+    static_configs:
+      - targets: [ 'host.docker.internal:8082' ]
+    metrics_path: /q/metrics
+
+  - job_name: 'block-service'
+    static_configs:
+      - targets: [ 'host.docker.internal:8081' ]
+    metrics_path: /q/metrics
+
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+
+  - job_name: 'minio-job'
+    scheme: http
+    bearer_token: eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJwcm9tZXRoZXVzIiwic3ViIjoiUTNBTTNVUTg2N1NQUVFBNDNQMkYiLCJleHAiOjQ5MDA2ODU0OTd9.4_Gw7tVJ8ixva7xQev3JxfusiE0gjU0UG7MKnCkVHXUwJ8pHlzpbphe56bR-BQd9Fw_GNr7NXmnX7v4Kp4ppRQ
+    static_configs:
+      - targets: [ 'minio1:9000' ]
+    metrics_path: /minio/metrics/v3
+
+  - job_name: 'minio-blocks-bucket'
+    scheme: http
+    bearer_token: eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJwcm9tZXRoZXVzIiwic3ViIjoiUTNBTTNVUTg2N1NQUVFBNDNQMkYiLCJleHAiOjQ5MDA2ODU0OTd9.4_Gw7tVJ8ixva7xQev3JxfusiE0gjU0UG7MKnCkVHXUwJ8pHlzpbphe56bR-BQd9Fw_GNr7NXmnX7v4Kp4ppRQ
+    metrics_path: /minio/metrics/v3/bucket/api/blocks
+    static_configs:
+      - targets: [ 'minio1:9000' ]
