@@ -9,6 +9,7 @@ import { deleteFile } from "../api/DeleteFile.js";
 import { searchFile } from "../api/SearchFile.js";
 import { useLocation } from "react-router-dom";
 import { RenameModal } from "../features/RenameModal.jsx";
+import { METADATA_URI } from "../consts/Constants.js";
 
 export const FileSearchPage = () => {
   const [files, setFiles] = useState([]);
@@ -135,7 +136,11 @@ export const FileSearchPage = () => {
       </table>
 
       {showShareModal && (
-        <ShareModal link={shareLink} onClose={() => setShowShareModal(false)} />
+        <ShareModal
+          // TODO: construct a link to a file page but with link query param appended
+          link={`${METADATA_URI}/file/${selected.id}?link={shareLink}`}
+          onClose={() => setShowShareModal(false)}
+        />
       )}
       {showRenameModal && (
         <RenameModal file={hovered} onClose={() => setShowRenameModal(false)} />

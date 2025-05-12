@@ -9,6 +9,7 @@ package block;
 service BlockService {
   rpc CheckBlocksExistence (CheckBlocksExistenceRequest) returns (CheckBlocksExistenceResponse) {}
   rpc DeleteBlocks (DeleteBlocksRequest) returns (DeleteBlocksResponse) {}
+  rpc UpdateBlocksStatus (UpdateBlocksStatusRequest) returns (UpdateBlocksStatusResponse) {}
 }
 
 message CheckBlocksExistenceRequest {
@@ -32,8 +33,16 @@ enum Code {
   failure = 1;
 }
 
-// we can just return those hashes that aren't present
-//message BlockData {
-//  string hash = 1;
-//  bool exists = 2;
-//}
+enum BlockStatus {
+  uploaded = 0;
+  deleted = 1;
+}
+
+message UpdateBlocksStatusRequest {
+  repeated string blocks = 1;
+  BlockStatus newStatus = 2;
+}
+
+message UpdateBlocksStatusResponse {
+  Code code = 1;
+}

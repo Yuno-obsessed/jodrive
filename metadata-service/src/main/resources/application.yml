@@ -6,11 +6,11 @@ quarkus:
       enable-reflection-service: true
     clients:
       blockService:
-        host: localhost
+        host: ${BLOCK_SERVICE_HOST:localhost}
         port: 8081
   redis:
     hosts:
-      - redis://:@localhost:6379/0
+      - redis://:@${REDIS_HOST:localhost}:6379/0
   hibernate-orm:
     log:
       sql: true
@@ -24,7 +24,7 @@ quarkus:
     username: sanity
     password: wordpass
     jdbc:
-      url: jdbc:postgresql://localhost:5432/jodrive
+      url: jdbc:postgresql://${PG_HOST:localhost}:5432/jodrive
     db-kind: postgresql
   flyway:
     migrate-at-start: true
@@ -43,11 +43,12 @@ quarkus:
   devservices:
     enabled: false
   oidc:
-    auth-server-url: http://localhost:7080/realms/jodrive-realm
+    auth-server-url: http://${KEYCLOAK_HOST:localhost}:${KEYCLOAK_PORT}/realms/jodrive-realm
     application-type: service
     authentication.scopes: openid profile email
     authentication.user-info-required: true
-    token.issuer: http://localhost:7080/realms/jodrive-realm
+    token.issued-at-required: false
+    token.issuer: any
   http:
     limits:
       max-form-attribute-size: 20M
@@ -81,7 +82,7 @@ quarkus:
         level: DEBUG
 application:
   scheduler:
-    interval: 10
+    interval: 600
     delete-file:
       pagination: 3
   crypto:

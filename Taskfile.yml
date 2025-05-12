@@ -11,3 +11,15 @@ tasks:
       # to run this command .secrets file should be present in root directory with secrets definitions
       - act --env TESTCONTAINERS_HOST_OVERRIDE={{.HOST}} -W .github/workflows/ci.yml
     silent: false
+
+  init:
+    cmds:
+      - docker-compose up -d jodrive-db
+      - sleep 4
+      - docker exec -i jodrive-db psql -U sanity -d jodrive < ./config/keycloak/dump.sql
+      - sleep 2
+      - docker-compose up -d --build
+
+  run:
+    cmds:
+      - docker-compose up -d --build

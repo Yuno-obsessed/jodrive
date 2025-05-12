@@ -6,7 +6,7 @@ quarkus:
       enable-reflection-service: true
     clients:
       metadataService:
-        host: localhost
+        host: ${METADATA_SERVICE_HOST:localhost}
         port: 8082
   hibernate-orm:
     log:
@@ -20,7 +20,7 @@ quarkus:
     username: sanity
     password: wordpass
     jdbc:
-      url: jdbc:postgresql://localhost:5432/jodrive
+      url: jdbc:postgresql://${PG_HOST:localhost}:5432/jodrive
     db-kind: postgresql
   flyway:
     migrate-at-start: true
@@ -39,11 +39,12 @@ quarkus:
   devservices:
     enabled: false
   oidc:
-    auth-server-url: http://localhost:7080/realms/jodrive-realm
+    auth-server-url: http://${KEYCLOAK_HOST:localhost}:${KEYCLOAK_PORT}/realms/jodrive-realm
     application-type: service
     authentication.scopes: openid profile email
     authentication.user-info-required: true
-    token.issuer: http://localhost:7080/realms/jodrive-realm
+    token.issued-at-required: false
+    token.issuer: any
   http:
     limits:
         max-form-attribute-size: 20M
@@ -74,9 +75,9 @@ quarkus:
 
 application:
   scheduler:
-    interval: 10
+    interval: 600
   minio:
-    url: localhost
+    url: ${MINIO_HOST:localhost}
     port: 9000
     accessKey: Q3AM3UQ867SPQQA43P2F
     secretKey: zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG

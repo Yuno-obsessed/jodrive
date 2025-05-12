@@ -78,21 +78,35 @@
 #   accessed directly. (example: "foo.example.com,bar.example.com")
 #
 ###
-FROM registry.access.redhat.com/ubi9/openjdk-21:1.21
+FROM registry.access.redhat.com/ubi9/openjdk-21:1.21 AS build
+
+USER root
+WORKDIR /app
+COPY shared/pom.xml shared/
+COPY shared/src shared/src
+
+RUN cd shared && mvn clean install -DskipTests -DskipITs
+
+USER root
+COPY metadata-service/ service/
+RUN cd service && mvn clean install -DskipTests -DskipITs -U
+#ENTRYPOINT sleep 10000
+
+FROM registry.access.redhat.com/ubi9/openjdk-21:1.21 AS builder
 
 ENV LANGUAGE='en_US:en'
-
-
-# We make four distinct layers so if there are application changes the library layers can be re-used
-COPY --chown=185 target/quarkus-app/lib/ /deployments/lib/
-COPY --chown=185 target/quarkus-app/*.jar /deployments/
-COPY --chown=185 target/quarkus-app/app/ /deployments/app/
-COPY --chown=185 target/quarkus-app/quarkus/ /deployments/quarkus/
-
-EXPOSE 8080
 USER 185
-ENV JAVA_OPTS_APPEND="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
-ENV JAVA_APP_JAR="/deployments/quarkus-run.jar"
+WORKDIR /deployments
+# We make four distinct layers so if there are application changes the library layers can be re-used
+COPY --from=build /app/service/target/quarkus-app/lib/ ./lib/
+COPY --from=build /app/service/target/quarkus-app/*.jar ./
+COPY --from=build /app/service/target/quarkus-app/app/ ./app/
+COPY --from=build /app/service/target/quarkus-app/quarkus/ ./quarkus/
 
+ENV JAVA_OPTS_APPEND="-Dquarkus.http.host=0.0.0.0 -Djava.net.preferIPv4Stack=true -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
+ENV JAVA_APP_JAR="/deployments/quarkus-run.jar"
+#ENV QUARKUS_PROFILE=prod
+
+EXPOSE 8082
 ENTRYPOINT [ "/opt/jboss/container/java/run/run-java.sh" ]
 

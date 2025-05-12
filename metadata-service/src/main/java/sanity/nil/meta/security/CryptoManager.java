@@ -1,10 +1,7 @@
 package sanity.nil.meta.security;
 
 import javax.crypto.SecretKey;
-import java.io.FileInputStream;
-import java.net.URL;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.io.InputStream;
 import java.security.KeyStore;
 
 public class CryptoManager {
@@ -28,16 +25,14 @@ public class CryptoManager {
 
     private KeyStore createKeyStore(String keyStorePath, String keyStorePassword) {
         try {
-            URL keyStoreURL = getClass().getClassLoader().getResource(keyStorePath);
-            if (keyStoreURL == null) {
+            InputStream inputStream = getClass().getClassLoader().getResourceAsStream(keyStorePath);
+            if (inputStream == null) {
                 throw new IllegalStateException("Keystore at path " + keyStorePath + " not found");
             }
-            Path resourcePath = Paths.get(keyStoreURL.toURI());
-            var keyStoreFile = resourcePath.toFile();
 
             KeyStore keyStore = KeyStore.getInstance("JCEKS");
-            if (keyStoreFile.exists()) {
-                keyStore.load(new FileInputStream(keyStoreFile), keyStorePassword.toCharArray());
+            if (inputStream.available() > 0) {
+                keyStore.load(inputStream, keyStorePassword.toCharArray());
             } else {
                 throw new SecurityException("Keystore not found");
             }
