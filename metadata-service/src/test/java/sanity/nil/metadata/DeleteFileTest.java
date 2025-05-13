@@ -159,11 +159,11 @@ public class DeleteFileTest {
     }
 
     @Transactional
-    protected List<FileJournalModel> getFileJournals(String filename) {
+    protected List<FileJournalModel> getFileJournals(String path) {
         return entityManager.createQuery("SELECT f FROM FileJournalModel f " +
-                        "WHERE f.id.workspaceID = :wsID AND f.filename = :filename", FileJournalModel.class)
+                        "WHERE f.id.workspaceID = :wsID AND f.path = :path", FileJournalModel.class)
                 .setParameter("wsID", 1L)
-                .setParameter("filename", filename)
+                .setParameter("path", path)
                 .getResultList();
     }
 
@@ -175,7 +175,7 @@ public class DeleteFileTest {
                 .getSingleResult();
     }
 
-    private FileJournalModel generateTestData(String filename) throws Exception {
+    private FileJournalModel generateTestData(String path) throws Exception {
         userTransaction.begin();
         var userUploader = entityManager.find(UserModel.class, defaultUserID);
         var workspace = entityManager.find(WorkspaceModel.class, 1L);

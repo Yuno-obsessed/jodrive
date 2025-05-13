@@ -12,7 +12,7 @@ import java.util.UUID;
 public class FileInfo {
     public Long id;
     public Long workspaceID;
-    public String filename;
+    public String path;
     public long size;
     public UUID uploader;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm")

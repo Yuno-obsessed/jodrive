@@ -61,7 +61,7 @@ export async function checkChunkExistence(
     const body = JSON.stringify({
       correlationID: "dfd040c1-283c-426c-8603-57065bd51553", //TODO: random UUID
       workspaceID: 1, // TODO: user has to select which workspace to upload a file to
-      filename: filename,
+      path: filename,
       blocks: batch,
       lastBlockSize: lastChunkSize,
     });

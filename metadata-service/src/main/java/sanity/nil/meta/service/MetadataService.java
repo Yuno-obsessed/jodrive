@@ -20,6 +20,8 @@ import sanity.nil.grpc.block.BlockService;
 import sanity.nil.grpc.block.CheckBlocksExistenceRequest;
 import sanity.nil.grpc.block.Code;
 import sanity.nil.grpc.block.DeleteBlocksRequest;
+import sanity.nil.meta.cache.FileMetadataCache;
+import sanity.nil.meta.cache.model.FileMetadata;
 import sanity.nil.meta.consts.*;
 import sanity.nil.meta.dto.Paged;
 import sanity.nil.meta.dto.block.BlockMetadata;
@@ -29,7 +31,7 @@ import sanity.nil.meta.dto.file.FileInfo;
 import sanity.nil.meta.dto.file.LinkValidity;
 import sanity.nil.meta.exceptions.CryptoException;
 import sanity.nil.meta.exceptions.InsufficientQuotaException;
-import sanity.nil.meta.infra.cache.SubscriptionQuotaCache;
+import sanity.nil.meta.cache.SubscriptionQuotaCache;
 import sanity.nil.meta.model.*;
 import sanity.nil.meta.security.LinkEncoder;
 import sanity.nil.security.Role;
@@ -59,6 +61,8 @@ public class MetadataService {
     WorkspaceIdentityProvider identityProvider;
     @Inject
     SubscriptionQuotaCache subscriptionQuotaCache;
+    @Inject
+    FileMetadataCache fileMetadataCache;
     @Inject
     LinkEncoder linkEncoder;
     @Inject
@@ -127,45 +131,61 @@ public class MetadataService {
         }
         var userUploader = entityManager.find(UserModel.class, identity.getUserID());
 
-        log.debug("MetadataService thread: " + Thread.currentThread().getName());
-
-        var requestBlocks = request.blocks().stream()
+        var requestSortedBlocks = request.blocks().stream()
                 .sorted(Comparator.comparing(a -> a.position()))
                 .map(e -> e.hash())
-                .collect(Collectors.toCollection(LinkedHashSet::new));;
+                .collect(Collectors.toCollection(LinkedHashSet::new));
 
         List<String> missingBlocks = new ArrayList<>();
-        try {
-            var response = blockClient.checkBlocksExistence(CheckBlocksExistenceRequest.newBuilder()
-                    .addAllHash(requestBlocks).build()
-            ).await().atMost(Duration.ofSeconds(2L));
-            missingBlocks = response.getMissingBlocksList();
-        } catch (Exception e) {
-            log.error("Error checking blocks existence", e);
+
+        var cachedMetadata = fileMetadataCache.getByParams(request.workspaceID(), null, request.path(), 1);
+        if (CollectionUtils.isNotEmpty(cachedMetadata)) {
+            var existingBlocks = cachedMetadata.getFirst().blocks();
+            var index = 0;
+            for (String block : requestSortedBlocks) {
+                if (index >= existingBlocks.size()) {
+                    missingBlocks.add(block);
+                } else if (!existingBlocks.get(index).equals(block)) {
+                    missingBlocks.add(block);
+                }
+                index++;
+            }
+        } else {
+            try {
+                var response = blockClient.checkBlocksExistence(CheckBlocksExistenceRequest.newBuilder()
+                        .addAllHash(requestSortedBlocks).build()
+                ).await().atMost(Duration.ofSeconds(2L));
+                missingBlocks = response.getMissingBlocksList();
+            } catch (Exception e) {
+                log.error("Error checking blocks existence", e);
+            }
         }
 
         if (missingBlocks.isEmpty()) {
             log.debug("All blocks already exist");
-            updateFileState(request.workspaceID(), request.filename());
+            var existingFile = updateFileState(request.workspaceID(), request.path());
             // TODO: send a request to block service to update block states
+            var cacheEntry = new FileMetadata(existingFile.getPath(), getBlocksFromBlockList(existingFile.getBlocklist()),
+                    existingFile.getSize(), existingFile.getState());
+            fileMetadataCache.persistFileMetadata(cacheEntry, request.workspaceID(), existingFile.getFileID());
             return new BlockMetadata(request.correlationID());
         }
-        var fileSize = calculateFileSize(request.blocks().size(), request.lastBlockSize());
+        var fileSize = calculateFileSize(missingBlocks.size(), request.lastBlockSize());
         verifyQuotaUsage(identity.getUserID(), userUploader.getSubscription().getId(), fileSize);
 
         var workspace = getWorkspace(request.workspaceID(), identity.getUserID()).get();
-        if (missingBlocks.size() == requestBlocks.size()) {
-            postProcessNewFile(request.filename(), userUploader, missingBlocks, workspace, fileSize);
+        if (missingBlocks.size() == requestSortedBlocks.size()) {
+            postProcessNewFile(request.path(), userUploader, missingBlocks, workspace, fileSize);
         } else {
-            postProcessUpdateFile(request.filename(), userUploader, requestBlocks, workspace, fileSize);
+            postProcessUpdateFile(request.path(), userUploader, requestSortedBlocks, workspace, fileSize);
         }
 
         return new BlockMetadata(request.correlationID(), missingBlocks);
     }
 
     @Transactional
-    protected void postProcessNewFile(String filename, UserModel userUploader, List<String> newBlocks, WorkspaceModel workspace, Long fileSize) {
-        FileJournalModel fileJournal = new FileJournalModel(entityManager.merge(workspace), filename, userUploader, FileState.IN_UPLOAD,
+    protected void postProcessNewFile(String path, UserModel userUploader, List<String> newBlocks, WorkspaceModel workspace, Long fileSize) {
+        FileJournalModel fileJournal = new FileJournalModel(entityManager.merge(workspace), path, userUploader, FileState.IN_UPLOAD,
                 fileSize, createBlockList(newBlocks.stream()), 0);
         fileJournalRepo.insert(fileJournal);
         var userStatistics = entityManager.find(UserStatisticsModel.class, new UserStatisticsModel.UserStatisticsIDModel(
@@ -178,12 +198,12 @@ public class MetadataService {
     }
 
     @Transactional
-    protected void postProcessUpdateFile(String filename, UserModel userUploader, Set<String> newBlocks, WorkspaceModel workspace, Long fileSize) {
+    protected void postProcessUpdateFile(String path, UserModel userUploader, Set<String> newBlocks, WorkspaceModel workspace, Long fileSize) {
         var existingVersions = entityManager.createQuery("SELECT f.historyID FROM FileJournalModel f " +
-                        "WHERE f.id.workspaceID = :wsID AND f.filename = :filename " +
+                        "WHERE f.id.workspaceID = :wsID AND f.path = :path " +
                         "AND f.state <> :state", Integer.class)
                 .setParameter("wsID", workspace.getId())
-                .setParameter("filename", filename)
+                .setParameter("path", path)
                 .setParameter("state", FileState.DELETED)
                 .getResultList();
 
@@ -197,15 +217,15 @@ public class MetadataService {
         }
 
         var fileJournal = entityManager.createQuery("SELECT fj FROM FileJournalModel fj " +
-                        "WHERE fj.id.workspaceID = ?1 AND fj.filename = ?2 " +
-                        "ORDER BY fj.historyID DESC " +
-                        "FETCH FIRST 1 ROW ONLY", FileJournalModel.class)
+                        "WHERE fj.id.workspaceID = ?1 AND fj.path = ?2 " +
+                        "ORDER BY fj.historyID DESC", FileJournalModel.class)
                 .setParameter(1, workspace.getId())
-                .setParameter(2, filename)
+                .setParameter(2, path)
+                .setMaxResults(1)
                 .getSingleResult();
 
-        var newFileJournalEntry = new FileJournalModel(entityManager.merge(workspace), filename, userUploader,
-                FileState.IN_UPLOAD, fileSize, createBlockList(newBlocks.stream()),fileJournal.getHistoryID()+1
+        var newFileJournalEntry = new FileJournalModel(entityManager.merge(workspace), path, userUploader,
+                FileState.IN_UPLOAD, fileJournal.getSize() + fileSize, createBlockList(newBlocks.stream()),fileJournal.getHistoryID()+1
         );
         fileJournalRepo.insert(newFileJournalEntry);
 
@@ -220,21 +240,21 @@ public class MetadataService {
     }
 
     @Transactional
-    protected void updateFileState(Long workspaceID, String filename) {
+    protected FileJournalModel updateFileState(Long workspaceID, String path) {
         var uploadedFile = entityManager.createQuery("SELECT f FROM FileJournalModel f " +
-                        "WHERE f.id.workspaceID = :wsID AND f.filename = :filename AND f.state = :state " +
+                        "WHERE f.id.workspaceID = :wsID AND f.path = :path " +
                         "ORDER BY f.historyID DESC " +
                         "FETCH FIRST 1 ROW ONLY ", FileJournalModel.class)
                 .setParameter("wsID", workspaceID)
-                .setParameter("filename", filename)
-                .setParameter("state", FileState.IN_UPLOAD)
-                .getResultList();
-        if (CollectionUtils.isNotEmpty(uploadedFile)) {
-            var fileToUpdateState = uploadedFile.getFirst();
-            fileToUpdateState.setState(FileState.UPLOADED);
-            entityManager.merge(fileToUpdateState);
+                .setParameter("path", path)
+                .getSingleResult();
+
+        if (uploadedFile.getState().equals(FileState.IN_UPLOAD)) {
+            uploadedFile.setState(FileState.UPLOADED);
+            entityManager.merge(uploadedFile);
             log.debug("File was uploaded before, now updated state");
         }
+        return uploadedFile;
     }
 
     public Optional<WorkspaceModel> getWorkspace(Long wsID, UUID userID) {
@@ -263,7 +283,7 @@ public class MetadataService {
         }
         var file = fileOp.get();
 
-        return new FileInfo(file.getFileID(), file.getId().getWorkspaceID(), file.getFilename(),
+        return new FileInfo(file.getFileID(), file.getId().getWorkspaceID(), file.getPath(),
                 file.getSize(), file.getUploader().getId(), file.getCreatedAt());
     }
 
@@ -294,7 +314,7 @@ public class MetadataService {
                 .map(f -> new FileInfo(
                         f.getFileID(),
                         f.getId().getWorkspaceID(),
-                        f.getFilename(),
+                        f.getPath(),
                         f.getSize(),
                         f.getUploader().getId(),
                         f.getCreatedAt()
@@ -313,7 +333,7 @@ public class MetadataService {
             predicates.add(cb.equal(root.get("id").get("workspaceID"), filters.wsID()));
         }
         if (StringUtils.isNotEmpty(filters.name())) {
-            predicates.add(cb.like(cb.upper(root.get("filename")), "%" + filters.name().toUpperCase() + "%"));
+            predicates.add(cb.like(cb.upper(root.get("path")), "%" + filters.name().toUpperCase() + "%"));
         }
         if (filters.deleted() != null && filters.deleted()) {
             predicates.add(cb.equal(root.get("state"), FileState.DELETED));
@@ -376,7 +396,7 @@ public class MetadataService {
             throw new UnauthorizedException("File wasn't uploaded by current user");
         }
 
-        fileJournal.setFilename(newName);
+        fileJournal.setPath(newName);
         entityManager.persist(fileJournal);
         return newName;
     }
@@ -406,9 +426,16 @@ public class MetadataService {
 
         var storageUsed = Long.valueOf(statistics.getValue());
         var quota = subscriptionQuotaCache.getByID(subscriptionID);
-        var remainingQuota = quota.storageLimit() - (storageUsed + fileSize);
+        Long storageLimit;
+        if (quota != null) {
+            storageLimit = quota.storageLimit();
+        } else {
+            var subscription = entityManager.find(UserSubscriptionModel.class, subscriptionID);
+            storageLimit = subscription.getStorageLimit();
+        }
+        var remainingQuota = storageLimit - (storageUsed + fileSize);
         if (remainingQuota < 0) {
-            throw new InsufficientQuotaException(Quota.USER_STORAGE_USED, String.valueOf(quota.storageLimit()));
+            throw new InsufficientQuotaException(Quota.USER_STORAGE_USED, String.valueOf(storageLimit));
         }
         log.debug("Verified quota, remaining: " + remainingQuota);
     }

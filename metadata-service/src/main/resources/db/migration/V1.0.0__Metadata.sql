@@ -26,7 +26,7 @@ create table if not exists metadata_db.file_journal (
     ws_id bigint not null,
     file_id bigint not null,
     latest smallint,
-    filename varchar(255) NOT NULL,
+    path text NOT NULL,
     uploader_id uuid not null,
     state varchar(50) check (state in ('UPLOADED', 'IN_UPLOAD', 'DELETED')),
     size bigint,

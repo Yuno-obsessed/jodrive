@@ -152,7 +152,7 @@ public class LinkIntegrationTest {
         assertThat(response.getExpired()).isFalse();
     }
 
-    private FileJournalModel generateTestFile(String filename) throws Exception {
+    private FileJournalModel generateTestFile(String path) throws Exception {
         userTransaction.begin();
         var userUploader = entityManager.find(UserModel.class, defaultUserID);
         var workspace = entityManager.find(WorkspaceModel.class, 1L);

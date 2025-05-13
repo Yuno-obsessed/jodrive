@@ -6,7 +6,7 @@ import java.util.UUID;
 public record GetBlocksMetadata(
         UUID correlationID,
         Long workspaceID,
-        String filename,
+        String path,
         Set<BlockInfo> blocks,
         Integer lastBlockSize
 ) {

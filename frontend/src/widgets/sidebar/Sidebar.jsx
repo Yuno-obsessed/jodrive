@@ -22,7 +22,7 @@ export const Sidebar = () => {
   const { userInfo } = useAuthStore();
 
   const mapToGB = (bytes) => {
-    const gb = bytes / 1_000_000_000;
+    const gb = bytes / 1_073_741_824;
     return parseFloat(gb.toFixed(2));
   };
 

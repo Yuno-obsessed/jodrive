@@ -19,7 +19,9 @@ export const UploadModal = ({ onClose }) => {
 
   const handleUpload = async () => {
     if (!file) return alert("Select a file first");
+    // divide file on chunks, calculate last chunk size
     const chunkList = await getFileChunksToUpload(file, token);
+    // ask which chunks are missing and need to be uploaded
     const chunks = await checkChunkExistence(
       chunkList.chunks,
       file.name,
@@ -39,6 +41,7 @@ export const UploadModal = ({ onClose }) => {
       }
     });
 
+    // commit uploaded blocks
     await uploadChunksWithRetry({
       chunks,
       token,
@@ -66,7 +69,7 @@ export const UploadModal = ({ onClose }) => {
       <div className={styles.uploadBtn}>
         <input type="file" onChange={(e) => setFile(e.target.files[0])} />
       </div>
-      <Button variant={"submit"} onClick={onClose}>
+      <Button variant={"submit"} onClick={handleUpload}>
         Upload
       </Button>
       {file && (

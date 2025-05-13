@@ -1,4 +1,4 @@
-package sanity.nil.meta.infra.cache;
+package sanity.nil.meta.cache;
 
 import io.quarkus.redis.datasource.RedisDataSource;
 import io.quarkus.redis.datasource.value.ValueCommands;
@@ -35,11 +35,11 @@ public class SubscriptionQuotaCache {
     }
 
     @PostConstruct
-    public void init() {
+    protected void init() {
         loadFromDB();
     }
 
-    public void loadFromDB() {
+    private void loadFromDB() {
         EntityManager entityManager = entityManagerProxy.get();
         var subscriptions = entityManager.createQuery("SELECT s FROM UserSubscriptionModel s", UserSubscriptionModel.class)
                 .getResultList();
