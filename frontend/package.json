@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "clsx": "^2.1.1",
     "css-modules": "^0.3.0",
     "keycloak-js": "^26.1.5",
     "react": "^19.0.0",
@@ -26,9 +27,10 @@
     "eslint": "^9.21.0",
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.4.19",
+    "eslint-plugin-unused-imports": "^4.1.4",
     "globals": "^15.15.0",
     "postcss": "^8.5.3",
-    "prettier": "^3.5.3",
+    "prettier": "3.5.3",
     "vite": "^6.2.0"
   }
 }

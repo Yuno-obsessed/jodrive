@@ -1,7 +1,21 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import styles from "./Sidebar.module.css";
-import { UploadModal } from "../features/UploadModal.jsx";
-import useAuthStore from "../util/authStore.js";
+import useAuthStore from "../../util/authStore.js";
+import { UploadModal } from "../../features/upload-file/UploadModal.jsx";
+import { Button } from "../../components/ui/button/index.jsx";
+
+const navigation = [
+  {
+    name: "Home",
+    icon: "home",
+    link: "/frontend/public",
+  },
+  {
+    name: "My Drive",
+    icon: "drive",
+    link: "/my-drive",
+  },
+];
 
 export const Sidebar = () => {
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -25,7 +39,7 @@ export const Sidebar = () => {
   return (
     <>
       <aside className={styles.sidebar}>
-        <button
+        <Button
           className={styles.btnNew}
           onClick={() => setShowUploadModal(true)}
         >
@@ -33,41 +47,20 @@ export const Sidebar = () => {
           <span className={styles.btnNewText}>
             <a>New</a>
           </span>
-        </button>
+        </Button>
         <ul className={styles.sidebarList}>
-          <li className={styles.sidebarEl}>
-            <img src="home.svg" alt="Home" className={styles.sidebarImages} />
-            <a href="/" className={styles.sidebarLinks}>
-              Home
-            </a>
-          </li>
-          <li className={styles.sidebarEl}>
-            <img src="drive.svg" alt="Drive" className={styles.sidebarImages} />
-            <a href="/my-drive" className={styles.sidebarLinks}>
-              My Drive
-            </a>
-          </li>
-          <li className={styles.sidebarEl}>
-            <img
-              src="workspaces.svg"
-              alt="Workspaces"
-              className={styles.sidebarImages}
-            />
-            <a href="/workspaces" className={styles.sidebarLinks}>
-              Workspaces
-            </a>
-          </li>
-          <li className={styles.sidebarEl}>
-            <img
-              src="cloud.svg"
-              alt="Storage"
-              className={styles.sidebarImages}
-            />
-            <a href="/storage" className={styles.sidebarLinks}>
-              Storage
-            </a>
-          </li>
-          <li className={styles.sidebarEl}>
+          {navigation.map((item) => (
+            <Button className={styles.sidebarEl}>
+              <img
+                src={item.icon + ".svg"}
+                alt="Home"
+                className={styles.sidebarImages}
+              />
+              <p>{item.name}</p>
+            </Button>
+          ))}
+
+          <li>
             <div className={styles.storageBar}>
               <div
                 className={styles.storageBarProgress}

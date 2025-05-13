@@ -1,10 +1,11 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import "./App.css";
-import { MainLayout } from "./layouts/MainLayout.jsx";
 import useAuthStore from "./util/authStore.js";
-import { FileSearchPage } from "./pages/FileSearchPage.jsx";
-import { HomePage } from "./pages/HomePage.jsx";
 import { Route, Routes } from "react-router-dom";
+import { MainLayout } from "./components/layouts/MainLayout.jsx";
+import { Header } from "./widgets/header/Header.jsx";
+import Sidebar from "./widgets/sidebar/Sidebar.jsx";
+import { FileSearchPage } from "./pages/file-search/FileSearchPage.jsx";
 
 function App() {
   const { authenticated, initKeycloak } = useAuthStore();
@@ -18,12 +19,13 @@ function App() {
   return (
     <>
       {authenticated ? (
-        <MainLayout>
-          <Routes>
-            <Route path="/files" element={<FileSearchPage />} />
-            <Route path="/" element={<HomePage />} />
-          </Routes>
-        </MainLayout>
+        <Routes>
+          <Route
+            element={<MainLayout header={<Header />} sidebar={<Sidebar />} />}
+          >
+            <Route index element={<FileSearchPage />} />
+          </Route>
+        </Routes>
       ) : (
         <div>Loading...</div>
       )}

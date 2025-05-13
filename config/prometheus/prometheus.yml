@@ -5,12 +5,12 @@ scrape_configs:
 
   - job_name: 'metadata-service'
     static_configs:
-      - targets: [ 'host.docker.internal:8082' ]
+      - targets: [ 'metadata-service:8082' ]
     metrics_path: /q/metrics
 
   - job_name: 'block-service'
     static_configs:
-      - targets: [ 'host.docker.internal:8081' ]
+      - targets: [ 'block-service:8081' ]
     metrics_path: /q/metrics
 
   - job_name: 'postgres'
