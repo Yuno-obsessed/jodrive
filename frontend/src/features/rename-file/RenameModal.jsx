@@ -1,0 +1,37 @@
+import { useState } from "react";
+import styles from "./RenameModal.module.css";
+import useAuthStore from "../../util/authStore.js";
+import { renameFile } from "../../api/RenameFile.js";
+import { Modal } from "../../components/modal/index.jsx";
+import { Input } from "../../components/ui/input/index.jsx";
+
+export const RenameModal = ({ file, onClose }) => {
+  const [newName, setNewName] = useState(file.filename);
+  const { token } = useAuthStore();
+
+  const handleRename = async () => {
+    await renameFile(file, newName, token);
+    onClose();
+  };
+
+  return (
+    <Modal>
+      <div className={styles.rename}>
+        <h2>Rename</h2>
+        <button className={styles.closeButton} onClick={onClose}>
+          &times;
+        </button>
+      </div>
+      <Input
+        type="text"
+        placeholder="New name"
+        value={newName}
+        onChange={(e) => setNewName(e.target.value)}
+      />
+      <div className={styles.btnRename}>
+        <button onClick={onClose}>Cancel</button>
+        <button onClick={handleRename}>OK</button>
+      </div>
+    </Modal>
+  );
+};

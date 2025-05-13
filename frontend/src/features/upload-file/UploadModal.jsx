@@ -1,12 +1,16 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import styles from "./UploadModal.module.css";
 import {
   getFileChunksToUpload,
-  uploadBatchOfChunks,
   checkChunkExistence,
-} from "../api/UploadFile.js";
-import useAuthStore from "../util/authStore.js";
-import { uploadChunksWithRetry, UploadObserver } from "../util/chunkUpload.js";
+} from "../../api/UploadFile.js";
+import useAuthStore from "../../util/authStore.js";
+import {
+  uploadChunksWithRetry,
+  UploadObserver,
+} from "../../util/chunkUpload.js";
+import { Modal } from "../../components/modal/index.jsx";
+import { Button } from "../../components/ui/button/index.jsx";
 
 export const UploadModal = ({ onClose }) => {
   const [progress, setProgress] = useState(0);
@@ -15,9 +19,7 @@ export const UploadModal = ({ onClose }) => {
 
   const handleUpload = async () => {
     if (!file) return alert("Select a file first");
-    // divide file on chunks, calculate last chunk size
     const chunkList = await getFileChunksToUpload(file, token);
-    // ask which chunks are missing and need to be uploaded
     const chunks = await checkChunkExistence(
       chunkList.chunks,
       file.name,
@@ -46,7 +48,6 @@ export const UploadModal = ({ onClose }) => {
       observer,
     });
 
-    // commit uploaded blocks
     await checkChunkExistence(
       chunks,
       file.name,
@@ -57,25 +58,25 @@ export const UploadModal = ({ onClose }) => {
   };
 
   return (
-    <div className={styles.overlay}>
-      <div className={styles.modal}>
-        <button className={styles.closeButton} onClick={onClose}>
-          &times;
-        </button>
-        <h2>Upload File</h2>
+    <Modal className={styles.modal}>
+      <Button className={styles.closeButton} onClick={onClose}>
+        &times;
+      </Button>
+      <h2>Upload File</h2>
+      <div className={styles.uploadBtn}>
         <input type="file" onChange={(e) => setFile(e.target.files[0])} />
-        <button className={styles.uploadBtn} onClick={handleUpload}>
-          Upload
-        </button>
-        {file && (
-          <div className={styles.uploadBar}>
-            <div
-              className={styles.uploadBarProgress}
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        )}
       </div>
-    </div>
+      <Button variant={"submit"} onClick={onClose}>
+        Upload
+      </Button>
+      {file && (
+        <div className={styles.uploadBar}>
+          <div
+            className={styles.uploadBarProgress}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      )}
+    </Modal>
   );
 };

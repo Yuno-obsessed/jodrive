@@ -1,0 +1,10 @@
+.searchBar{
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+.input{
+    width: 30%;
+    min-width: 300px;
+    background: white;
+}

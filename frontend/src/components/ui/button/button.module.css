@@ -1,0 +1,22 @@
+.primaryButton {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  transition: border-color 0.25s;
+  color: white;
+  background: transparent;
+  outline: none;
+  cursor: pointer;
+}
+.submitButton{
+  padding: 8px 18px;
+  background: #1976d2;
+}
+
+.iconButton{
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  outline: none;
+
+}

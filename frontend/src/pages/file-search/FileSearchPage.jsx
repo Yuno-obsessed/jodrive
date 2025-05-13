@@ -1,15 +1,15 @@
 import styles from "./FileSearchPage.module.css";
-import React, { useEffect, useState } from "react";
-import { FileEntry } from "../components/FileEntry.jsx";
-import { ShareModal } from "../features/ShareModal.jsx";
-import { ConstructLink } from "../api/ConstructLink.js";
-import useAuthStore from "../util/authStore.js";
-import { downloadFile } from "../api/DownloadFile.js";
-import { deleteFile } from "../api/DeleteFile.js";
-import { searchFile } from "../api/SearchFile.js";
+import { useEffect, useState } from "react";
+import { ConstructLink } from "../../api/ConstructLink.js";
+import useAuthStore from "../../util/authStore.js";
+import { downloadFile } from "../../api/DownloadFile.js";
+import { deleteFile } from "../../api/DeleteFile.js";
+import { searchFile } from "../../api/SearchFile.js";
 import { useLocation } from "react-router-dom";
-import { RenameModal } from "../features/RenameModal.jsx";
-import { METADATA_URI } from "../consts/Constants.js";
+import { METADATA_URI } from "../../consts/Constants.js";
+import { RenameModal } from "../../features/rename-file/RenameModal.jsx";
+import { FileEntry } from "../../components/FileEntry.jsx";
+import { ShareModal } from "../../features/share-file/ShareModal.jsx";
 
 export const FileSearchPage = () => {
   const [files, setFiles] = useState([]);
@@ -24,21 +24,8 @@ export const FileSearchPage = () => {
   const [showShareModal, setShowShareModal] = useState(false);
   const [showRenameModal, setShowRenameModal] = useState(false);
 
-  const getFiles = async (params) => {
-    return await searchFile(params, token)
-      .then((res) => {
-        console.log(`before ${files}`);
-        console.log(res.elements);
-        setFiles([...res.elements]);
-        console.log(`after ${files}`);
-      })
-      .catch((err) => {
-        console.log("err", err);
-      });
-  };
   const params = new URLSearchParams(location.search);
   const name = params.get("name");
-  console.log(name);
   const handleKeyDown = (event) => {
     if (event.ctrlKey) {
       setSelectMode(true);
@@ -57,7 +44,13 @@ export const FileSearchPage = () => {
   window.addEventListener("keyup", handleKeyUp);
 
   useEffect(() => {
-    getFiles({ name: name, wsID: 1, userID: userInfo.id });
+    searchFile(name, token)
+      .then((res) => {
+        setFiles([...res.elements]);
+      })
+      .catch((err) => {
+        console.log("err", err);
+      });
   }, [name]);
 
   const handleShare = (file) => {
@@ -125,9 +118,11 @@ export const FileSearchPage = () => {
                 console.log(`after ${selected.size}`);
               }}
               onMouseEnter={() => {
+                console.log(`hovered ${hovered}`);
                 setHovered(file);
               }}
               onMouseLeave={() => {
+                console.log(`hovered leave ${hovered}`);
                 setHovered(null);
               }}
             />

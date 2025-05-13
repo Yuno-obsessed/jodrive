@@ -31,6 +31,7 @@ const useAuthStore = create((set) => ({
         userInfo: user,
       });
     }
+
     setInterval(() => {
       keycloak.updateToken(5).then((refreshed) => {
         if (refreshed) {

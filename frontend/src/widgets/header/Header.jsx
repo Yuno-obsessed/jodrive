@@ -1,7 +1,6 @@
 import React from "react";
-import { SearchBar } from "../components/SearchBar.jsx";
+import { SearchBar } from "../../features/search-bar/SearchBar.jsx";
 import styles from "./Header.module.css";
-import Profile from "../components/Profile.jsx";
 
 export const Header = () => {
   return (
@@ -10,7 +9,6 @@ export const Header = () => {
         <img src="jodrive-logo.png" alt="logo" />
       </div>
       <SearchBar />
-      <Profile />
     </header>
   );
 };
