@@ -10,11 +10,11 @@ const navigation = [
     icon: "home",
     link: "/frontend/public",
   },
-  {
-    name: "My Drive",
-    icon: "drive",
-    link: "/my-drive",
-  },
+  // {
+  //   name: "My Drive",
+  //   icon: "drive",
+  //   link: "/my-drive",
+  // },
 ];
 
 export const Sidebar = () => {
@@ -26,10 +26,10 @@ export const Sidebar = () => {
     return parseFloat(gb.toFixed(2));
   };
 
-  console.log(userInfo);
   let usedStorage = userInfo.statistics
     .filter((s) => s.quota === "USER_STORAGE_USED")
     .map((s) => mapToGB(s.value));
+
   let storageLimit = mapToGB(userInfo.subscription.storageLimit);
 
   const calculateStorageUsagePercentage = () => {
@@ -50,7 +50,7 @@ export const Sidebar = () => {
         </Button>
         <ul className={styles.sidebarList}>
           {navigation.map((item) => (
-            <Button className={styles.sidebarEl}>
+            <Button key={item.name} className={styles.sidebarEl}>
               <img
                 src={item.icon + ".svg"}
                 alt="Home"
