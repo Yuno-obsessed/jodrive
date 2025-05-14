@@ -4,28 +4,24 @@ import { ConstructLink } from "../../api/ConstructLink.js";
 import useAuthStore from "../../util/authStore.js";
 import { downloadFile } from "../../api/DownloadFile.js";
 import { deleteFile } from "../../api/DeleteFile.js";
-import { searchFile } from "../../api/SearchFile.js";
-import { useLocation } from "react-router-dom";
 import { METADATA_URI } from "../../consts/Constants.js";
 import { RenameModal } from "../../features/rename-file/RenameModal.jsx";
-import { FileEntry } from "../../components/FileEntry.jsx";
+import { FileEntry } from "../../enitites/file/ui/FileEntry.jsx";
 import { ShareModal } from "../../features/share-file/ShareModal.jsx";
+import { useSearchModel } from "../../enitites/file/model/index.js";
 
 export const FileSearchPage = () => {
-  const [files, setFiles] = useState([]);
   const [hovered, setHovered] = useState(null);
+  const { searchResults } = useSearchModel();
+  console.log(searchResults);
   const [selected, setSelected] = useState(new Set());
 
   const [selectMode, setSelectMode] = useState(false);
-  const [shareLink, setShareLink] = useState(null);
   const { token, userInfo } = useAuthStore();
-  const location = useLocation();
 
   const [showShareModal, setShowShareModal] = useState(false);
   const [showRenameModal, setShowRenameModal] = useState(false);
 
-  const params = new URLSearchParams(location.search);
-  const name = params.get("name");
   const handleKeyDown = (event) => {
     if (event.ctrlKey) {
       setSelectMode(true);
@@ -43,22 +39,10 @@ export const FileSearchPage = () => {
   window.addEventListener("keydown", handleKeyDown);
   window.addEventListener("keyup", handleKeyUp);
 
-  useEffect(() => {
-    console.log("searching");
-    searchFile(name, token)
-      .then((res) => {
-        setFiles([...res.elements]);
-      })
-      .catch((err) => {
-        console.log("err", err);
-      });
-  }, [name]);
-
   const handleShare = (file) => {
     ConstructLink(file, "MINUTE", 60, token).then(
       (link) => {
         console.log(`Success: ${link}`);
-        setShareLink(link);
         setShowShareModal(true);
       },
       (err) => console.error("error", err),
@@ -96,7 +80,7 @@ export const FileSearchPage = () => {
           </tr>
         </thead>
         <tbody>
-          {files.map((file) => (
+          {searchResults?.elements?.map((file) => (
             <FileEntry
               file={file}
               key={`${file.id}_${file.workspaceID}`}

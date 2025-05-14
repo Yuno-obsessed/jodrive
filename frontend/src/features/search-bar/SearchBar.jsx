@@ -1,32 +1,57 @@
+import { useCallback, useEffect, useState } from "react";
 import styles from "./SearchBar.module.css";
+import useAuthStore from "../../util/authStore.js";
+import { useDebouncedCallback } from "use-debounce";
 import { Input } from "../../components/ui/input/index.jsx";
-import { useState } from "react";
 import { Button } from "../../components/ui/button/index.jsx";
-import { useNavigate } from "react-router-dom";
+import { useSearchModel } from "../../enitites/file/model/index.js";
+import { searchFile } from "../../api/SearchFile.js";
 
-export const SearchBar = () => {
+export const SearchBar = ({ wsID }) => {
+  const { token, userInfo } = useAuthStore();
+  const { setSearch } = useSearchModel();
   const [searchText, setSearchText] = useState("");
-  const navigate = useNavigate();
+
+  const doSearch = useCallback(
+    async (query) => {
+      const files = await searchFile(
+        { name: query, wsID, userID: userInfo.id },
+        token,
+      );
+      setSearch(files);
+    },
+    [token, (wsID = 1), userInfo.id],
+  );
+
+  const debouncedSearch = useDebouncedCallback(doSearch, 500);
+
+  const handleChange = (e) => {
+    const value = e.target.value;
+    setSearchText(value);
+    debouncedSearch(value);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    navigate(`/?name=${searchText}}`);
+    debouncedSearch.flush(); // миттєвий пошук
   };
+
+  useEffect(() => {
+    doSearch(""); // стартовий список
+  }, [doSearch]);
 
   return (
     <form onSubmit={handleSubmit} className={styles.searchBar}>
       <Input
         className={styles.input}
-        type="text"
+        placeholder="Search in Jodrive"
+        value={searchText}
+        onChange={handleChange}
         action={
-          <Button type="submit" onClick={handleSubmit}>
+          <Button type="submit">
             <img src="./search.svg" alt="Search" style={{ width: "1.2rem" }} />
           </Button>
         }
-        placeholder="Search in Jodrive"
-        value={searchText}
-        onChange={(e) => setSearchText(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && handleSubmit(e)}
       />
     </form>
   );

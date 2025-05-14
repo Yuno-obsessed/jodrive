@@ -19,13 +19,11 @@ function App() {
   return (
     <>
       {authenticated ? (
-        <Routes>
-          <Route
-            element={<MainLayout header={<Header />} sidebar={<Sidebar />} />}
-          >
-            <Route index element={<FileSearchPage />} />
-          </Route>
-        </Routes>
+        <MainLayout header={<Header />} sidebar={<Sidebar />}>
+          <Routes>
+            <Route path="/" index element={<FileSearchPage />} />
+          </Routes>
+        </MainLayout>
       ) : (
         <div>Loading...</div>
       )}

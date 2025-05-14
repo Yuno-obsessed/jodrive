@@ -11,23 +11,30 @@ import {
 } from "../../util/chunkUpload.js";
 import { Modal } from "../../components/modal/index.jsx";
 import { Button } from "../../components/ui/button/index.jsx";
+import { useSearchModel } from "../../enitites/file/model/index.js";
 
 export const UploadModal = ({ onClose }) => {
   const [progress, setProgress] = useState(0);
   const { token } = useAuthStore();
+  const { addSearchResult } = useSearchModel();
   const [file, setFile] = useState(null);
 
   const handleUpload = async () => {
-    if (!file) return alert("Select a file first");
-    // divide file on chunks, calculate last chunk size
     const chunkList = await getFileChunksToUpload(file, token);
-    // ask which chunks are missing and need to be uploaded
     const chunks = await checkChunkExistence(
       chunkList.chunks,
       file.name,
       chunkList.lastChunkSize,
       token,
     );
+    addSearchResult({
+      filename: file.name,
+      id: Math.random(),
+      size: 3419,
+      workspaceID: 1,
+      uploadedAt: "2025-05-12 18:07",
+      uploader: "29849880-ddd4-4000-b100-460f4c505045",
+    });
 
     const total = chunks.length;
     console.log(`Got ${total} to upload`);
@@ -44,20 +51,18 @@ export const UploadModal = ({ onClose }) => {
     await uploadChunksWithRetry({
       chunks,
       token,
-      batchSize: 2,
+      batchSize: 5,
       poolSize: 8,
       maxRetries: 3,
       observer,
     });
 
-    // commit uploaded blocks
     await checkChunkExistence(
       chunks,
       file.name,
       chunkList.lastChunkSize,
       token,
     );
-    onClose();
   };
 
   return (
@@ -69,7 +74,7 @@ export const UploadModal = ({ onClose }) => {
       <div className={styles.uploadBtn}>
         <input type="file" onChange={(e) => setFile(e.target.files[0])} />
       </div>
-      <Button variant={"submit"} onClick={handleUpload}>
+      <Button variant={"submit"} onClick={() => handleUpload()}>
         Upload
       </Button>
       {file && (
