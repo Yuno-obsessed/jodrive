@@ -41,16 +41,16 @@ export const UploadModal = ({ onClose }) => {
       }
     });
 
-    // commit uploaded blocks
     await uploadChunksWithRetry({
       chunks,
       token,
-      batchSize: 5,
+      batchSize: 2,
       poolSize: 8,
       maxRetries: 3,
       observer,
     });
 
+    // commit uploaded blocks
     await checkChunkExistence(
       chunks,
       file.name,

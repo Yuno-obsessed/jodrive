@@ -26,9 +26,7 @@ import sanity.nil.meta.consts.*;
 import sanity.nil.meta.dto.Paged;
 import sanity.nil.meta.dto.block.BlockMetadata;
 import sanity.nil.meta.dto.block.GetBlocksMetadata;
-import sanity.nil.meta.dto.file.FileFilters;
-import sanity.nil.meta.dto.file.FileInfo;
-import sanity.nil.meta.dto.file.LinkValidity;
+import sanity.nil.meta.dto.file.*;
 import sanity.nil.meta.exceptions.CryptoException;
 import sanity.nil.meta.exceptions.InsufficientQuotaException;
 import sanity.nil.meta.cache.SubscriptionQuotaCache;
@@ -46,8 +44,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static sanity.nil.meta.consts.Constants.BLOCK_SIZE;
-import static sanity.nil.meta.consts.Constants.FILE_VERSIONS_MAX;
+import static sanity.nil.meta.consts.Constants.*;
 
 @JBossLog
 @ApplicationScoped
@@ -283,7 +280,8 @@ public class MetadataService {
         }
         var file = fileOp.get();
 
-        return new FileInfo(file.getFileID(), file.getId().getWorkspaceID(), file.getPath(),
+        var isDirectory = file.getPath().charAt(file.getPath().length()-1) == DIRECTORY_CHAR;
+        return new FileInfo(file.getFileID(), file.getId().getWorkspaceID(), file.getPath(), isDirectory,
                 file.getSize(), file.getUploader().getId(), file.getCreatedAt());
     }
 
@@ -298,27 +296,27 @@ public class MetadataService {
         CriteriaQuery<FileJournalModel> selectQuery = cb.createQuery(FileJournalModel.class);
         Root<FileJournalModel> selectRoot = selectQuery.from(FileJournalModel.class);
 
-        var selectPredicates = buildPredicates(cb, selectRoot, filters);
+        var selectPredicates = fileJournalRepo.buildPredicatesFromParams(cb, selectRoot, filters);
 
         selectQuery.select(selectRoot).where(cb.and(selectPredicates.toArray(new Predicate[0])));
 
         CriteriaQuery<Long> countQuery = cb.createQuery(Long.class);
         Root<FileJournalModel> countRoot = countQuery.from(FileJournalModel.class);
-        var countPredicates = buildPredicates(cb, countRoot, filters);
+        var countPredicates = fileJournalRepo.buildPredicatesFromParams(cb, countRoot, filters);
         countQuery.select(cb.count(countRoot)).where(cb.and(countPredicates.toArray(new Predicate[0])));
 
         var filesFound = entityManager.createQuery(selectQuery).setFirstResult(page*size).setMaxResults(size).getResultList();
         var filesCount = entityManager.createQuery(countQuery).getSingleResult();
 
         List<FileInfo> dtos = filesFound.stream()
-                .map(f -> new FileInfo(
-                        f.getFileID(),
-                        f.getId().getWorkspaceID(),
-                        f.getPath(),
-                        f.getSize(),
-                        f.getUploader().getId(),
-                        f.getCreatedAt()
-                )).toList();
+                .map(f -> {
+                    var isDirectory = f.getPath().charAt(f.getPath().length()-1) == DIRECTORY_CHAR;
+                    return new FileInfo(
+                        f.getFileID(), f.getId().getWorkspaceID(),
+                        f.getPath(), isDirectory, f.getSize(),
+                        f.getUploader().getId(), f.getCreatedAt()
+                    );
+                }).toList();
 
         int totalPages = (int) Math.ceil((double) filesCount / size);
         boolean hasNext = (page + 1) < totalPages;
@@ -327,23 +325,78 @@ public class MetadataService {
         return new Paged<FileInfo>().of(dtos, totalPages, hasNext, hasPrevious);
     }
 
-    private List<Predicate> buildPredicates(CriteriaBuilder cb, Root<FileJournalModel> root, FileFilters filters) {
-        List<Predicate> predicates = new ArrayList<>();
-        if (filters.wsID() != null) {
-            predicates.add(cb.equal(root.get("id").get("workspaceID"), filters.wsID()));
+    public FileNode listFileTree(Long wsID, String pathParam) {
+        var path = pathParam == null ? "/" : pathParam;
+        var nodes = fileJournalRepo.getFileNodesByFilters(wsID, path);
+        nodes.forEach(f -> f.isDirectory = f.path.charAt(f.path.length()-1) == DIRECTORY_CHAR);
+        return buildTree(nodes, path);
+    }
+
+    public FileNode buildTree(List<FileInfo> files, String path) {
+        FileNode root = new FileNode();
+        root.name = path == null ? "/" : path;
+        // find root, get it's info and delete it from files
+        files.stream().filter(f -> f.path.equals(root.name)).findFirst().ifPresent(f -> {
+            files.remove(f);
+            root.fileInfo = f;
+        });
+
+        // find dirs
+        List<FileInfo> dirFilesDelete = new ArrayList<>();
+        var directories = files.stream().filter(f -> f.isDirectory)
+                .peek(dirFilesDelete::add)
+                .collect(Collectors.groupingBy(f -> f.path.split(DIRECTORY_CHAR.toString()).length-1, // first '/' doesnt count
+                        Collectors.mapping(f -> f, Collectors.toList()))
+                );
+        files.removeAll(dirFilesDelete);
+                // 1 - "/" 2 - "/home/ 3 - "/etc/" 4 - "/home/user/"
+//                .sorted(Comparator.comparingInt(f -> f.path.split(DIRECTORY_CHAR.toString()).length)) // sort by increasing nesting
+//                .collect(Collectors.toList());
+
+        if (directories.isEmpty()) {
+            root.children = files.stream()
+                    .map(f -> fileToNode(f, root.name))
+                    .toList();
+            return root;
         }
-        if (StringUtils.isNotEmpty(filters.name())) {
-            predicates.add(cb.like(cb.upper(root.get("path")), "%" + filters.name().toUpperCase() + "%"));
+        var prevLevel = List.of(root);
+        for (Map.Entry<Integer, List<FileInfo>> directoryLevel : directories.entrySet()) {
+            for (FileInfo directory : directoryLevel.getValue()) {
+                var prevLevelDir = prevLevel.stream().filter(d -> directory.path.startsWith(d.name)).findFirst().get();
+                var dir = fileToNode(directory, prevLevelDir.name);
+                var dirFiles = files.stream().filter(f -> f.path.substring(0, f.path.lastIndexOf(DIRECTORY_CHAR)+1).equals(directory.path)).toList();
+                files.removeAll(dirFiles);
+                dir.children = dirFiles.stream().map(e -> fileToNode(e, directory.path)).sorted(Comparator.comparing(f -> f.name))
+                        .collect(Collectors.toList());
+                prevLevelDir.children.add(dir);
+            }
+            prevLevel = prevLevel.stream()
+                    .filter(e -> CollectionUtils.isNotEmpty(e.children))
+                    .flatMap(e -> e.children.stream())
+                    .collect(Collectors.toList());
         }
-        if (filters.deleted() != null && filters.deleted()) {
-            predicates.add(cb.equal(root.get("state"), FileState.DELETED));
-        } else {
-            predicates.add(cb.equal(root.get("state"), FileState.UPLOADED));
+        if (CollectionUtils.isNotEmpty(files)) {
+            root.children.addAll(files.stream()
+                    .map(f -> fileToNode(f, root.name))
+//                    .map(f -> new FileNode(StringUtils.substringAfter(f.path, root.name), f, null))
+                    .toList());
         }
-        if (filters.userID() != null) {
-            predicates.add(cb.equal(root.get("uploader").get("id"), filters.userID()));
+        return root;
+    }
+
+    private FileNode fileToNode(FileInfo fileInfo, String dir) {
+        return new FileNode(StringUtils.substringAfter(fileInfo.path, dir.substring(0, dir.length()-1)), fileInfo, null);
+    }
+
+    private String getParentPath(Map<String, FileNode> pathToNode, FileNode node) {
+        for (Map.Entry<String, FileNode> entry : pathToNode.entrySet()) {
+            if (entry.getValue() == node) {
+                String path = entry.getKey();
+                int lastSlash = path.lastIndexOf('/');
+                return lastSlash > 0 ? path.substring(0, lastSlash) : "";
+            }
         }
-        return predicates;
+        return "";
     }
 
     private boolean hasFileAccessPermissions(String wsID, String link) {

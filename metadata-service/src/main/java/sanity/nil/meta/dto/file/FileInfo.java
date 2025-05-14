@@ -13,6 +13,7 @@ public class FileInfo {
     public Long id;
     public Long workspaceID;
     public String path;
+    public boolean isDirectory;
     public long size;
     public UUID uploader;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm")

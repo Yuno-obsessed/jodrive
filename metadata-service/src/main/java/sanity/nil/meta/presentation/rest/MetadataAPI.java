@@ -14,6 +14,7 @@ import sanity.nil.meta.dto.block.BlockMetadata;
 import sanity.nil.meta.dto.block.GetBlocksMetadata;
 import sanity.nil.meta.dto.file.FileFilters;
 import sanity.nil.meta.dto.file.FileInfo;
+import sanity.nil.meta.dto.file.FileNode;
 import sanity.nil.meta.service.MetadataService;
 
 import java.util.UUID;
@@ -70,6 +71,16 @@ public class MetadataAPI {
         return RestResponse.ok(metadataService.searchFiles(
                 new FileFilters(wsID, userID, name, deleted, page, size))
         );
+    }
+
+    @GET
+    @Path("file/tree")
+    @Produces(MediaType.APPLICATION_JSON)
+    public RestResponse<FileNode> getFileTree(
+            @QueryParam("wsID") Long wsID,
+            @QueryParam("path") String path
+    ) {
+        return RestResponse.ok(metadataService.listFileTree(wsID, path));
     }
 
     @POST

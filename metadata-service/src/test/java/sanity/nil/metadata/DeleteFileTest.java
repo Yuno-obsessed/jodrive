@@ -58,6 +58,7 @@ public class DeleteFileTest {
     UserTransaction userTransaction;
     @ConfigProperty(name = "application.security.default-user-id")
     UUID defaultUserID;
+    private final String testFile = "/testFile.png";
 
     @BeforeEach
     public void setup() throws Exception {
@@ -69,7 +70,7 @@ public class DeleteFileTest {
 
     @Test
     public void given_Delete_File_When_Requested_Then_File_State_Changed() throws Exception {
-        var file = generateTestData("testFile.png");
+        var file = generateTestData(testFile);
 
         var response = given()
                 .contentType(ContentType.JSON)
@@ -79,13 +80,13 @@ public class DeleteFileTest {
                 .statusCode(204)
                 .extract().response();
 
-        var expectedFile = getFileJournals("testFile.png").getFirst();
+        var expectedFile = getFileJournals(testFile).getFirst();
         assertThat(expectedFile.getState()).isEqualTo(FileState.DELETED);
     }
 
     @Test
     public void given_Delete_File_When_Delete_Job_Executed_And_Block_Service_Returns_Error_Then_Rollback_Changes() throws Exception {
-        var file = generateTestData("testFile.png");
+        var file = generateTestData(testFile);
 
         var blocklist = Arrays.asList(file.getBlocklist().split(","));
         var request = DeleteBlocksRequest.newBuilder().addAllHash(blocklist).build();
@@ -115,12 +116,12 @@ public class DeleteFileTest {
                 .pollInterval(Duration.ofMillis(500L))
                 .atMost(10, TimeUnit.SECONDS)
                 .until(() -> getTask(file.getFileID()).getStatus().equals(TaskStatus.FAILED));
-        assertThat(getFileJournals("testFile.png")).isNotEmpty();
+        assertThat(getFileJournals(testFile)).isNotEmpty();
     }
 
     @Test
     public void given_Delete_File_When_Delete_Job_Executed_And_Block_Service_Returns_Success_Then_Consider_Task_Finished() throws Exception {
-        var file = generateTestData("testFile.png");
+        var file = generateTestData(testFile);
 
         var blocklist = Arrays.asList(file.getBlocklist().split(","));
         var request = DeleteBlocksRequest.newBuilder().addAllHash(blocklist).build();
@@ -149,7 +150,7 @@ public class DeleteFileTest {
         Awaitility.await()
                 .pollInterval(Duration.ofMillis(500L))
                 .atMost(10, TimeUnit.SECONDS)
-                .until(() -> getFileJournals("testFile.png").isEmpty());
+                .until(() -> getFileJournals(testFile).isEmpty());
 
         var task = entityManager.createQuery("SELECT t FROM TaskModel t " +
                         "WHERE t.objectID = :fileID", TaskModel.class)
@@ -179,7 +180,7 @@ public class DeleteFileTest {
         userTransaction.begin();
         var userUploader = entityManager.find(UserModel.class, defaultUserID);
         var workspace = entityManager.find(WorkspaceModel.class, 1L);
-        var journal = new FileJournalModel(workspace, "testFile.png", userUploader, FileState.UPLOADED,
+        var journal = new FileJournalModel(workspace, testFile, userUploader, FileState.UPLOADED,
                 4256400L, UUID.randomUUID().toString(), 0);
         fileJournalRepo.insert(journal);
         userTransaction.commit();

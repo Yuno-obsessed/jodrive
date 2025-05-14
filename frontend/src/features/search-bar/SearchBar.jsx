@@ -2,12 +2,15 @@ import styles from "./SearchBar.module.css";
 import { Input } from "../../components/ui/input/index.jsx";
 import { useState } from "react";
 import { Button } from "../../components/ui/button/index.jsx";
+import { useNavigate } from "react-router-dom";
 
 export const SearchBar = () => {
   const [searchText, setSearchText] = useState("");
+  const navigate = useNavigate();
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    navigate(`/?name=${searchText}}`);
   };
 
   return (
@@ -16,7 +19,7 @@ export const SearchBar = () => {
         className={styles.input}
         type="text"
         action={
-          <Button type="submit">
+          <Button type="submit" onClick={handleSubmit}>
             <img src="./search.svg" alt="Search" style={{ width: "1.2rem" }} />
           </Button>
         }

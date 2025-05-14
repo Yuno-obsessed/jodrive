@@ -2,8 +2,6 @@ package sanity.nil.metadata;
 
 import io.quarkus.grpc.GrpcClient;
 import io.quarkus.redis.datasource.RedisDataSource;
-import io.quarkus.redis.datasource.keys.KeyCommands;
-import io.quarkus.redis.datasource.keys.KeyScanArgs;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
@@ -17,12 +15,10 @@ import lombok.extern.jbosslog.JBossLog;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.platform.commons.util.ReflectionUtils;
 import org.mockito.Mockito;
 import sanity.nil.grpc.block.BlockService;
 import sanity.nil.grpc.block.CheckBlocksExistenceRequest;
 import sanity.nil.grpc.block.CheckBlocksExistenceResponse;
-import sanity.nil.meta.cache.FileMetadataCache;
 import sanity.nil.meta.consts.FileState;
 import sanity.nil.meta.consts.Quota;
 import sanity.nil.meta.dto.block.BlockMetadata;
@@ -33,7 +29,6 @@ import sanity.nil.meta.model.UserStatisticsModel;
 import sanity.nil.meta.model.WorkspaceModel;
 import sanity.nil.meta.service.FileJournalRepo;
 
-import java.lang.reflect.Field;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -41,7 +36,6 @@ import java.util.stream.Stream;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
-import static sanity.nil.meta.consts.Constants.BLOCK_SIZE;
 
 @JBossLog
 @QuarkusTest
@@ -65,7 +59,7 @@ public class GetBlocksMetadataTest {
     @ConfigProperty(name = "application.security.default-user-id")
     UUID defaultUserID;
     private final static String DEFAULT_STATISTICS_VALUE = "0";
-    private final static String defaultPath = "testFile.png";
+    private final static String defaultPath = "/testFile.png";
 
     @BeforeEach
     public void setUp() throws Exception {

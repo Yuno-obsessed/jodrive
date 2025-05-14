@@ -49,6 +49,7 @@ public class LinkIntegrationTest {
     LinkEncoder linkEncoder;
     @Inject
     UserTransaction userTransaction;
+    private final static String defaultPath = "/testFile.png";
 
     @GrpcClient("metadataService")
     MetadataServiceGrpc.MetadataServiceBlockingStub stub;
@@ -68,7 +69,7 @@ public class LinkIntegrationTest {
 
     @Test
     public void given_Valid_Params_When_Construct_Link_Then_Returned_Encrypted_Link_Equal_To_Its_Decrypted_Value() throws Exception {
-        var file = generateTestFile("testFile.png");
+        var file = generateTestFile(defaultPath);
 
         String workspaceID = "1";
         var expiration = 60000L;

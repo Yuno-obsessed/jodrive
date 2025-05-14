@@ -44,6 +44,7 @@ export const FileSearchPage = () => {
   window.addEventListener("keyup", handleKeyUp);
 
   useEffect(() => {
+    console.log("searching");
     searchFile(name, token)
       .then((res) => {
         setFiles([...res.elements]);
