@@ -12,6 +12,7 @@ import {
 import { Modal } from "../../components/modal/index.jsx";
 import { Button } from "../../components/ui/button/index.jsx";
 import { useSearchModel } from "../../enitites/file/model/index.js";
+import { searchFile } from "../../api/SearchFile.js";
 
 export const UploadModal = ({ onClose }) => {
   const [progress, setProgress] = useState(0);
@@ -21,22 +22,21 @@ export const UploadModal = ({ onClose }) => {
 
   const handleUpload = async () => {
     const chunkList = await getFileChunksToUpload(file, token);
-    const chunks = await checkChunkExistence(
+    const metadata = await checkChunkExistence(
       chunkList.chunks,
       file.name,
       chunkList.lastChunkSize,
       token,
     );
-    addSearchResult({
-      filename: file.name,
-      id: Math.random(),
-      size: 3419,
-      workspaceID: 1,
-      uploadedAt: "2025-05-12 18:07",
-      uploader: "29849880-ddd4-4000-b100-460f4c505045",
-    });
 
-    const total = chunks.length;
+    console.log(metadata);
+    if (metadata.chunks === null || metadata.chunks.length === 0) {
+      console.log("File already exists");
+      addSearchResult(metadata.fileInfo);
+      onClose();
+    }
+
+    const total = metadata.chunks.length;
     console.log(`Got ${total} to upload`);
     const observer = new UploadObserver();
     let uploaded = 0;
@@ -49,7 +49,7 @@ export const UploadModal = ({ onClose }) => {
     });
 
     await uploadChunksWithRetry({
-      chunks,
+      chunks: metadata.chunks,
       token,
       batchSize: 5,
       poolSize: 8,
@@ -57,12 +57,19 @@ export const UploadModal = ({ onClose }) => {
       observer,
     });
 
-    await checkChunkExistence(
-      chunks,
+    const committedMetadata = await checkChunkExistence(
+      chunkList.chunks,
       file.name,
       chunkList.lastChunkSize,
       token,
     );
+
+    console.log(committedMetadata);
+    if (!committedMetadata.chunks || committedMetadata.chunks.length === 0) {
+      console.log("File was uploaded");
+      addSearchResult(metadata.fileInfo);
+      onClose();
+    }
   };
 
   return (

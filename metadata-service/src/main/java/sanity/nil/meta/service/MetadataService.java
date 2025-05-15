@@ -165,23 +165,28 @@ public class MetadataService {
             var cacheEntry = new FileMetadata(existingFile.getPath(), getBlocksFromBlockList(existingFile.getBlocklist()),
                     existingFile.getSize(), existingFile.getState());
             fileMetadataCache.persistFileMetadata(cacheEntry, request.workspaceID(), existingFile.getFileID());
-            return new BlockMetadata(request.correlationID());
+            var fileInfo = new FileInfo(existingFile.getId().getFileID(), existingFile.getId().getWorkspaceID(), existingFile.getPath(),
+                    isFileDirectory(existingFile.getPath()), existingFile.getSize(), existingFile.getUploader().getId(), existingFile.getCreatedAt());
+            return new BlockMetadata(request.correlationID(), null, fileInfo);
         }
         var fileSize = calculateFileSize(missingBlocks.size(), request.lastBlockSize());
         verifyQuotaUsage(identity.getUserID(), userUploader.getSubscription().getId(), fileSize);
 
         var workspace = getWorkspace(request.workspaceID(), identity.getUserID()).get();
+
+        var file = new FileJournalModel();
         if (missingBlocks.size() == requestSortedBlocks.size()) {
-            postProcessNewFile(request.path(), userUploader, missingBlocks, workspace, fileSize);
+            file = postProcessNewFile(request.path(), userUploader, missingBlocks, workspace, fileSize);
         } else {
-            postProcessUpdateFile(request.path(), userUploader, requestSortedBlocks, workspace, fileSize);
+            file = postProcessUpdateFile(request.path(), userUploader, requestSortedBlocks, workspace, fileSize);
         }
 
-        return new BlockMetadata(request.correlationID(), missingBlocks);
+        return new BlockMetadata(request.correlationID(), missingBlocks, new FileInfo(file.getId().getFileID(), file.getId().getWorkspaceID(), file.getPath(),
+                isFileDirectory(file.getPath()), file.getSize(), file.getUploader().getId(), file.getCreatedAt()));
     }
 
     @Transactional
-    protected void postProcessNewFile(String path, UserModel userUploader, List<String> newBlocks, WorkspaceModel workspace, Long fileSize) {
+    protected FileJournalModel postProcessNewFile(String path, UserModel userUploader, List<String> newBlocks, WorkspaceModel workspace, Long fileSize) {
         FileJournalModel fileJournal = new FileJournalModel(entityManager.merge(workspace), path, userUploader, FileState.IN_UPLOAD,
                 fileSize, createBlockList(newBlocks.stream()), 0);
         fileJournalRepo.insert(fileJournal);
@@ -192,10 +197,11 @@ public class MetadataService {
                 Long.parseLong(userStatistics.getValue()) + fileSize)
         );
         entityManager.persist(userStatistics);
+        return fileJournal;
     }
 
     @Transactional
-    protected void postProcessUpdateFile(String path, UserModel userUploader, Set<String> newBlocks, WorkspaceModel workspace, Long fileSize) {
+    protected FileJournalModel postProcessUpdateFile(String path, UserModel userUploader, Set<String> newBlocks, WorkspaceModel workspace, Long fileSize) {
         var existingVersions = entityManager.createQuery("SELECT f.historyID FROM FileJournalModel f " +
                         "WHERE f.id.workspaceID = :wsID AND f.path = :path " +
                         "AND f.state <> :state", Integer.class)
@@ -234,6 +240,7 @@ public class MetadataService {
                 Long.parseLong(userStatistics.getValue()) + fileSize)
         );
         entityManager.persist(userStatistics);
+        return newFileJournalEntry;
     }
 
     @Transactional
@@ -507,5 +514,9 @@ public class MetadataService {
 
     private List<String> getBlocksFromBlockList(String blocklist) {
         return Arrays.stream(blocklist.split(",")).collect(Collectors.toList());
+    }
+
+    private boolean isFileDirectory(String path) {
+        return path.charAt(path.length()-1) == DIRECTORY_CHAR;
     }
 }

@@ -12,7 +12,13 @@ export const useSearchModel = create(
 
     addSearchResult: (result) => {
       set((state) => {
-        state.searchResults.elements.push(result);
+        if (
+          !state.searchResults.elements.some(
+            (r) => r.id === result.id && r.workspaceID === result.workspaceID,
+          )
+        ) {
+          state.searchResults.elements.push(result);
+        }
       });
     },
 

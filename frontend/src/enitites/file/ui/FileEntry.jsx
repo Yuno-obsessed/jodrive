@@ -43,7 +43,7 @@ export const FileEntry = ({
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
-      <td>{file.filename}</td>
+      <td>{file.path}</td>
       <td>{file.uploadedAt}</td>
       <td>{formatByteSize(file.size)}</td>
       <td>{file.uploader}</td>
