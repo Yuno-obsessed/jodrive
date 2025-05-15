@@ -9,6 +9,8 @@ import org.jboss.resteasy.reactive.server.UnwrapException;
 import sanity.nil.meta.exceptions.InsufficientQuotaException;
 import sanity.nil.meta.exceptions.InvalidParametersException;
 
+import java.util.NoSuchElementException;
+
 @ApplicationScoped
 @UnwrapException({RuntimeException.class})
 public class RestExceptionHandler {
@@ -25,6 +27,11 @@ public class RestExceptionHandler {
 
     @ServerExceptionMapper
     public RestResponse<String> mapException(NotFoundException ex) {
+        return RestResponse.status(Response.Status.NOT_FOUND, ex.getMessage());
+    }
+
+    @ServerExceptionMapper
+    public RestResponse<String> mapException(NoSuchElementException ex) {
         return RestResponse.status(Response.Status.NOT_FOUND, ex.getMessage());
     }
 }

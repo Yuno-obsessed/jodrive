@@ -142,7 +142,7 @@ public class SearchFilesTest {
                 .forEach(i -> {
                     var state = deleted ? FileState.DELETED : FileState.UPLOADED;
                     var journal = new FileJournalModel(workspace, UUID.randomUUID().toString(), userUploader, state,
-                            4256400L, UUID.randomUUID().toString(), 0);
+                            4256400L, UUID.randomUUID().toString());
                     fileJournalRepo.insert(journal);
                 });
         userTransaction.commit();

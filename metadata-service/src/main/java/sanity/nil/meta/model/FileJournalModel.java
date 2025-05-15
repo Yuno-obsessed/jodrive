@@ -31,7 +31,8 @@ public class FileJournalModel {
     @Column(columnDefinition = "smallint")
     private Short latest;
 
-    private String filename;
+    @Column(columnDefinition = "text")
+    private String path;
 
     @ManyToOne(fetch = FetchType.LAZY)
     private UserModel uploader;
@@ -53,16 +54,15 @@ public class FileJournalModel {
     @Column(name = "updated_at", columnDefinition = "timestamptz")
     private LocalDateTime updatedAt;
 
-    public FileJournalModel(WorkspaceModel workspace, String filename, UserModel uploader, FileState state,
-                            Long size, String blocklist, Integer historyID) {
+    public FileJournalModel(WorkspaceModel workspace, String path, UserModel uploader, FileState state,
+                            Long size, String blocklist) {
         this.id = new FileJournalIDModel(workspace.getId(), null);
         this.workspace = workspace;
-        this.filename = filename;
+        this.path = path;
         this.uploader = uploader;
         this.state = state;
         this.size = size;
         this.blocklist = blocklist;
-        this.historyID = historyID;
     }
 
     public void setNewID(Long workspaceID, Long fileID) {

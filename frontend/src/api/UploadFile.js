@@ -54,6 +54,7 @@ export async function checkChunkExistence(
   const hashes = chunks.map(({ hash, position }) => ({ hash, position }));
   let missingBlocks = [];
   let index = 0;
+  let response;
   while (index < hashes.length) {
     const batch = hashes.slice(index, index + MAX_HASHES_PER_REQUEST);
     index += MAX_HASHES_PER_REQUEST;
@@ -61,7 +62,7 @@ export async function checkChunkExistence(
     const body = JSON.stringify({
       correlationID: "dfd040c1-283c-426c-8603-57065bd51553", //TODO: random UUID
       workspaceID: 1, // TODO: user has to select which workspace to upload a file to
-      filename: filename,
+      path: filename,
       blocks: batch,
       lastBlockSize: lastChunkSize,
     });
@@ -76,8 +77,13 @@ export async function checkChunkExistence(
     });
 
     if (!res.ok) throw new Error("Metadata check failed");
-    const json = await res.json();
-    missingBlocks.push(...json.missingBlocks);
+    response = await res.json();
+    if (response.missingBlocks) {
+      missingBlocks.push(...response.missingBlocks);
+    }
   }
-  return chunks.filter((c) => missingBlocks.includes(c.hash));
+  return {
+    chunks: chunks.filter((c) => missingBlocks.includes(c.hash)),
+    fileInfo: response.fileInfo,
+  };
 }

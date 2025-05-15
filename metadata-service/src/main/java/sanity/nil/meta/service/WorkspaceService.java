@@ -2,23 +2,37 @@ package sanity.nil.meta.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import jakarta.persistence.EntityManager;
+import jakarta.transaction.UserTransaction;
+import lombok.extern.jbosslog.JBossLog;
 import sanity.nil.meta.dto.Paged;
+import sanity.nil.meta.dto.file.CreateDirectory;
 import sanity.nil.meta.dto.workspace.CreateWorkspaceDTO;
 import sanity.nil.meta.dto.workspace.WorkspaceDTO;
 import sanity.nil.meta.dto.workspace.WorkspaceUserDTO;
+import sanity.nil.meta.model.UserModel;
 import sanity.nil.meta.model.UserWorkspaceModel;
 import sanity.nil.meta.model.WorkspaceModel;
+import sanity.nil.security.IdentityProvider;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
 
+@JBossLog
 @ApplicationScoped
 public class WorkspaceService {
 
     @Inject
     EntityManager entityManager;
+    @Inject
+    @Named("keycloakIdentityProvider")
+    IdentityProvider identityProvider;
+    @Inject
+    UserTransaction userTransaction;
+    @Inject
+    MetadataService metadataService;
 
     public WorkspaceDTO getWorkspace(String id) {
         var workspaceID = Long.valueOf(id);
@@ -70,8 +84,21 @@ public class WorkspaceService {
     }
 
     public Long createWorkspace(CreateWorkspaceDTO dto) {
-        var entity = new WorkspaceModel(dto.name(), dto.description());
-        entityManager.persist(entity);
-        return entity.getId();
+        var identity = identityProvider.getCheckedIdentity();
+        var newWorkspace = new WorkspaceModel(dto.name(), dto.description());
+        try {
+            userTransaction.begin();
+            entityManager.persist(newWorkspace);
+            var creator = entityManager.find(UserModel.class, identity.getUserID());
+            var workspaceUser = new UserWorkspaceModel(newWorkspace, creator, "OWNER");
+            entityManager.persist(workspaceUser);
+            // TODO: refactor this
+            metadataService.createDirectory(new CreateDirectory(newWorkspace.getId(), "", ""));
+            userTransaction.commit();
+        } catch (Exception e) {
+            log.error(e);
+            throw new RuntimeException("Error creating workspace");
+        }
+        return newWorkspace.getId();
     }
 }

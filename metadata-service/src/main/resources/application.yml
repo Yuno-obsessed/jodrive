@@ -43,7 +43,7 @@ quarkus:
   devservices:
     enabled: false
   oidc:
-    auth-server-url: http://${KEYCLOAK_HOST:localhost}:${KEYCLOAK_PORT}/realms/jodrive-realm
+    auth-server-url: http://${KEYCLOAK_HOST:host.docker.internal}:${KEYCLOAK_PORT:80}/realms/jodrive-realm
     application-type: service
     authentication.scopes: openid profile email
     authentication.user-info-required: true

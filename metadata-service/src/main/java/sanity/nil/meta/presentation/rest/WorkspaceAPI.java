@@ -38,7 +38,8 @@ public class WorkspaceAPI {
     @POST
     @Path("")
     public RestResponse<Long> createWorkspace(CreateWorkspaceDTO dto) {
-        return RestResponse.ok(
+        return RestResponse.status(
+                RestResponse.Status.CREATED,
                 workspaceService.createWorkspace(dto)
         );
     }

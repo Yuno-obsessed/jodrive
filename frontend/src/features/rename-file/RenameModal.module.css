@@ -1,0 +1,9 @@
+
+.btnRename {
+  padding-top: 5px;
+  margin: 10px;
+  gap: 12px;
+  display: flex;
+  justify-content: center;
+  background-color: white;
+}

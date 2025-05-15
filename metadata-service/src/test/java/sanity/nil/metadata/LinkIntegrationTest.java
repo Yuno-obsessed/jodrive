@@ -49,6 +49,7 @@ public class LinkIntegrationTest {
     LinkEncoder linkEncoder;
     @Inject
     UserTransaction userTransaction;
+    private final static String defaultPath = "/testFile.png";
 
     @GrpcClient("metadataService")
     MetadataServiceGrpc.MetadataServiceBlockingStub stub;
@@ -68,7 +69,7 @@ public class LinkIntegrationTest {
 
     @Test
     public void given_Valid_Params_When_Construct_Link_Then_Returned_Encrypted_Link_Equal_To_Its_Decrypted_Value() throws Exception {
-        var file = generateTestFile("testFile.png");
+        var file = generateTestFile(defaultPath);
 
         String workspaceID = "1";
         var expiration = 60000L;
@@ -152,12 +153,12 @@ public class LinkIntegrationTest {
         assertThat(response.getExpired()).isFalse();
     }
 
-    private FileJournalModel generateTestFile(String filename) throws Exception {
+    private FileJournalModel generateTestFile(String path) throws Exception {
         userTransaction.begin();
         var userUploader = entityManager.find(UserModel.class, defaultUserID);
         var workspace = entityManager.find(WorkspaceModel.class, 1L);
         var journal = new FileJournalModel(workspace, UUID.randomUUID().toString(), userUploader, FileState.UPLOADED,
-                4256400L, UUID.randomUUID().toString(), 0);
+                4256400L, UUID.randomUUID().toString());
         fileJournalRepo.insert(journal);
         userTransaction.commit();
         return journal;

@@ -29,7 +29,7 @@ export async function downloadFile(file, token) {
 
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${info.filename}`;
+    a.download = `${info.path}`;
     a.click();
     URL.revokeObjectURL(url);
   } catch (e) {
