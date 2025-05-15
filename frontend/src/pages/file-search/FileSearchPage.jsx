@@ -1,5 +1,5 @@
 import styles from "./FileSearchPage.module.css";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ConstructLink } from "../../api/ConstructLink.js";
 import useAuthStore from "../../util/authStore.js";
 import { downloadFile } from "../../api/DownloadFile.js";
@@ -9,119 +9,95 @@ import { RenameModal } from "../../features/rename-file/RenameModal.jsx";
 import { FileEntry } from "../../enitites/file/ui/FileEntry.jsx";
 import { ShareModal } from "../../features/share-file/ShareModal.jsx";
 import { useSearchModel } from "../../enitites/file/model/index.js";
+import Table from "../../components/table";
 
 export const FileSearchPage = () => {
-  const [hovered, setHovered] = useState(null);
-  const { searchResults } = useSearchModel();
-  console.log(searchResults);
-  const [selected, setSelected] = useState(new Set());
+  const { searchResults, removeSearchResult } = useSearchModel();
+  const { token } = useAuthStore();
 
+  const [hovered, setHovered] = useState(null);
+  const [selected, setSelected] = useState(new Set());
   const [selectMode, setSelectMode] = useState(false);
-  const { token, userInfo } = useAuthStore();
 
   const [showShareModal, setShowShareModal] = useState(false);
   const [showRenameModal, setShowRenameModal] = useState(false);
 
-  const handleKeyDown = (event) => {
-    if (event.ctrlKey) {
-      setSelectMode(true);
-      console.log(`Ctrl key is down`);
-    }
-  };
+  useEffect(() => {
+    const handleKeyDown = (e) => e.ctrlKey && setSelectMode(true);
+    const handleKeyUp = (e) => !e.ctrlKey && setSelectMode(false);
 
-  const handleKeyUp = (event) => {
-    if (!event.ctrlKey) {
-      setSelectMode(false);
-      console.log(`Ctrl key released`);
-    }
-  };
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, []);
 
-  window.addEventListener("keydown", handleKeyDown);
-  window.addEventListener("keyup", handleKeyUp);
+  const toggleSelect = useCallback(
+    (file) => {
+      setSelected((prev) => {
+        if (!selectMode) return new Set([file.id]);
+        const next = new Set(prev);
+        next.has(file.id) ? next.delete(file.id) : next.add(file.id);
+        return next;
+      });
+    },
+    [selectMode],
+  );
 
-  const handleShare = (file) => {
-    ConstructLink(file, "MINUTE", 60, token).then(
-      (link) => {
-        console.log(`Success: ${link}`);
-        setShowShareModal(true);
-      },
-      (err) => console.error("error", err),
-    );
-  };
+  const handleShare = (file) =>
+    ConstructLink(file, "MINUTE", 60, token)
+      .then(() => setShowShareModal(true))
+      .catch(console.error);
 
-  const handleDownload = (file) => {
-    downloadFile(file, token).then(
-      () => {
-        console.log("File downloaded");
-      },
-      (err) => console.log("error", err),
-    );
-  };
+  const handleDownload = (file) =>
+    downloadFile(file, token).catch(console.error);
 
-  const handleDelete = (file) => {
-    deleteFile(file, token).then(
-      () => {
-        console.log("File deleted");
-      },
-      (err) => console.log("error", err),
-    );
-  };
+  const handleDelete = (file) =>
+    deleteFile(file, token)
+      .then(() => {
+        removeSearchResult(file);
+      })
+      .catch(console.error);
+
+  const columns = useMemo(
+    () => ["Name", "Updated at", "Size", "Uploader", "Workspace"],
+    [],
+  );
+
+  const renderRow = (file) => (
+    <FileEntry
+      key={`${file.id}_${file.workspaceID}`}
+      file={file}
+      isSelected={selected.has(file.id)}
+      onShare={() => handleShare(file)}
+      onRename={() => setShowRenameModal(true)}
+      onDownload={() => handleDownload(file)}
+      onDelete={() => handleDelete(file)}
+      onClick={() => toggleSelect(file)}
+      onMouseEnter={() => setHovered(file)}
+      onMouseLeave={() => setHovered(null)}
+    />
+  );
 
   return (
     <>
-      <table className={styles.filesList}>
-        <thead>
-          <tr className={styles.theader}>
-            <th>Name</th>
-            <th>Updated at</th>
-            <th>Size</th>
-            <th>Uploader</th>
-            <th>Workspace</th>
-          </tr>
-        </thead>
-        <tbody>
-          {searchResults?.elements?.map((file) => (
-            <FileEntry
-              file={file}
-              key={`${file.id}_${file.workspaceID}`}
-              isSelected={selected.has(file.id)}
-              onShare={() => handleShare(file)}
-              onRename={() => setShowRenameModal(true)}
-              onDownload={() => handleDownload(file)}
-              onDelete={() => handleDelete(file)}
-              onClick={() => {
-                console.log(`selected ${selectMode}`);
-                console.log(`before ${selected.size}`);
-                if (!selectMode) {
-                  setSelected(new Set([file.id]));
-                }
-                if (!selected.has(file.id)) {
-                  if (selected.size < 1 || selectMode) {
-                    setSelected(new Set([...selected, file.id]));
-                  }
-                }
-                console.log(`after ${selected.size}`);
-              }}
-              onMouseEnter={() => {
-                console.log(`hovered ${hovered}`);
-                setHovered(file);
-              }}
-              onMouseLeave={() => {
-                console.log(`hovered leave ${hovered}`);
-                setHovered(null);
-              }}
-            />
-          ))}
-        </tbody>
-      </table>
+      <Table
+        columns={columns}
+        data={searchResults?.elements || []}
+        renderRow={renderRow}
+        tableClassName={styles.filesList}
+        headerRowClassName={styles.theader}
+      />
 
       {showShareModal && (
         <ShareModal
-          // TODO: construct a link to a file page but with link query param appended
-          link={`${METADATA_URI}/file/${selected.id}?link={shareLink}`}
+          link={`${METADATA_URI}/file/${[...selected][0]}?link={shareLink}`}
           onClose={() => setShowShareModal(false)}
         />
       )}
+
       {showRenameModal && (
         <RenameModal file={hovered} onClose={() => setShowRenameModal(false)} />
       )}

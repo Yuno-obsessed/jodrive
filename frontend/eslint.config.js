@@ -7,7 +7,7 @@ import unusedImports from "eslint-plugin-unused-imports";
 export default [
   {
     files: ["**/*.{js,jsx}"],
-    extends: [js.configs.recommended],
+    extends: [...js.configs.recommended],
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,

@@ -10,11 +10,6 @@ const navigation = [
     icon: "home",
     link: "/frontend/public",
   },
-  // {
-  //   name: "My Drive",
-  //   icon: "drive",
-  //   link: "/my-drive",
-  // },
 ];
 
 export const Sidebar = () => {
@@ -31,7 +26,6 @@ export const Sidebar = () => {
     .map((s) => mapToGB(s.value));
 
   let storageLimit = mapToGB(userInfo.subscription.storageLimit);
-
   const calculateStorageUsagePercentage = () => {
     return (storageLimit / 100) * usedStorage;
   };
@@ -60,17 +54,15 @@ export const Sidebar = () => {
             </Button>
           ))}
 
-          <li>
-            <div className={styles.storageBar}>
-              <div
-                className={styles.storageBarProgress}
-                style={{ width: `${calculateStorageUsagePercentage()}%` }}
-              />
-              <a className={styles.storageInfo}>
-                {usedStorage} GB of {storageLimit} GB used
-              </a>
-            </div>
-          </li>
+          <div className={styles.storageBar}>
+            <div
+              className={styles.storageBarProgress}
+              style={{ width: `${calculateStorageUsagePercentage()}%` }}
+            />
+            <a className={styles.storageInfo}>
+              {usedStorage} GB of {storageLimit} GB used
+            </a>
+          </div>
         </ul>
       </aside>
       {showUploadModal && (

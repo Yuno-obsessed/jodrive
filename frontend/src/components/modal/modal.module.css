@@ -22,3 +22,20 @@
   position: relative;
   text-align: center;
 }
+
+.rename {
+  display: flex;
+  height: 50px;
+}
+
+.closeButton {
+  padding: 10px;
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+}
+

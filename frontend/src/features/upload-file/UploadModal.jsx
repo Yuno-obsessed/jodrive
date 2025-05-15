@@ -64,7 +64,6 @@ export const UploadModal = ({ onClose }) => {
       token,
     );
 
-    console.log(committedMetadata);
     if (!committedMetadata.chunks || committedMetadata.chunks.length === 0) {
       console.log("File was uploaded");
       addSearchResult(metadata.fileInfo);
@@ -73,11 +72,7 @@ export const UploadModal = ({ onClose }) => {
   };
 
   return (
-    <Modal className={styles.modal}>
-      <Button className={styles.closeButton} onClick={onClose}>
-        &times;
-      </Button>
-      <h2>Upload File</h2>
+    <Modal title={"Upload File"} onClose={onClose} className={styles.modal}>
       <div className={styles.uploadBtn}>
         <input type="file" onChange={(e) => setFile(e.target.files[0])} />
       </div>

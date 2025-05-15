@@ -3,8 +3,8 @@
     display: flex;
     justify-content: center;
 }
+
 .input{
-    width: 30%;
-    min-width: 300px;
-    background: white;
+    width: 50%;
+    padding: 4px 12px !important;
 }

@@ -33,11 +33,11 @@ export const SearchBar = ({ wsID }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    debouncedSearch.flush(); // миттєвий пошук
+    debouncedSearch.flush();
   };
 
   useEffect(() => {
-    doSearch(""); // стартовий список
+    doSearch("");
   }, [doSearch]);
 
   return (

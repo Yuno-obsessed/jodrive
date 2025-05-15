@@ -1,5 +1,6 @@
 import React from "react";
 import styles from "./FileEntry.module.css";
+import clsx from "clsx";
 
 export const FileEntry = ({
   file,
@@ -10,6 +11,7 @@ export const FileEntry = ({
   onDelete,
   onMouseEnter,
   onMouseLeave,
+  isSelected = false,
 }) => {
   const FileEntryButton = ({ src, alt, callback }) => {
     return (
@@ -38,7 +40,7 @@ export const FileEntry = ({
 
   return (
     <tr
-      className={styles.fileEntry}
+      className={clsx(styles.fileEntry, isSelected && styles.isSelected)}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}

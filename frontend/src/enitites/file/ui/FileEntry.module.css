@@ -4,6 +4,10 @@ th {
   padding: 8px;
 }
 
+.isSelected {
+  background-color: rgba(216, 210, 210, 0.2);
+}
+
 .fileIcons button {
   all: unset;
   cursor: pointer;

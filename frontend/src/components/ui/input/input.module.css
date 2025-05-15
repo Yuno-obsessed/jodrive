@@ -1,15 +1,15 @@
 .primaryInput {
-  background: transparent;
   border: none;
   width: 100%;
   outline: none;
+  background: transparent;
 }
 
 .inputWrapper {
   display: flex;
-
   align-items: center;
-  padding: 6px 12px;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.06);
   border-radius: 8px;
   border: 1px solid transparent;
 }

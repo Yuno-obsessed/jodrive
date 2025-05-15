@@ -5,6 +5,7 @@ const variants = {
   default: styles.primaryButton,
   submit: styles.submitButton,
   icon: styles.iconButton,
+  destruction: styles.destructionButton,
 };
 
 export const Button = ({

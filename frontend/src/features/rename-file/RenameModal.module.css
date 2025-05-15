@@ -1,36 +1,9 @@
-.rename {
-  display: flex;
-  height: 50px;
-}
-
-.closeButton {
-  padding: 10px;
-  position: absolute;
-  top: 8px;
-  right: 12px;
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-}
-
 
 .btnRename {
   padding-top: 5px;
   margin: 10px;
+  gap: 12px;
   display: flex;
-  justify-content: right;
+  justify-content: center;
   background-color: white;
-}
-
-.btnRename button {
-  height: 40px;
-  color: blue;
-  background-color: white;
-}
-
-.btnRename button:nth-child(2) {
-  background-color: blue;
-  color: white;
-  border-radius: 15px;
 }

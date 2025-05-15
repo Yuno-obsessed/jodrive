@@ -22,6 +22,14 @@ export const useSearchModel = create(
       });
     },
 
+    removeSearchResult: (result) => {
+      set((state) => {
+        state.searchResults.elements = state.searchResults.elements.filter(
+          (r) => r.id !== result.id && r.workspaceID !== result.workspaceID,
+        );
+      });
+    },
+
     resetSearch: () =>
       set((state) => {
         state.searchResults = [];
