@@ -1,23 +1,18 @@
 package sanity.nil.meta.cache;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.redis.datasource.RedisDataSource;
 import io.quarkus.redis.datasource.keys.KeyCommands;
 import io.quarkus.redis.datasource.keys.KeyScanArgs;
+import io.quarkus.redis.datasource.value.SetArgs;
 import io.quarkus.redis.datasource.value.ValueCommands;
 import io.quarkus.runtime.Startup;
-import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import lombok.extern.jbosslog.JBossLog;
 import sanity.nil.meta.cache.model.FileMetadata;
-import sanity.nil.meta.dto.user.SubscriptionDTO;
-import sanity.nil.meta.model.FileJournalModel;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.StreamSupport;
 
 @Startup
 @JBossLog
@@ -49,9 +44,9 @@ public class FileMetadataCache {
         return res;
     }
 
-    public void persistFileMetadata(FileMetadata fileMetadata, Long wsID, Long fileID) {
+    public void persistFileMetadata(FileMetadata fileMetadata, Long wsID, Long fileID, Duration ttl) {
         var key = constructKey(wsID, fileID, fileMetadata.path());
-        values.set(key, fileMetadata);
+        values.set(key, fileMetadata, new SetArgs().ex(ttl));
     }
 
     private String constructKey(Long wsID, Long fileID, String path) {

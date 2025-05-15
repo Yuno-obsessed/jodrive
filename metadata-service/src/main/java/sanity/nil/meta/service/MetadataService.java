@@ -11,7 +11,9 @@ import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
+import jakarta.transaction.Status;
 import jakarta.transaction.Transactional;
+import jakarta.transaction.UserTransaction;
 import jakarta.ws.rs.NotFoundException;
 import lombok.extern.jbosslog.JBossLog;
 import org.apache.commons.lang3.StringUtils;
@@ -21,7 +23,7 @@ import sanity.nil.grpc.block.CheckBlocksExistenceRequest;
 import sanity.nil.grpc.block.Code;
 import sanity.nil.grpc.block.DeleteBlocksRequest;
 import sanity.nil.meta.cache.FileMetadataCache;
-import sanity.nil.meta.cache.model.FileMetadata;
+import sanity.nil.meta.cache.SubscriptionQuotaCache;
 import sanity.nil.meta.consts.*;
 import sanity.nil.meta.dto.Paged;
 import sanity.nil.meta.dto.block.BlockMetadata;
@@ -29,7 +31,7 @@ import sanity.nil.meta.dto.block.GetBlocksMetadata;
 import sanity.nil.meta.dto.file.*;
 import sanity.nil.meta.exceptions.CryptoException;
 import sanity.nil.meta.exceptions.InsufficientQuotaException;
-import sanity.nil.meta.cache.SubscriptionQuotaCache;
+import sanity.nil.meta.mappers.FileMapper;
 import sanity.nil.meta.model.*;
 import sanity.nil.meta.security.LinkEncoder;
 import sanity.nil.security.Role;
@@ -51,6 +53,8 @@ import static sanity.nil.meta.consts.Constants.*;
 public class MetadataService {
 
     @Inject
+    UserTransaction userTransaction;
+    @Inject
     FileJournalRepo fileJournalRepo;
     @Inject
     EntityManager entityManager;
@@ -64,6 +68,8 @@ public class MetadataService {
     LinkEncoder linkEncoder;
     @Inject
     ObjectMapper objectMapper;
+    @Inject
+    FileMapper fileMapper;
     @GrpcClient("blockService")
     BlockService blockClient;
 
@@ -135,6 +141,7 @@ public class MetadataService {
 
         List<String> missingBlocks = new ArrayList<>();
 
+        // get from cache and check for block differences
         var cachedMetadata = fileMetadataCache.getByParams(request.workspaceID(), null, request.path(), 1);
         if (CollectionUtils.isNotEmpty(cachedMetadata)) {
             var existingBlocks = cachedMetadata.getFirst().blocks();
@@ -147,6 +154,7 @@ public class MetadataService {
                 }
                 index++;
             }
+            // or ask block client for blocks metadata
         } else {
             try {
                 var response = blockClient.checkBlocksExistence(CheckBlocksExistenceRequest.newBuilder()
@@ -162,11 +170,10 @@ public class MetadataService {
             log.debug("All blocks already exist");
             var existingFile = updateFileState(request.workspaceID(), request.path());
             // TODO: send a request to block service to update block states
-            var cacheEntry = new FileMetadata(existingFile.getPath(), getBlocksFromBlockList(existingFile.getBlocklist()),
-                    existingFile.getSize(), existingFile.getState());
-            fileMetadataCache.persistFileMetadata(cacheEntry, request.workspaceID(), existingFile.getFileID());
-            var fileInfo = new FileInfo(existingFile.getId().getFileID(), existingFile.getId().getWorkspaceID(), existingFile.getPath(),
-                    isFileDirectory(existingFile.getPath()), existingFile.getSize(), existingFile.getUploader().getId(), existingFile.getCreatedAt());
+            var cacheEntry = fileMapper.journalToMetadata(existingFile);
+            fileMetadataCache.persistFileMetadata(cacheEntry, request.workspaceID(), existingFile.getFileID(), Duration.ofMinutes(10L));
+
+            var fileInfo = fileMapper.journalToInfo(existingFile);
             return new BlockMetadata(request.correlationID(), null, fileInfo);
         }
         var fileSize = calculateFileSize(missingBlocks.size(), request.lastBlockSize());
@@ -181,14 +188,16 @@ public class MetadataService {
             file = postProcessUpdateFile(request.path(), userUploader, requestSortedBlocks, workspace, fileSize);
         }
 
-        return new BlockMetadata(request.correlationID(), missingBlocks, new FileInfo(file.getId().getFileID(), file.getId().getWorkspaceID(), file.getPath(),
-                isFileDirectory(file.getPath()), file.getSize(), file.getUploader().getId(), file.getCreatedAt()));
+        var cacheEntry = fileMapper.journalToMetadata(file);
+        fileMetadataCache.persistFileMetadata(cacheEntry, request.workspaceID(), file.getFileID(), Duration.ofMinutes(10L));
+
+        return new BlockMetadata(request.correlationID(), missingBlocks, fileMapper.journalToInfo(file));
     }
 
     @Transactional
     protected FileJournalModel postProcessNewFile(String path, UserModel userUploader, List<String> newBlocks, WorkspaceModel workspace, Long fileSize) {
         FileJournalModel fileJournal = new FileJournalModel(entityManager.merge(workspace), path, userUploader, FileState.IN_UPLOAD,
-                fileSize, createBlockList(newBlocks.stream()), 0);
+                fileSize, createBlockList(newBlocks.stream()));
         fileJournalRepo.insert(fileJournal);
         var userStatistics = entityManager.find(UserStatisticsModel.class, new UserStatisticsModel.UserStatisticsIDModel(
                 identityProvider.getCheckedIdentity().getUserID(), Quota.USER_STORAGE_USED.id())
@@ -228,7 +237,7 @@ public class MetadataService {
                 .getSingleResult();
 
         var newFileJournalEntry = new FileJournalModel(entityManager.merge(workspace), path, userUploader,
-                FileState.IN_UPLOAD, fileJournal.getSize() + fileSize, createBlockList(newBlocks.stream()),fileJournal.getHistoryID()+1
+                FileState.IN_UPLOAD, fileJournal.getSize() + fileSize, createBlockList(newBlocks.stream())
         );
         fileJournalRepo.insert(newFileJournalEntry);
 
@@ -335,46 +344,43 @@ public class MetadataService {
     public FileNode listFileTree(Long wsID, String pathParam) {
         var path = pathParam == null ? "/" : pathParam;
         var nodes = fileJournalRepo.getFileNodesByFilters(wsID, path);
-        nodes.forEach(f -> f.isDirectory = f.path.charAt(f.path.length()-1) == DIRECTORY_CHAR);
+        nodes.forEach(f -> f.isDirectory = f.name.charAt(f.name.length()-1) == DIRECTORY_CHAR);
         return buildTree(nodes, path);
     }
 
     public FileNode buildTree(List<FileInfo> files, String path) {
         FileNode root = new FileNode();
         root.name = path == null ? "/" : path;
-        // find root, get it's info and delete it from files
-        files.stream().filter(f -> f.path.equals(root.name)).findFirst().ifPresent(f -> {
-            files.remove(f);
+        // find root, get its info and delete it from files
+        files.stream().filter(f -> f.name.equals(root.name)).findFirst().ifPresent(f -> {
             root.fileInfo = f;
+            files.remove(f);
         });
 
         // find dirs
         List<FileInfo> dirFilesDelete = new ArrayList<>();
         var directories = files.stream().filter(f -> f.isDirectory)
                 .peek(dirFilesDelete::add)
-                .collect(Collectors.groupingBy(f -> f.path.split(DIRECTORY_CHAR.toString()).length-1, // first '/' doesnt count
+                .collect(Collectors.groupingBy(f -> f.name.split(DIRECTORY_CHAR.toString()).length-1, // first '/' doesnt count
                         Collectors.mapping(f -> f, Collectors.toList()))
                 );
         files.removeAll(dirFilesDelete);
-                // 1 - "/" 2 - "/home/ 3 - "/etc/" 4 - "/home/user/"
-//                .sorted(Comparator.comparingInt(f -> f.path.split(DIRECTORY_CHAR.toString()).length)) // sort by increasing nesting
-//                .collect(Collectors.toList());
 
         if (directories.isEmpty()) {
-            root.children = files.stream()
+            files.stream()
                     .map(f -> fileToNode(f, root.name))
-                    .toList();
+                    .forEach(node -> root.children.add(node));
             return root;
         }
         var prevLevel = List.of(root);
         for (Map.Entry<Integer, List<FileInfo>> directoryLevel : directories.entrySet()) {
             for (FileInfo directory : directoryLevel.getValue()) {
-                var prevLevelDir = prevLevel.stream().filter(d -> directory.path.startsWith(d.name)).findFirst().get();
+                var prevLevelDir = prevLevel.stream().filter(d -> directory.name.startsWith(d.name)).findFirst().get();
                 var dir = fileToNode(directory, prevLevelDir.name);
-                var dirFiles = files.stream().filter(f -> f.path.substring(0, f.path.lastIndexOf(DIRECTORY_CHAR)+1).equals(directory.path)).toList();
+                var dirFiles = files.stream().filter(f -> f.name.substring(0, f.name.lastIndexOf(DIRECTORY_CHAR)+1).equals(directory.name)).toList();
                 files.removeAll(dirFiles);
-                dir.children = dirFiles.stream().map(e -> fileToNode(e, directory.path)).sorted(Comparator.comparing(f -> f.name))
-                        .collect(Collectors.toList());
+                dirFiles.stream().map(e -> fileToNode(e, directory.name))
+                        .forEach(node -> dir.children.add(node));
                 prevLevelDir.children.add(dir);
             }
             prevLevel = prevLevel.stream()
@@ -383,27 +389,42 @@ public class MetadataService {
                     .collect(Collectors.toList());
         }
         if (CollectionUtils.isNotEmpty(files)) {
-            root.children.addAll(files.stream()
+            files.stream()
                     .map(f -> fileToNode(f, root.name))
-//                    .map(f -> new FileNode(StringUtils.substringAfter(f.path, root.name), f, null))
-                    .toList());
+                    .forEach(rootNode -> root.children.add(rootNode));
         }
         return root;
     }
 
     private FileNode fileToNode(FileInfo fileInfo, String dir) {
-        return new FileNode(StringUtils.substringAfter(fileInfo.path, dir.substring(0, dir.length()-1)), fileInfo, null);
+        return new FileNode(StringUtils.substringAfter(fileInfo.name, dir.substring(0, dir.length()-1)), fileInfo);
     }
 
-    private String getParentPath(Map<String, FileNode> pathToNode, FileNode node) {
-        for (Map.Entry<String, FileNode> entry : pathToNode.entrySet()) {
-            if (entry.getValue() == node) {
-                String path = entry.getKey();
-                int lastSlash = path.lastIndexOf('/');
-                return lastSlash > 0 ? path.substring(0, lastSlash) : "";
-            }
+    public String createDirectory(CreateDirectory request) {
+        var identity = identityProvider.getIdentity(String.valueOf(request.workspaceID()));
+        if (!identity.hasRole(Role.USER)) {
+            throw new UnauthorizedException();
         }
-        return "";
+        var dir = request.path() + request.name() + "/";
+        try {
+            var externalTransaction = true;
+            if (userTransaction.getStatus() == Status.STATUS_NO_TRANSACTION) {
+                userTransaction.begin();
+                externalTransaction = false;
+            }
+            var workspace = getWorkspace(request.workspaceID(), identity.getUserID());
+            var userUploader = entityManager.find(UserModel.class, identity.getUserID());
+
+            var newDirectory = new FileJournalModel(workspace.get(), dir, userUploader, FileState.UPLOADED, 0L, null);
+            fileJournalRepo.insert(newDirectory);
+            if (!externalTransaction) {
+                userTransaction.commit();
+            }
+        } catch (Exception e) {
+            log.error("Error creating directory", e);
+            throw new RuntimeException("Application error");
+        }
+        return dir;
     }
 
     private boolean hasFileAccessPermissions(String wsID, String link) {

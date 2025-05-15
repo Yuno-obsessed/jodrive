@@ -9,7 +9,6 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import lombok.extern.jbosslog.JBossLog;
-import sanity.nil.meta.consts.Quota;
 import sanity.nil.meta.dto.user.SubscriptionDTO;
 import sanity.nil.meta.mappers.SubscriptionMapper;
 import sanity.nil.meta.model.UserSubscriptionModel;

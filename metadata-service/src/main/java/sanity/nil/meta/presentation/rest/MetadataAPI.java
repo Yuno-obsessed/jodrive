@@ -12,6 +12,7 @@ import sanity.nil.meta.consts.TimeUnit;
 import sanity.nil.meta.dto.Paged;
 import sanity.nil.meta.dto.block.BlockMetadata;
 import sanity.nil.meta.dto.block.GetBlocksMetadata;
+import sanity.nil.meta.dto.file.CreateDirectory;
 import sanity.nil.meta.dto.file.FileFilters;
 import sanity.nil.meta.dto.file.FileInfo;
 import sanity.nil.meta.dto.file.FileNode;
@@ -41,8 +42,15 @@ public class MetadataAPI {
     @Produces(MediaType.APPLICATION_JSON)
     @Blocking
     public BlockMetadata getBlocksMetadata(GetBlocksMetadata request) {
-        log.info("Rest Endpoint thread: " + Thread.currentThread().getName());
         return metadataService.getBlocksMetadata(request);
+    }
+
+    @POST
+    @Path("directory")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Blocking
+    public String createDirectory(CreateDirectory request) {
+        return metadataService.createDirectory(request);
     }
 
     @GET

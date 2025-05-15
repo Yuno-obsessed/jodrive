@@ -108,14 +108,14 @@ public class GetBlocksMetadataTest {
 
         var insertedFile = getFileJournal(defaultPath);
 
-        assertFileState(insertedFile, defaultPath, expectedBlockList, expectedFileSize, defaultUserID, FileState.IN_UPLOAD, 0);
+        assertFileState(insertedFile, defaultPath, expectedBlockList, expectedFileSize, defaultUserID, FileState.IN_UPLOAD, 1);
         assertThat(getStorageLimitQuota()).isEqualTo(expectedFileSize);
     }
 
     @Test
     public void given_Valid_Request_When_File_Exists_Then_Update() throws Exception {
         userTransaction.begin();
-        var existingFile = createExistingFile(0);
+        var existingFile = createExistingFile();
         userTransaction.commit();
 
         var lastBlockSize = 14000;
@@ -161,7 +161,7 @@ public class GetBlocksMetadataTest {
         var files = getFileJournals(defaultPath);
         var updatedJournal = files.stream().filter(file -> file.getHistoryID() > 0).findFirst().get();
 
-        assertFileState(updatedJournal, defaultPath, expectedBlockList, expectedFileSize, defaultUserID, FileState.IN_UPLOAD, 1);
+        assertFileState(updatedJournal, defaultPath, expectedBlockList, expectedFileSize, defaultUserID, FileState.IN_UPLOAD, 2);
         assertThat(getStorageLimitQuota()).isEqualTo(expectedFileSize);
     }
 
@@ -212,9 +212,9 @@ public class GetBlocksMetadataTest {
     @Test
     public void given_Valid_Request_When_Max_File_Versions_Limit_Reached_Override_Oldest_Version_With_New() throws Exception {
         userTransaction.begin();
-        var existingFileVersion1 = createExistingFile(0);
-        var existingFileVersion2 = createExistingFile(1);
-        var existingFileVersion3 = createExistingFile(2);
+        var existingFileVersion1 = createExistingFile();
+        var existingFileVersion2 = createExistingFile();
+        var existingFileVersion3 = createExistingFile();
         userTransaction.commit();
 
         var lastBlockSize = 14000;
@@ -262,7 +262,7 @@ public class GetBlocksMetadataTest {
         var latestInsertedVersion = files.stream().max((a, b) -> a.getHistoryID() - b.getHistoryID()).get();
         assertThat(files.stream().filter(j -> j.getHistoryID() == 0).findAny()).isEmpty(); // oldest was deleted
 
-        assertFileState(latestInsertedVersion, defaultPath, expectedBlockList, expectedFileSize, defaultUserID, FileState.IN_UPLOAD, 3);
+        assertFileState(latestInsertedVersion, defaultPath, expectedBlockList, expectedFileSize, defaultUserID, FileState.IN_UPLOAD, 4);
         assertThat(getStorageLimitQuota()).isEqualTo(expectedFileSize);
     }
 
@@ -309,11 +309,11 @@ public class GetBlocksMetadataTest {
                 .extract().body().as(BlockMetadata.class);
 
         assertThat(responseFirst.missingBlocks().size()).isEqualTo(blocks.size());
-        assertThat(responseFinal.missingBlocks()).isEmpty();
+        assertThat(responseFinal.missingBlocks()).isNullOrEmpty();
 
         var insertedJournal = getFileJournal(defaultPath);
 
-        assertFileState(insertedJournal, defaultPath, expectedBlockList, expectedFileSize, defaultUserID, FileState.UPLOADED, 0);
+        assertFileState(insertedJournal, defaultPath, expectedBlockList, expectedFileSize, defaultUserID, FileState.UPLOADED, 1);
         assertThat(getStorageLimitQuota()).isEqualTo(expectedFileSize);
     }
 
@@ -379,7 +379,7 @@ public class GetBlocksMetadataTest {
         var insertedJournal = getFileJournal(defaultPath);
         var expectedFileSize = 411_065_792L;
 
-        assertFileState(insertedJournal, defaultPath, expectedBlockList, expectedFileSize, defaultUserID, FileState.IN_UPLOAD, 1);
+        assertFileState(insertedJournal, defaultPath, expectedBlockList, expectedFileSize, defaultUserID, FileState.IN_UPLOAD, 2);
         assertThat(getStorageLimitQuota()).isEqualTo(expectedFileSize);
     }
 
@@ -392,14 +392,14 @@ public class GetBlocksMetadataTest {
         assertThat(file.getHistoryID()).isEqualTo(historyID);
     }
 
-    private FileJournalModel createExistingFile(Integer version) {
+    private FileJournalModel createExistingFile() {
         var workspace = entityManager.find(WorkspaceModel.class, 1L);
         var uploadUser = entityManager.find(UserModel.class, defaultUserID);
         var blockList = IntStream.range(1, 101)
                 .mapToObj(e -> UUID.randomUUID().toString())
                 .collect(Collectors.joining(","));
         var fileJournal = new FileJournalModel(workspace, defaultPath, uploadUser, FileState.IN_UPLOAD,
-                411053792L, blockList, version);
+                411053792L, blockList);
         fileJournalRepo.insert(fileJournal);
         var statistics = entityManager.find(UserStatisticsModel.class, new UserStatisticsModel.UserStatisticsIDModel(
                 defaultUserID, Quota.USER_STORAGE_USED.id())

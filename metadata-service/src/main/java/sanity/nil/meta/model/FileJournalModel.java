@@ -55,7 +55,7 @@ public class FileJournalModel {
     private LocalDateTime updatedAt;
 
     public FileJournalModel(WorkspaceModel workspace, String path, UserModel uploader, FileState state,
-                            Long size, String blocklist, Integer historyID) {
+                            Long size, String blocklist) {
         this.id = new FileJournalIDModel(workspace.getId(), null);
         this.workspace = workspace;
         this.path = path;
@@ -63,7 +63,6 @@ public class FileJournalModel {
         this.state = state;
         this.size = size;
         this.blocklist = blocklist;
-        this.historyID = historyID;
     }
 
     public void setNewID(Long workspaceID, Long fileID) {

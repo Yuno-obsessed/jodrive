@@ -24,7 +24,7 @@ public class UserWorkspaceModel {
     @JoinColumn(name = "ws_id", columnDefinition = "bigint")
     private WorkspaceModel workspace;
 
-    @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @ManyToOne
     @MapsId("userID")
     @JoinColumn(name = "user_id", columnDefinition = "bigint")
     private UserModel user;
@@ -38,4 +38,11 @@ public class UserWorkspaceModel {
             @Column(name = "user_id")
             UUID userID
     ) {}
+
+    public UserWorkspaceModel(WorkspaceModel workspace, UserModel user, String role) {
+        this.id = new UserWorkspaceIDModel(workspace.getId(), user.getId());
+        this.workspace = workspace;
+        this.user = user;
+        this.role = role;
+    }
 }

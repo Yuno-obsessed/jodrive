@@ -181,7 +181,7 @@ public class DeleteFileTest {
         var userUploader = entityManager.find(UserModel.class, defaultUserID);
         var workspace = entityManager.find(WorkspaceModel.class, 1L);
         var journal = new FileJournalModel(workspace, testFile, userUploader, FileState.UPLOADED,
-                4256400L, UUID.randomUUID().toString(), 0);
+                4256400L, UUID.randomUUID().toString());
         fileJournalRepo.insert(journal);
         userTransaction.commit();
         return journal;

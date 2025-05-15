@@ -19,7 +19,7 @@ import sanity.nil.meta.model.UserModel;
 import sanity.nil.meta.model.WorkspaceModel;
 import sanity.nil.meta.service.FileJournalRepo;
 
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.IntStream;
 
 import static io.restassured.RestAssured.given;
@@ -102,8 +102,8 @@ public class ListFileTreeTest {
 
         assertThat(response.name).isEqualTo("/");
         assertThat(response.children).hasSize(3);
-        response.children.stream().limit(2).forEach(c -> assertThat(c.children).hasSize(5));
-        assertThat(response.children.getLast().children).isNullOrEmpty();
+        response.children.stream().limit(2).forEachOrdered(c -> assertThat(c.children).hasSize(5));
+        assertThat(treeToSortedList(response.children).get(2).children).isNullOrEmpty();
     }
 
     @Test
@@ -123,11 +123,19 @@ public class ListFileTreeTest {
 
         assertThat(response.name).isEqualTo("/");
         assertThat(response.children).hasSize(3);
-        var homeDir = response.children.get(0);
+        log.info(response.children);
+        var dirs = treeToSortedList(response.children);
+        var homeDir = dirs.get(1);
         assertThat(homeDir.children).hasSize(6);
         var homeUserDir = homeDir.children.stream().filter(f -> f.fileInfo.isDirectory).findFirst().get();
         assertThat(homeUserDir.children).hasSize(10);
-        assertThat(response.children.getLast().children).isNullOrEmpty();
+        assertThat(dirs.getLast().children).isNullOrEmpty();
+    }
+
+    private List<FileNode> treeToSortedList(Set<FileNode> nodes) {
+        var res = new ArrayList<FileNode>();
+        nodes.stream().forEachOrdered(node -> {log.info(node.name); res.add(node);});
+        return res;
     }
 
     private void generateDirectoryWithFiles(String directory, int files) throws Exception {
@@ -149,7 +157,7 @@ public class ListFileTreeTest {
         var userUploader = entityManager.find(UserModel.class, defaultUserID);
         var workspace = entityManager.find(WorkspaceModel.class, 1L);
         var journal = new FileJournalModel(workspace, filename, userUploader, FileState.UPLOADED,
-                size, UUID.randomUUID().toString(), 0);
+                size, UUID.randomUUID().toString());
         fileJournalRepo.insert(journal);
     }
 }

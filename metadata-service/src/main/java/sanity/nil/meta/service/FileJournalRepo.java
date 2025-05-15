@@ -29,7 +29,12 @@ public class FileJournalRepo {
                 .createNativeQuery("SELECT metadata_db.next_file_id(?1)")
                 .setParameter(1, journal.getWorkspace().getId())
                 .getSingleResult();
+        Integer historyID = entityManager.createQuery("SELECT COALESCE(max(historyID),0) FROM FileJournalModel f " +
+                        "WHERE f.id.workspaceID = :wsID", Integer.class)
+                .setParameter("wsID", journal.getId().getWorkspaceID())
+                .getSingleResult();
         journal.setNewID(journal.getWorkspace().getId(), nextId);
+        journal.setHistoryID(++historyID);
         entityManager.persist(journal);
         return journal;
     }
