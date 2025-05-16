@@ -47,6 +47,10 @@ public class FileJournalModel {
     @Column(name = "history_id")
     private Integer historyID;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "updated_by")
+    private UserModel updatedBy;
+
     @CreationTimestamp
     @Column(name = "created_at", columnDefinition = "timestamptz")
     private LocalDateTime createdAt;

@@ -6,16 +6,22 @@ import { Input } from "../../components/ui/input/index.jsx";
 import { Button } from "../../components/ui/button/index.jsx";
 import { useSearchModel } from "../../enitites/file/model/index.js";
 import { searchFile } from "../../api/SearchFile.js";
+import { useLocation } from "react-router-dom";
 
 export const SearchBar = ({ wsID }) => {
   const { token, userInfo } = useAuthStore();
   const { setSearch } = useSearchModel();
   const [searchText, setSearchText] = useState("");
+  const location = useLocation();
 
   const doSearch = useCallback(
     async (query) => {
+      let deleted = false;
+      if (location.pathname === "/deleted") {
+        deleted = true;
+      }
       const files = await searchFile(
-        { name: query, wsID, userID: userInfo.id },
+        { name: query, wsID: wsID, userID: userInfo.id, deleted: deleted },
         token,
       );
       setSearch(files);

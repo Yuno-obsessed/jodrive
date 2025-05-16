@@ -1,6 +1,7 @@
 import React from "react";
-import styles from "./FileEntry.module.css";
-import clsx from "clsx";
+import { formatByteSize } from "../../../util/fileUtils.js";
+import { FileRow } from "./FileRow.jsx";
+import { FileActionButton } from "./FileActionButton.jsx";
 
 export const FileEntry = ({
   file,
@@ -13,55 +14,35 @@ export const FileEntry = ({
   onMouseLeave,
   isSelected = false,
 }) => {
-  const FileEntryButton = ({ src, alt, callback }) => {
-    return (
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          callback();
-        }}
-      >
-        <img src={src} alt={alt} />
-      </button>
-    );
-  };
-
-  const formatByteSize = (size) => {
-    if (size >= 1_073_741_824) {
-      return (size / 1_073_741_824).toFixed(2) + " GB";
-    } else if (size >= 1_048_576) {
-      return (size / 1_048_576).toFixed(2) + " MB";
-    } else if (size >= 1024) {
-      return (size / 1024).toFixed(2) + " KB";
-    } else {
-      return size + " B";
-    }
+  const columnRenderers = {
+    name: (file) => file.name,
+    uploadedAt: (file) => file.uploadedAt,
+    size: (file) => formatByteSize(file.size),
+    uploader: (file) => file.uploader,
+    workspaceID: (file) => file.workspaceID,
   };
 
   return (
-    <tr
-      className={clsx(styles.fileEntry, isSelected && styles.isSelected)}
+    <FileRow
+      file={file}
+      columns={["name", "uploadedAt", "size", "uploader", "workspaceID"]}
+      columnRenderers={columnRenderers}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-    >
-      <td>{file.path}</td>
-      <td>{file.uploadedAt}</td>
-      <td>{formatByteSize(file.size)}</td>
-      <td>{file.uploader}</td>
-      <td>{file.workspaceID}</td>
-      <td>
-        <div className={styles.fileIcons}>
-          <FileEntryButton src="share.svg" alt="Share" callback={onShare} />
-          <FileEntryButton src="edit.svg" alt="Rename" callback={onRename} />
-          <FileEntryButton
+      isSelected={isSelected}
+      buttons={
+        <>
+          <FileActionButton src="share.svg" alt="Share" callback={onShare} />
+          <FileActionButton src="edit.svg" alt="Rename" callback={onRename} />
+          <FileActionButton
             src="download.svg"
             alt="Download"
             callback={onDownload}
           />
-          <FileEntryButton src="delete.svg" alt="Delete" callback={onDelete} />
-        </div>
-      </td>
-    </tr>
+          <FileActionButton src="delete.svg" alt="Delete" callback={onDelete} />
+        </>
+      }
+    />
   );
 };

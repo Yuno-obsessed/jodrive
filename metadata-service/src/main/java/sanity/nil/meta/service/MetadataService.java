@@ -93,9 +93,12 @@ public class MetadataService {
             throw new UnauthorizedException();
         }
 
-        entityManager.createQuery("UPDATE FileJournalModel f SET f.state = :newState " +
+        var user = entityManager.find(UserModel.class, identity.getUserID());
+        entityManager.createQuery("UPDATE FileJournalModel f SET f.state = :newState, " +
+                        "f.updatedBy = :updatedBy " +
                         "WHERE f.id.fileID = :fileID AND f.id.workspaceID = :wsID")
                 .setParameter("newState", FileState.DELETED)
+                .setParameter("updatedBy", user)
                 .setParameter("fileID", fileIDParam)
                 .setParameter("wsID", workspaceIDParam)
                 .executeUpdate();
@@ -168,7 +171,7 @@ public class MetadataService {
 
         if (missingBlocks.isEmpty()) {
             log.debug("All blocks already exist");
-            var existingFile = updateFileState(request.workspaceID(), request.path());
+            var existingFile = updateFileState(identity.getUserID(), request.workspaceID(), request.path());
             // TODO: send a request to block service to update block states
             var cacheEntry = fileMapper.journalToMetadata(existingFile);
             fileMetadataCache.persistFileMetadata(cacheEntry, request.workspaceID(), existingFile.getFileID(), Duration.ofMinutes(10L));
@@ -239,6 +242,7 @@ public class MetadataService {
         var newFileJournalEntry = new FileJournalModel(entityManager.merge(workspace), path, userUploader,
                 FileState.IN_UPLOAD, fileJournal.getSize() + fileSize, createBlockList(newBlocks.stream())
         );
+        newFileJournalEntry.setUpdatedBy(userUploader);
         fileJournalRepo.insert(newFileJournalEntry);
 
         log.debug("FileJournal entry history updated to: " + fileJournal.getHistoryID());
@@ -253,7 +257,8 @@ public class MetadataService {
     }
 
     @Transactional
-    protected FileJournalModel updateFileState(Long workspaceID, String path) {
+    protected FileJournalModel updateFileState(UUID userID, Long workspaceID, String path) {
+        var user = entityManager.find(UserModel.class, userID);
         var uploadedFile = entityManager.createQuery("SELECT f FROM FileJournalModel f " +
                         "WHERE f.id.workspaceID = :wsID AND f.path = :path " +
                         "ORDER BY f.historyID DESC " +
@@ -264,6 +269,7 @@ public class MetadataService {
 
         if (uploadedFile.getState().equals(FileState.IN_UPLOAD)) {
             uploadedFile.setState(FileState.UPLOADED);
+            uploadedFile.setUpdatedBy(user);
             entityManager.merge(uploadedFile);
             log.debug("File was uploaded before, now updated state");
         }
@@ -298,7 +304,7 @@ public class MetadataService {
 
         var isDirectory = file.getPath().charAt(file.getPath().length()-1) == DIRECTORY_CHAR;
         return new FileInfo(file.getFileID(), file.getId().getWorkspaceID(), file.getPath(), isDirectory,
-                file.getSize(), file.getUploader().getId(), file.getCreatedAt());
+                file.getSize(), file.getUploader().getId(), file.getUploader().getUsername(), file.getCreatedAt());
     }
 
     public Paged<FileInfo> searchFiles(FileFilters filters) {
@@ -324,21 +330,23 @@ public class MetadataService {
         var filesFound = entityManager.createQuery(selectQuery).setFirstResult(page*size).setMaxResults(size).getResultList();
         var filesCount = entityManager.createQuery(countQuery).getSingleResult();
 
-        List<FileInfo> dtos = filesFound.stream()
-                .map(f -> {
-                    var isDirectory = f.getPath().charAt(f.getPath().length()-1) == DIRECTORY_CHAR;
-                    return new FileInfo(
-                        f.getFileID(), f.getId().getWorkspaceID(),
-                        f.getPath(), isDirectory, f.getSize(),
-                        f.getUploader().getId(), f.getCreatedAt()
-                    );
-                }).toList();
+        List<FileInfo> res;
+
+        if (filters.deleted() == null || !filters.deleted()) {
+            res = filesFound.stream()
+                    .map(fileMapper::journalToInfo)
+                    .collect(Collectors.toList());
+        } else {
+            res = filesFound.stream()
+                    .map(fileMapper::journalToDeletedFileInfo)
+                    .collect(Collectors.toCollection(ArrayList::new));
+        }
 
         int totalPages = (int) Math.ceil((double) filesCount / size);
         boolean hasNext = (page + 1) < totalPages;
         boolean hasPrevious = page > 0;
 
-        return new Paged<FileInfo>().of(dtos, totalPages, hasNext, hasPrevious);
+        return new Paged<FileInfo>().of(res, totalPages, hasNext, hasPrevious);
     }
 
     public FileNode listFileTree(Long wsID, String pathParam) {

@@ -75,6 +75,7 @@ public class FileJournalRepo {
         if (filters.userID() != null) {
             predicates.add(cb.equal(root.get("uploader").get("id"), filters.userID()));
         }
+        predicates.add(cb.notEqual(root.get("size"), 0L));
         return predicates;
     }
 
@@ -85,7 +86,8 @@ public class FileJournalRepo {
             path = null;
         }
         return entityManager.createQuery("SELECT new sanity.nil.meta.dto.file.FileInfo(" +
-                        "f.fileID, f.id.workspaceID, f.path, false, f.size, f.uploader.id, f.createdAt) " +
+                        "f.fileID, f.id.workspaceID, f.path, false, f.size, f.uploader.id, " +
+                        "f.uploader.username, f.createdAt) " +
                         "FROM FileJournalModel f " +
                         "WHERE f.id.workspaceID = :wsID AND (:path IS NULL OR f.path LIKE :path) " +
                         "AND f.state = :state ", FileInfo.class)

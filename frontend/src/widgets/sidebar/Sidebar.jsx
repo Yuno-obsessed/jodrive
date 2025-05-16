@@ -3,6 +3,8 @@ import styles from "./Sidebar.module.css";
 import useAuthStore from "../../util/authStore.js";
 import { UploadModal } from "../../features/upload-file/UploadModal.jsx";
 import { Button } from "../../components/ui/button/index.jsx";
+import { useLocation, useNavigate } from "react-router-dom";
+import clsx from "clsx";
 
 const navigation = [
   {
@@ -13,13 +15,24 @@ const navigation = [
   {
     name: "My Drive",
     icon: "drive",
-    link: "/drive",
+    link: "/",
+  },
+  {
+    name: "Trash",
+    icon: "delete",
+    link: "/deleted",
   },
 ];
 
 export const Sidebar = () => {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const { userInfo } = useAuthStore();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const isActive = (link) => {
+    return location.pathname === link;
+  };
 
   const mapToGB = (bytes) => {
     const gb = bytes / 1_073_741_824;
@@ -49,7 +62,14 @@ export const Sidebar = () => {
         </Button>
         <ul className={styles.sidebarList}>
           {navigation.map((item) => (
-            <Button key={item.name} className={styles.sidebarEl}>
+            <Button
+              key={item.name}
+              className={clsx(
+                styles.sidebarEl,
+                isActive(item.link) && styles.activeButton,
+              )}
+              onClick={() => navigate(item.link)}
+            >
               <img
                 src={item.icon + ".svg"}
                 alt="Home"

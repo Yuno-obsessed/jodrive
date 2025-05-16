@@ -22,9 +22,11 @@ export const UploadModal = ({ onClose }) => {
 
   const handleUpload = async () => {
     const chunkList = await getFileChunksToUpload(file, token);
+    // TODO: make it directory aware
+    let filename = "/" + file.name;
     const metadata = await checkChunkExistence(
       chunkList.chunks,
-      file.name,
+      filename,
       chunkList.lastChunkSize,
       token,
     );
@@ -59,7 +61,7 @@ export const UploadModal = ({ onClose }) => {
 
     const committedMetadata = await checkChunkExistence(
       chunkList.chunks,
-      file.name,
+      filename,
       chunkList.lastChunkSize,
       token,
     );

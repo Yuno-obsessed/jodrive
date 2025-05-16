@@ -14,6 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import sanity.nil.meta.consts.FileState;
 import sanity.nil.meta.dto.Paged;
+import sanity.nil.meta.dto.file.DeletedFileInfo;
 import sanity.nil.meta.dto.file.FileInfo;
 import sanity.nil.meta.model.FileJournalModel;
 import sanity.nil.meta.model.UserModel;
@@ -125,7 +126,7 @@ public class SearchFilesTest {
                 .when().get("/api/v1/metadata/file/search")
                 .then()
                 .statusCode(200)
-                .extract().body().as(new TypeRef<Paged<FileInfo>>() {});
+                .extract().body().as(new TypeRef<Paged<DeletedFileInfo>>() {});
 
         assertThat(response.elements).hasSize(5);
         assertThat(response.next).isFalse();

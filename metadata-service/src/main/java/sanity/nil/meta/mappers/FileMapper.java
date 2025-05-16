@@ -5,6 +5,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 import sanity.nil.meta.cache.model.FileMetadata;
+import sanity.nil.meta.dto.file.DeletedFileInfo;
 import sanity.nil.meta.dto.file.FileInfo;
 import sanity.nil.meta.model.FileJournalModel;
 
@@ -29,8 +30,23 @@ public interface FileMapper {
     @Mapping(target = "isDirectory", expression = "java(isFileDirectory(journal.getPath()))")
     @Mapping(target = "size", source = "size")
     @Mapping(target = "uploader", source = "uploader.id")
+    @Mapping(target = "uploaderName", source = "uploader.username")
     @Mapping(target = "uploadedAt", source = "createdAt")
     FileInfo journalToInfo(FileJournalModel journal);
+
+    @Mapping(target = "id", source = "id.fileID")
+    @Mapping(target = "workspaceID", source = "id.workspaceID")
+    @Mapping(target = "name", qualifiedByName = "extractFilename", source = "path")
+    @Mapping(target = "isDirectory", expression = "java(isFileDirectory(journal.getPath()))")
+    @Mapping(target = "size", source = "size")
+    @Mapping(target = "uploader", source = "uploader.id")
+    @Mapping(target = "uploaderName", source = "uploader.username")
+    @Mapping(target = "uploadedAt", source = "createdAt")
+    @Mapping(target = "path", qualifiedByName = "extractPath", source = "path")
+    @Mapping(target = "deletedBy.id", source = "updatedBy.id")
+    @Mapping(target = "deletedBy.username", source = "updatedBy.username")
+    @Mapping(target = "deletedAt", source = "updatedAt")
+    DeletedFileInfo journalToDeletedFileInfo(FileJournalModel journal);
 
     default boolean isFileDirectory(String path) {
         return path.charAt(path.length()-1) == DIRECTORY_CHAR;
@@ -39,6 +55,13 @@ public interface FileMapper {
     @Named("extractFilename")
     default String extractFilename(String path) {
         return StringUtils.substringAfterLast(path, DIRECTORY_CHAR);
+    }
+
+    @Named("extractPath")
+    default String extractPath(String path) {
+        // TODO: make it return only the closest directory to a file
+        var directory = StringUtils.substringBefore(path, DIRECTORY_CHAR.toString());
+        return directory.isBlank() ? "/" : directory;
     }
 
     default List<String> getBlocksFromBlockList(String blocklist) {

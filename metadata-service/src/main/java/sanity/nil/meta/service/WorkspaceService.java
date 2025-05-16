@@ -71,6 +71,7 @@ public class WorkspaceService {
 
         List<WorkspaceUserDTO> dtos = users.stream()
                 .map(u -> new WorkspaceUserDTO(
+                        u.getUser().getId(),
                         u.getUser().getUsername(),
                         null,
                         u.getRole()

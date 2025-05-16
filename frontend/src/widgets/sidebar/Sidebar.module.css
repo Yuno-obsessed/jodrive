@@ -66,6 +66,10 @@ a:visited {
   padding: 2px 12px;
 }
 
+.activeButton {
+  background-color: lightgray;
+}
+
 .sidebarEl:hover {
   background-color: lightgray;
 }
