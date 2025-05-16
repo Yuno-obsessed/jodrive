@@ -6,6 +6,7 @@ import { MainLayout } from "./components/layouts/MainLayout.jsx";
 import { Header } from "./widgets/header/Header.jsx";
 import Sidebar from "./widgets/sidebar/Sidebar.jsx";
 import { FileSearchPage } from "./pages/file-search/FileSearchPage.jsx";
+import { FileTreePage } from "./pages/file-tree/FileTreePage.jsx";
 
 function App() {
   const { authenticated, initKeycloak } = useAuthStore();
@@ -22,6 +23,7 @@ function App() {
         <MainLayout header={<Header />} sidebar={<Sidebar />}>
           <Routes>
             <Route path="/" index element={<FileSearchPage />} />
+            <Route path="/drive" element={<FileTreePage />} />
           </Routes>
         </MainLayout>
       ) : (

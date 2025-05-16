@@ -1,11 +1,11 @@
 import { METADATA_URI } from "../consts/Constants.js";
 
-export async function renameFile(file, newName, token) {
-  if (file === null || newName === null) {
+export async function updateFile(file, newName, stateAction, token) {
+  if (file === null && (newName === null || stateAction === null)) {
     return new Error("Invalid parameters");
   }
   const response = await fetch(
-    `${METADATA_URI}/file/${file.id}?wsID=${file.workspaceID}&newName=${newName}`,
+    `${METADATA_URI}/file/${file.id}?wsID=${file.workspaceID}&newName=${newName}&stateAction=${stateAction}`,
     {
       method: "PATCH",
       headers: {

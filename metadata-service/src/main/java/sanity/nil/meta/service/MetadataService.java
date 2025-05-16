@@ -465,7 +465,7 @@ public class MetadataService {
     }
 
     @Transactional
-    public String renameFile(String fileID, Long wsID, String newName) {
+    public String updateFile(String fileID, Long wsID, String newName, FileAction fileAction) {
         var identity = identityProvider.getIdentity(String.valueOf(wsID));
 
         var fileJournalOp = fileJournalRepo.findById(Long.valueOf(fileID), wsID);
@@ -477,7 +477,30 @@ public class MetadataService {
             throw new UnauthorizedException("File wasn't uploaded by current user");
         }
 
-        fileJournal.setPath(newName);
+        if (StringUtils.isNotBlank(newName)) {
+            fileJournal.setPath(newName);
+        }
+        if (fileJournal.getState().equals(FileState.DELETED)) {
+            List<TaskModel> deletionTasks = entityManager.createNativeQuery("SELECT * FROM metadata_db.tasks t " +
+                            "WHERE t.object_id = :fileID AND metadata ->> 'workspace' = :workspaceID", TaskModel.class)
+                    .setParameter("fileID", fileID)
+                    .setParameter("workspaceID", String.valueOf(wsID))
+                    .getResultList();
+            Optional<TaskModel> deletionTask = Optional.empty();
+            if (CollectionUtils.isNotEmpty(deletionTasks)) {
+                deletionTask = Optional.of(deletionTasks.getFirst());
+            }
+            if (fileAction.equals(FileAction.RESTORE)) {
+                fileJournal.setState(FileState.UPLOADED);
+                deletionTask.ifPresent(task -> entityManager.remove(task));
+            }
+            if (fileAction.equals(FileAction.DELETE_FOREVER)) {
+                deletionTask.ifPresent(task -> {
+                    task.setPerformAt(LocalDateTime.now());
+                    entityManager.persist(task);
+                });
+            }
+        }
         entityManager.persist(fileJournal);
         return newName;
     }

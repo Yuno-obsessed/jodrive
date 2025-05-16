@@ -8,6 +8,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.jbosslog.JBossLog;
 import org.jboss.resteasy.reactive.RestResponse;
+import sanity.nil.meta.consts.FileAction;
 import sanity.nil.meta.consts.TimeUnit;
 import sanity.nil.meta.dto.Paged;
 import sanity.nil.meta.dto.block.BlockMetadata;
@@ -105,12 +106,13 @@ public class MetadataAPI {
 
     @PATCH
     @Path("file/{id}")
-    public String renameFile(
+    public String updateFile(
             @PathParam("id") String fileID,
             @QueryParam("wsID") Long wsID,
-            @QueryParam("newName") String newName
+            @QueryParam("newName") String newName,
+            @QueryParam("fileAction") FileAction fileAction
     ) {
-        return metadataService.renameFile(fileID, wsID, newName);
+        return metadataService.updateFile(fileID, wsID, newName, fileAction);
     }
 
 }
