@@ -14,10 +14,12 @@ export const Input = ({
   className,
   type,
   onChange,
+  icon,
   variant = "primary",
 }) => (
   <div className={clsx(styles.inputWrapper, className)}>
     {label && <label htmlFor="input-field">{label}</label>}
+    {icon}
     <input
       type={type}
       value={value}

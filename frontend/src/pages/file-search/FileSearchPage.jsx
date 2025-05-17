@@ -10,6 +10,10 @@ import { FileEntry } from "../../enitites/file/ui/FileEntry.jsx";
 import { ShareModal } from "../../features/share-file/ShareModal.jsx";
 import { useSearchModel } from "../../enitites/file/model/index.js";
 import Table from "../../components/table";
+import MajesticonsFolder from "~icons/majesticons/folder?width=24px&height=24px";
+import { Button } from "../../components/ui/button/index.jsx";
+import { Workspace } from "../../enitites/workspace/ui/Workspace.jsx";
+import { Workspaces } from "../../widgets/workspaces/SelectWorkspacePage.jsx";
 
 export const FileSearchPage = () => {
   const { searchResults, removeSearchResult } = useSearchModel();
@@ -82,7 +86,10 @@ export const FileSearchPage = () => {
   );
 
   return (
-    <>
+    <div className={styles.page}>
+      <div className={styles.workSpace}>
+        <Workspaces />
+      </div>
       <Table
         columns={columns}
         data={searchResults?.elements || []}
@@ -101,6 +108,6 @@ export const FileSearchPage = () => {
       {showRenameModal && (
         <RenameModal file={hovered} onClose={() => setShowRenameModal(false)} />
       )}
-    </>
+    </div>
   );
 };

@@ -4,33 +4,32 @@ import useAuthStore from "../../util/authStore.js";
 import { UploadModal } from "../../features/upload-file/UploadModal.jsx";
 import { Button } from "../../components/ui/button/index.jsx";
 import { useLocation, useNavigate } from "react-router-dom";
+import MingcuteHome4Line from "~icons/mingcute/home-4-line?width=24px&height=24px";
+import CarbonWorkspace from "~icons/carbon/workspace?width=24px&height=24px";
+import MynauiTrash from "~icons/mynaui/trash?width=24px&height=24px";
 import clsx from "clsx";
+import { useWorkspacesModel } from "../../enitites/workspace/model/index.js";
+import { UploadModalButton } from "../../features/upload-file/index.jsx";
 
 const navigation = [
   {
     name: "Home",
-    icon: "home",
-    link: "/frontend/public",
-  },
-  {
-    name: "My Drive",
-    icon: "drive",
+    icon: <MingcuteHome4Line />,
     link: "/",
   },
   {
     name: "Workspaces",
-    icon: "workspaces",
+    icon: <CarbonWorkspace />,
     link: "/workspaces",
   },
   {
     name: "Trash",
-    icon: "delete",
+    icon: <MynauiTrash />,
     link: "/deleted",
   },
 ];
 
 export const Sidebar = () => {
-  const [showUploadModal, setShowUploadModal] = useState(false);
   const { userInfo } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
@@ -54,51 +53,34 @@ export const Sidebar = () => {
   };
 
   return (
-    <>
-      <aside className={styles.sidebar}>
-        <Button
-          className={styles.btnNew}
-          onClick={() => setShowUploadModal(true)}
-        >
-          <img src="plus.svg" alt="Plus-New" className={styles.btnNewImg} />
-          <span className={styles.btnNewText}>
-            <a>New</a>
-          </span>
-        </Button>
-        <ul className={styles.sidebarList}>
-          {navigation.map((item) => (
-            <Button
-              key={item.name}
-              className={clsx(
-                styles.sidebarEl,
-                isActive(item.link) && styles.activeButton,
-              )}
-              onClick={() => navigate(item.link)}
-            >
-              <img
-                src={item.icon + ".svg"}
-                alt="Home"
-                className={styles.sidebarImages}
-              />
-              <p>{item.name}</p>
-            </Button>
-          ))}
+    <aside className={styles.sidebar}>
+      <ul className={styles.sidebarList}>
+        {navigation.map((item) => (
+          <Button
+            variant={"ghost"}
+            key={item.name}
+            className={clsx(
+              styles.sidebarEl,
+              isActive(item.link) && styles.activeButton,
+            )}
+            onClick={() => navigate(item.link)}
+          >
+            {item.icon}
+            {item.name}
+          </Button>
+        ))}
 
-          <div className={styles.storageBar}>
-            <div
-              className={styles.storageBarProgress}
-              style={{ width: `${calculateStorageUsagePercentage()}%` }}
-            />
-            <a className={styles.storageInfo}>
-              {usedStorage} GB of {storageLimit} GB used
-            </a>
-          </div>
-        </ul>
-      </aside>
-      {showUploadModal && (
-        <UploadModal onClose={() => setShowUploadModal(false)} />
-      )}
-    </>
+        <div className={styles.storageBar}>
+          <div
+            className={styles.storageBarProgress}
+            style={{ width: `${calculateStorageUsagePercentage()}%` }}
+          />
+          <a className={styles.storageInfo}>
+            {usedStorage} GB of {storageLimit} GB used
+          </a>
+        </div>
+      </ul>
+    </aside>
   );
 };
 

@@ -1,15 +1,18 @@
 .primaryButton {
   border-radius: 8px;
-  border: 1px solid transparent;
+  border: none;
   transition: border-color 0.25s;
-  color: white;
   background: transparent;
   outline: none;
+  font-weight: bold;
   cursor: pointer;
+  align-items: center;
+  display: flex;
+  gap: 12px;
   padding: 8px 18px;
 }
 .submitButton{
-  background: #1976d2;
+  background: var(--accent-color);
 }
 
 .iconButton{
@@ -22,6 +25,13 @@
 
 .destructionButton{
   border: 1px solid #1976d2;
-  color: #1976d2;
+  color: rgb(var(--accent-color));
+}
 
+.ghostButton{
+  color:  rgb(var(--accent-color));
+  background-color: rgba(
+          var(--accent-color)
+    , var(--opacity-low)
+  );
 }

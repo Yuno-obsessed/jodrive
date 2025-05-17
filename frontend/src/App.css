@@ -1,0 +1,10 @@
+:root{
+    --accent-color: 73, 127, 255;
+    --primary-color: 73, 127, 255;
+    --background-color: 0, 0, 0;
+    --foreground-color: 255, 255, 255;
+    --widgets-color: 246, 246, 246;
+    --opacity-low: 0.2;
+    --rounded-radius: 8px;
+    --opacity-height: 0.8;
+}

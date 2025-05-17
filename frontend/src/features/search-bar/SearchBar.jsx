@@ -7,6 +7,7 @@ import { Button } from "../../components/ui/button/index.jsx";
 import { useSearchModel } from "../../enitites/file/model/index.js";
 import { searchFile } from "../../api/SearchFile.js";
 import { useLocation } from "react-router-dom";
+import { UploadModalButton } from "../upload-file/index.jsx";
 
 export const SearchBar = ({ wsID }) => {
   const { token, userInfo } = useAuthStore();
@@ -59,6 +60,7 @@ export const SearchBar = ({ wsID }) => {
           </Button>
         }
       />
+      <UploadModalButton />
     </form>
   );
 };

@@ -8,7 +8,6 @@ import Sidebar from "./widgets/sidebar/Sidebar.jsx";
 import { FileSearchPage } from "./pages/file-search/FileSearchPage.jsx";
 import { FileTreePage } from "./pages/file-tree/FileTreePage.jsx";
 import { FileDeletedPage } from "./pages/file-deleted/FileDeletedPage.jsx";
-import { SelectWorkspacePage } from "./pages/select-workspace/SelectWorkspacePage.jsx";
 
 function App() {
   const { authenticated, initKeycloak } = useAuthStore();
@@ -27,7 +26,6 @@ function App() {
             <Route path="/" index element={<FileSearchPage />} />
             <Route path="/drive" element={<FileTreePage />} />
             <Route path="/deleted" element={<FileDeletedPage />} />
-            <Route path="/workspaces" element={<SelectWorkspacePage />} />
           </Routes>
         </MainLayout>
       ) : (

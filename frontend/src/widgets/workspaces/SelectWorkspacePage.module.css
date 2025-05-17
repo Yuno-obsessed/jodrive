@@ -1,9 +1,7 @@
-.workspacesHolder {
-    padding-top: 40px;
-}
+
 
 .workspaces {
     display: flex;
-    gap: 8px;
+    gap: 12px;
     justify-content: center;
 }

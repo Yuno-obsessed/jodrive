@@ -6,6 +6,7 @@ const variants = {
   submit: styles.submitButton,
   icon: styles.iconButton,
   destruction: styles.destructionButton,
+  ghost: styles.ghostButton,
 };
 
 export const Button = ({
