@@ -15,6 +15,26 @@
   cursor: pointer;
 }
 
+.directories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: fit-content;
+}
+
+.directories button {
+  width: 100px;
+  border: 2px solid black;
+  padding: 4px 8px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.chosenDir {
+  background-color: lightblue;
+  opacity: 0.8;
+}
+
 .uploadBtn {
   background-color: rgba(0, 0, 0, 0.06);
   color: black;

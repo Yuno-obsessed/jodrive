@@ -19,6 +19,7 @@ import sanity.nil.meta.dto.file.FileInfo;
 import sanity.nil.meta.dto.file.FileNode;
 import sanity.nil.meta.service.MetadataService;
 
+import java.util.List;
 import java.util.UUID;
 
 @Path("/api/v1/metadata/")
@@ -52,6 +53,16 @@ public class MetadataAPI {
     @Blocking
     public String createDirectory(CreateDirectory request) {
         return metadataService.createDirectory(request);
+    }
+
+    @GET
+    @Path("directory")
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<String> getDirectories(
+            @QueryParam("wsID") Long wsID,
+            @QueryParam("path") String path
+    ) {
+        return metadataService.getDirectories(wsID, path);
     }
 
     @GET

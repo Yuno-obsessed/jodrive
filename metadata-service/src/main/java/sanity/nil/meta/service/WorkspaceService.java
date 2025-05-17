@@ -6,14 +6,15 @@ import jakarta.inject.Named;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.UserTransaction;
 import lombok.extern.jbosslog.JBossLog;
+import sanity.nil.meta.cache.SubscriptionQuotaCache;
+import sanity.nil.meta.consts.Quota;
 import sanity.nil.meta.dto.Paged;
 import sanity.nil.meta.dto.file.CreateDirectory;
 import sanity.nil.meta.dto.workspace.CreateWorkspaceDTO;
 import sanity.nil.meta.dto.workspace.WorkspaceDTO;
 import sanity.nil.meta.dto.workspace.WorkspaceUserDTO;
-import sanity.nil.meta.model.UserModel;
-import sanity.nil.meta.model.UserWorkspaceModel;
-import sanity.nil.meta.model.WorkspaceModel;
+import sanity.nil.meta.exceptions.InsufficientQuotaException;
+import sanity.nil.meta.model.*;
 import sanity.nil.security.IdentityProvider;
 
 import java.util.Collections;
@@ -33,6 +34,8 @@ public class WorkspaceService {
     UserTransaction userTransaction;
     @Inject
     MetadataService metadataService;
+    @Inject
+    SubscriptionQuotaCache subscriptionQuotaCache;
 
     public WorkspaceDTO getWorkspace(String id) {
         var workspaceID = Long.valueOf(id);
@@ -45,7 +48,17 @@ public class WorkspaceService {
 
         var workspace = workspaces.getFirst();
 
-        return new WorkspaceDTO(workspace.getName(), workspace.getDescription());
+        return new WorkspaceDTO(workspace.getId(), workspace.getName(), workspace.getDescription());
+    }
+
+    public List<WorkspaceDTO> getUserWorkspaces() {
+        var identity = identityProvider.getCheckedIdentity();
+        var workspaces = entityManager.createQuery("SELECT um.workspace FROM UserWorkspaceModel um " +
+                        "WHERE um.user.id = :userID ", WorkspaceModel.class)
+                .setParameter("userID", identity.getUserID())
+                .getResultList();
+
+        return workspaces.stream().map(w -> new WorkspaceDTO(w.getId(), w.getName(), w.getDescription())).toList();
     }
 
     public Paged<WorkspaceUserDTO> getWorkspaceUsers(String id, int page, int size) {
@@ -84,13 +97,32 @@ public class WorkspaceService {
         return new Paged<WorkspaceUserDTO>().of(dtos, totalPages, hasNext, hasPrevious);
     }
 
-    public Long createWorkspace(CreateWorkspaceDTO dto) {
+    public WorkspaceDTO createWorkspace(CreateWorkspaceDTO dto) {
         var identity = identityProvider.getCheckedIdentity();
         var newWorkspace = new WorkspaceModel(dto.name(), dto.description());
         try {
             userTransaction.begin();
-            entityManager.persist(newWorkspace);
             var creator = entityManager.find(UserModel.class, identity.getUserID());
+            var subscriptionID = creator.getSubscription().getId();
+            var statistics = entityManager.createQuery("SELECT s FROM UserStatisticsModel s " +
+                            "WHERE s.id.userID = :userID AND s.id.statisticsID = :statisticsID", UserStatisticsModel.class)
+                    .setParameter("userID", identity.getUserID())
+                    .setParameter("statisticsID", Quota.USER_WORKSPACES.id())
+                    .getSingleResult();
+
+            var workspacesUserIn = Long.valueOf(statistics.getValue());
+            var quota = subscriptionQuotaCache.getByID(subscriptionID);
+            Integer workspacesLimit;
+            if (quota != null) {
+                workspacesLimit = quota.workspacesLimit();
+            } else {
+                var subscription = entityManager.find(UserSubscriptionModel.class, subscriptionID);
+                workspacesLimit = subscription.getWorkspacesLimit();
+            }
+            if (workspacesUserIn - workspacesLimit < 1) {
+                throw new InsufficientQuotaException(Quota.USER_WORKSPACES, workspacesLimit.toString());
+            }
+            entityManager.persist(newWorkspace);
             var workspaceUser = new UserWorkspaceModel(newWorkspace, creator, "OWNER");
             entityManager.persist(workspaceUser);
             // TODO: refactor this
@@ -100,6 +132,6 @@ public class WorkspaceService {
             log.error(e);
             throw new RuntimeException("Error creating workspace");
         }
-        return newWorkspace.getId();
+        return new WorkspaceDTO(newWorkspace.getId(), newWorkspace.getName(), newWorkspace.getDescription());
     }
 }

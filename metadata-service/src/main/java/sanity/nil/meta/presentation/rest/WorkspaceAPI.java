@@ -9,6 +9,8 @@ import sanity.nil.meta.dto.workspace.WorkspaceDTO;
 import sanity.nil.meta.dto.workspace.WorkspaceUserDTO;
 import sanity.nil.meta.service.WorkspaceService;
 
+import java.util.List;
+
 @Path("/api/v1/workspace")
 public class WorkspaceAPI {
 
@@ -20,6 +22,14 @@ public class WorkspaceAPI {
     public RestResponse<WorkspaceDTO> getWorkspace(@PathParam("id") String id) {
         return RestResponse.ok(
                 workspaceService.getWorkspace(id)
+        );
+    }
+
+    @GET
+    @Path("")
+    public RestResponse<List<WorkspaceDTO>> getUserWorkspaces() {
+        return RestResponse.ok(
+                workspaceService.getUserWorkspaces()
         );
     }
 
@@ -37,7 +47,7 @@ public class WorkspaceAPI {
 
     @POST
     @Path("")
-    public RestResponse<Long> createWorkspace(CreateWorkspaceDTO dto) {
+    public RestResponse<WorkspaceDTO> createWorkspace(CreateWorkspaceDTO dto) {
         return RestResponse.status(
                 RestResponse.Status.CREATED,
                 workspaceService.createWorkspace(dto)

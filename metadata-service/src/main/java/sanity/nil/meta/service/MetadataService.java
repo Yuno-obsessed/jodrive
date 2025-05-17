@@ -435,6 +435,15 @@ public class MetadataService {
         return dir;
     }
 
+    public List<String> getDirectories(Long wsID, String path) {
+        var directoriesInPath = path == null ? "%" : path + "%";
+        return entityManager.createQuery("SELECT f.path FROM FileJournalModel f " +
+                "WHERE f.id.workspaceID = :wsID AND f.path LIKE :path AND f.size = 0", String.class)
+                .setParameter("wsID", wsID)
+                .setParameter("path", directoriesInPath)
+                .getResultList();
+    }
+
     private boolean hasFileAccessPermissions(String wsID, String link) {
         if (StringUtils.isNotEmpty(link)) {
             var verifiedLink = verifyLink(link);

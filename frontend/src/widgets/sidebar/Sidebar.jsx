@@ -18,6 +18,11 @@ const navigation = [
     link: "/",
   },
   {
+    name: "Workspaces",
+    icon: "workspaces",
+    link: "/workspaces",
+  },
+  {
     name: "Trash",
     icon: "delete",
     link: "/deleted",

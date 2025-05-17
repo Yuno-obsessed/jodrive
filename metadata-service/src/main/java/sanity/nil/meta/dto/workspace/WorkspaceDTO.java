@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class WorkspaceDTO {
+    public Long id;
     public String name;
     public String description;
 }

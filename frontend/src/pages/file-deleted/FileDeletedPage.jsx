@@ -5,6 +5,7 @@ import { deleteFile } from "../../api/DeleteFile.js";
 import Table from "../../components/table/index.jsx";
 import styles from "../file-search/FileSearchPage.module.css";
 import { DeletedFile } from "../../enitites/file/ui/DeletedFile.jsx";
+import { updateFile } from "../../api/UpdateFile.js";
 
 export const FileDeletedPage = () => {
   const { searchResults, removeSearchResult } = useSearchModel();
@@ -39,14 +40,14 @@ export const FileDeletedPage = () => {
   );
 
   const handleDelete = (file) =>
-    deleteFile(file, token)
+    updateFile(file, null, "DELETE_FOREVER", token)
       .then(() => {
         removeSearchResult(file);
       })
       .catch(console.error);
 
   const handleRestore = (file) =>
-    deleteFile(file, token)
+    updateFile(file, null, "RESTORE", token)
       .then(() => {
         removeSearchResult(file);
       })
