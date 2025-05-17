@@ -79,6 +79,14 @@ public class FileJournalRepo {
         return predicates;
     }
 
+    public List<Predicate> buildPredicatesFromParams(CriteriaBuilder cb, Root<FileJournalModel> root, Long wsID, String pathLike) {
+        List<Predicate> predicates = new ArrayList<>();
+        predicates.add(cb.equal(root.get("id").get("workspaceID"), wsID));
+        predicates.add(cb.like(cb.upper(root.get("path")), pathLike.toUpperCase() + "%"));
+        predicates.add(cb.equal(root.get("state"), FileState.UPLOADED));
+        return predicates;
+    }
+
     public List<FileInfo> getFileNodesByFilters(Long wsID, String path) {
         if (path.endsWith(Constants.DIRECTORY_CHAR.toString())) {
             path = path + "%";

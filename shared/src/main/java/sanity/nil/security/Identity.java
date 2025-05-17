@@ -13,6 +13,7 @@ public class Identity {
 
     private UUID userID;
     private String username;
+    private String email;
     private List<Role> roles;
 
     public boolean hasRole(final Role role) {

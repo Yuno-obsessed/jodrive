@@ -15,8 +15,8 @@ import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import sanity.nil.block.consts.TaskStatus;
 import sanity.nil.block.consts.TaskType;
-import sanity.nil.block.infra.minio.MinioOperations;
 import sanity.nil.block.model.TaskModel;
+import sanity.nil.minio.MinioOperations;
 import sanity.nil.util.CollectionUtils;
 
 import java.util.List;

@@ -13,5 +13,6 @@ public class UserBaseDTO {
     public String username;
     public String email;
     public SubscriptionDTO subscription;
+    public String avatarURL;
     public LocalDateTime createdAt;
 }

@@ -7,7 +7,8 @@ import { Input } from "../../components/ui/input/index.jsx";
 import { Button } from "../../components/ui/button/index.jsx";
 
 export const RenameModal = ({ file, onClose }) => {
-  const [newName, setNewName] = useState(file.filename);
+  console.log(file);
+  const [newName, setNewName] = useState(file?.name);
   const { token } = useAuthStore();
 
   const handleRename = async () => {

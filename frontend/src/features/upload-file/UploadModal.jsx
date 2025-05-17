@@ -57,7 +57,7 @@ export const UploadModal = ({ onClose }) => {
     await uploadChunksWithRetry({
       chunks: metadata.chunks,
       token,
-      batchSize: 5,
+      batchSize: 2,
       poolSize: 8,
       maxRetries: 3,
       observer,

@@ -35,6 +35,7 @@ const useAuthStore = create((set) => ({
     setInterval(() => {
       keycloak.updateToken(5).then((refreshed) => {
         if (refreshed) {
+          console.log("Token was refreshed");
           useAuthStore.setState({ token: keycloak.token });
         }
       });

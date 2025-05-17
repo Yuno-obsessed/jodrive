@@ -21,6 +21,7 @@ public class UserModel {
     private UUID id;
     private String username;
     private String email;
+    private String avatar;
     @OneToOne(optional = false, fetch = FetchType.EAGER)
     @JoinColumn(name = "subscription_id")
     private UserSubscriptionModel subscription;

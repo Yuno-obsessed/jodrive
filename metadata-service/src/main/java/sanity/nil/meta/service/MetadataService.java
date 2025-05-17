@@ -349,6 +349,40 @@ public class MetadataService {
         return new Paged<FileInfo>().of(res, totalPages, hasNext, hasPrevious);
     }
 
+    public Paged<FileInfo> listDirectory(String directory, Long wsID, Integer page, Integer size) {
+        var identity = identityProvider.getIdentity(String.valueOf(wsID));
+        if (!identity.hasRole(Role.USER)) {
+            throw new ForbiddenException();
+        }
+        page = page == null ? 0 : page;
+        size = size == null ? 10 : size;
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<FileJournalModel> selectQuery = cb.createQuery(FileJournalModel.class);
+        Root<FileJournalModel> selectRoot = selectQuery.from(FileJournalModel.class);
+
+        var selectPredicates = fileJournalRepo.buildPredicatesFromParams(cb, selectRoot, wsID, directory);
+
+        selectQuery.select(selectRoot).where(cb.and(selectPredicates.toArray(new Predicate[0])));
+
+        CriteriaQuery<Long> countQuery = cb.createQuery(Long.class);
+        Root<FileJournalModel> countRoot = countQuery.from(FileJournalModel.class);
+        var countPredicates = fileJournalRepo.buildPredicatesFromParams(cb, countRoot, wsID, directory);
+        countQuery.select(cb.count(countRoot)).where(cb.and(countPredicates.toArray(new Predicate[0])));
+
+        var filesFound = entityManager.createQuery(selectQuery).setFirstResult(page*size).setMaxResults(size).getResultList();
+        var filesCount = entityManager.createQuery(countQuery).getSingleResult();
+        // TODO: how to handle if a file has more than 1 version?
+        List<FileInfo> res = filesFound.stream()
+                .map(fileMapper::journalToInfo)
+                .collect(Collectors.toList());
+
+        int totalPages = (int) Math.ceil((double) filesCount / size);
+        boolean hasNext = (page + 1) < totalPages;
+        boolean hasPrevious = page > 0;
+
+        return new Paged<FileInfo>().of(res, totalPages, hasNext, hasPrevious);
+    }
+
     public FileNode listFileTree(Long wsID, String pathParam) {
         var path = pathParam == null ? "/" : pathParam;
         var nodes = fileJournalRepo.getFileNodesByFilters(wsID, path);

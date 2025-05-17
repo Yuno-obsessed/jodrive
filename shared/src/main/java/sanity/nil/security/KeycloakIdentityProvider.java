@@ -30,6 +30,7 @@ public class KeycloakIdentityProvider implements IdentityProvider {
 
         identity.setUserID(UUID.fromString(jwt.getSubject()));
         identity.setUsername(jwt.getClaim("preferred_username").toString());
+        identity.setEmail(jwt.getClaim("email").toString());
         identity.setRoles(IntStream.range(0, roleList.size())
                 .mapToObj(i -> Role.fromName(roleList.getString(i)))
                 .filter(Objects::nonNull).toList());
@@ -69,6 +70,7 @@ public class KeycloakIdentityProvider implements IdentityProvider {
         var identity = new Identity();
         identity.setUserID(securityConfiguration.defaultUserID().get());
         identity.setUsername("admin");
+        identity.setEmail("example@gmail.com");
         identity.setRoles(List.of(Role.USER));
         return identity;
     }

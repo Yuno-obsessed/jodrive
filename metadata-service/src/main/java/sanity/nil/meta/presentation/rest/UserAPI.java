@@ -1,11 +1,9 @@
 package sanity.nil.meta.presentation.rest;
 
 import jakarta.inject.Inject;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
-import sanity.nil.meta.dto.user.CreateUserDTO;
+import jakarta.ws.rs.*;
+import org.jboss.resteasy.reactive.RestForm;
+import org.jboss.resteasy.reactive.multipart.FileUpload;
 import sanity.nil.meta.dto.user.UserBaseDTO;
 import sanity.nil.meta.service.UserService;
 
@@ -23,9 +21,18 @@ public class UserAPI {
         return userService.getUser(UUID.fromString(userID));
     }
 
+    @PATCH
+    @Path("{id}")
+    public String changeUserAvatar(
+            @PathParam("id") String userID,
+            @QueryParam("photo") String photo
+    ) {
+        return userService.changeUserAvatar(userID, photo);
+    }
+
     @POST
     @Path("")
-    public UUID createUser(CreateUserDTO createUserDTO) {
-        return userService.createUser(createUserDTO);
+    public String uploadFile(@RestForm("photo") FileUpload photo) {
+        return userService.uploadFile(photo);
     }
 }

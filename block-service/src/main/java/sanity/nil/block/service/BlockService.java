@@ -23,13 +23,12 @@ import sanity.nil.block.consts.TaskStatus;
 import sanity.nil.block.consts.TaskType;
 import sanity.nil.block.dto.BlockUpload;
 import sanity.nil.block.dto.BlockUploadRequest;
-import sanity.nil.block.infra.minio.MinioOperations;
 import sanity.nil.block.model.BlockModel;
 import sanity.nil.block.model.TaskModel;
 import sanity.nil.grpc.meta.GetFileBlockListRequest;
 import sanity.nil.grpc.meta.MutinyMetadataServiceGrpc;
 import sanity.nil.grpc.meta.VerifyLinkRequest;
-import sanity.nil.security.Identity;
+import sanity.nil.minio.MinioOperations;
 import sanity.nil.security.Role;
 import sanity.nil.security.WorkspaceIdentityProvider;
 

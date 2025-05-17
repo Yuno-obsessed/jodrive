@@ -18,7 +18,7 @@ export const FileEntry = ({
     name: (file) => file.name,
     uploadedAt: (file) => file.uploadedAt,
     size: (file) => formatByteSize(file.size),
-    uploader: (file) => file.uploader,
+    uploader: (file) => file.uploaderName,
     workspaceID: (file) => file.workspaceID,
   };
 

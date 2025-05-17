@@ -94,6 +94,18 @@ public class MetadataAPI {
     }
 
     @GET
+    @Path("directory/{directory}/files}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public RestResponse<Paged<FileInfo>> listDirectory(
+            @PathParam("directory") String directory,
+            @QueryParam("wsID") Long wsID,
+            @QueryParam("page") Integer page,
+            @QueryParam("size") Integer size
+    ) {
+        return RestResponse.ok(metadataService.listDirectory(directory, wsID, page, size));
+    }
+
+    @GET
     @Path("file/tree")
     @Produces(MediaType.APPLICATION_JSON)
     public RestResponse<FileNode> getFileTree(

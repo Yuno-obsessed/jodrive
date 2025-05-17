@@ -16,10 +16,10 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import sanity.nil.block.consts.TaskStatus;
 import sanity.nil.block.consts.TaskType;
-import sanity.nil.block.infra.minio.MinioOperations;
 import sanity.nil.block.model.BlockModel;
 import sanity.nil.block.model.TaskModel;
 import sanity.nil.exceptions.StorageException;
+import sanity.nil.minio.MinioOperations;
 
 import java.io.File;
 import java.io.FileInputStream;
