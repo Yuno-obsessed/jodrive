@@ -22,11 +22,9 @@ export const useTreeModel = create(
       });
     },
 
-    removeFile: (file) => {
+    removeFile: (id) => {
       set((state) => {
-        state.files.elements = state.files.elements.filter(
-          (r) => r.id !== file.id && r.workspaceID !== file.workspaceID,
-        );
+        state.files = state.files.filter((r) => r.id !== id);
       });
     },
   })),

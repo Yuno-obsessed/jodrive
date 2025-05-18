@@ -33,7 +33,9 @@ import { CSS } from "@dnd-kit/utilities";
 export const FileTreePage = () => {
   const { id } = useParams();
   const { token } = useAuthStore();
-  const { files, setFiles } = useTreeModel();
+  const { files, setFiles, removeFile } = useTreeModel();
+
+  console.log(files);
 
   const handleGetFiles = () => {
     listDirectory({ workspaceID: id, directory: "/" }, token)
@@ -48,22 +50,8 @@ export const FileTreePage = () => {
     handleGetFiles();
   }, [id]);
 
-  // handleGetFiles();
   console.log(files);
 
-  const RowDragHandleCell = ({ rowId }) => {
-    const { attributes, listeners } = useSortable({
-      id: rowId,
-    });
-    return (
-      // Alternatively, you could set these attributes on the rows themselves
-      <button {...attributes} {...listeners}>
-        🟰
-      </button>
-    );
-  };
-
-  // Row Component
   const DraggableRow = ({ row }) => {
     const {
       transform,
@@ -73,7 +61,7 @@ export const FileTreePage = () => {
       listeners,
       attributes,
     } = useSortable({
-      id: row.original.id,
+      id: row.id,
     });
 
     const style = {
@@ -84,28 +72,18 @@ export const FileTreePage = () => {
       position: "relative",
     };
     return (
-      // connect row ref to dnd-kit, apply important styles
-      <tr ref={setNodeRef} style={style}>
+      <tr {...attributes} {...listeners} ref={setNodeRef} style={style}>
         {row.getVisibleCells().map((cell) => (
           <td key={cell.id} style={{ width: cell.column.getSize() }}>
             {flexRender(cell.column.columnDef.cell, cell.getContext())}
           </td>
         ))}
-        {/*{...listeners}*/}
-        {/*{...attributes}*/}
       </tr>
     );
   };
 
   const columns = useMemo(
     () => [
-      // Create a dedicated drag handle column. Alternatively, you could just set up dnd events on the rows themselves.
-      {
-        id: "drag-handle",
-        header: "Move",
-        cell: ({ row }) => <RowDragHandleCell rowId={row.id} />,
-        size: 60,
-      },
       {
         accessorKey: "id",
         cell: (info) => info.getValue(),
@@ -130,25 +108,21 @@ export const FileTreePage = () => {
     if (!Array.isArray(files)) return [];
     return files.map(({ id }) => id);
   }, [files]);
-
+  console.log(dataIds, files);
   const table = useReactTable({
     data: files,
     columns: columns,
     getCoreRowModel: getCoreRowModel(),
     getRowId: (row) => {
       return row.id;
-    }, //required because row indexes will change
+    },
   });
 
   function handleDragEnd(event) {
     const { active, over } = event;
-    if (active && over && active.id !== over.id) {
-      setFiles((data) => {
-        const oldIndex = dataIds.indexOf(active.id);
-        const newIndex = dataIds.indexOf(over.id);
-        return arrayMove(data, oldIndex, newIndex); //this is just a splice util
-      });
-    }
+    // TODO: ezz;
+    console.log(active, over);
+    removeFile(active.id);
   }
 
   const sensors = useSensors(
@@ -158,13 +132,13 @@ export const FileTreePage = () => {
   );
 
   return (
-    // <div className={styles.workSpace}>
-    //   <Workspaces />
-    // </div>
     <DndContext
       collisionDetection={closestCenter}
       modifiers={[restrictToVerticalAxis]}
-      onDragEnd={() => handleDragEnd()}
+      onDragEnd={(e) => handleDragEnd(e)}
+      onDragStart={(e) => {
+        console.log(e);
+      }}
       sensors={sensors}
     >
       <div style={{ padding: "2px" }}>

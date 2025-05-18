@@ -13,7 +13,7 @@ export const Workspaces = () => {
     useWorkspacesModel();
 
   useEffect(() => {
-    if (!userWorkspaces) {
+    if (!userWorkspaces || userWorkspaces.length === 0) {
       getWorkspaces(token)
         .then((res) => setWorkspaces(res))
         .catch(console.log);
