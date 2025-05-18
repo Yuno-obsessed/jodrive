@@ -1,30 +1,26 @@
-import { useState } from "react";
 import styles from "./Sidebar.module.css";
 import useAuthStore from "../../util/authStore.js";
-import { UploadModal } from "../../features/upload-file/UploadModal.jsx";
 import { Button } from "../../components/ui/button/index.jsx";
 import { useLocation, useNavigate } from "react-router-dom";
-import MingcuteHome4Line from "~icons/mingcute/home-4-line?width=24px&height=24px";
-import CarbonWorkspace from "~icons/carbon/workspace?width=24px&height=24px";
-import MynauiTrash from "~icons/mynaui/trash?width=24px&height=24px";
+import MingcuteHome4Line from "~icons/mingcute/home-4-line";
+import CarbonWorkspace from "~icons/carbon/workspace";
+import MynauiTrash from "~icons/mynaui/trash";
 import clsx from "clsx";
-import { useWorkspacesModel } from "../../enitites/workspace/model/index.js";
-import { UploadModalButton } from "../../features/upload-file/index.jsx";
 
 const navigation = [
   {
     name: "Home",
-    icon: <MingcuteHome4Line />,
+    icon: <MingcuteHome4Line className={styles.sidebarImages} />,
     link: "/",
   },
   {
     name: "Workspaces",
-    icon: <CarbonWorkspace />,
+    icon: <CarbonWorkspace className={styles.sidebarImages} />,
     link: "/workspaces",
   },
   {
     name: "Trash",
-    icon: <MynauiTrash />,
+    icon: <MynauiTrash className={styles.sidebarImages} />,
     link: "/deleted",
   },
 ];

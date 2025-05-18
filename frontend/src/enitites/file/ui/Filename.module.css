@@ -1,0 +1,10 @@
+.filename {
+    display: flex;
+    flex-direction: row;
+    gap: 2px
+}
+
+.filename svg {
+    width: 20px;
+    height: 20px;
+}

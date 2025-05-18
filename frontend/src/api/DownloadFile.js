@@ -27,9 +27,12 @@ export async function downloadFile(file, token) {
     const blob = await downloadRes.blob();
     const url = URL.createObjectURL(blob);
 
+    const filename = info.name.substring(info.name.lastIndexOf("/") + 1);
+    console.log(filename);
+
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${info.path}`;
+    a.download = `${filename}`;
     a.click();
     URL.revokeObjectURL(url);
   } catch (e) {

@@ -2,6 +2,7 @@ import React from "react";
 import { FileActionButton } from "./FileActionButton.jsx";
 import { formatByteSize } from "../../../util/fileUtils.js";
 import { FileRow } from "./FileRow.jsx";
+import { Filename } from "./Filename.jsx";
 
 export const DeletedFile = ({
   file,
@@ -13,7 +14,7 @@ export const DeletedFile = ({
   isSelected = false,
 }) => {
   const columnRenderers = {
-    name: (file) => file.name,
+    name: (file) => <Filename filename={file.name} />,
     deletedBy: (file) => file.deletedBy?.username,
     deletedAt: (file) => file.deletedAt,
     size: (file) => formatByteSize(file.size),

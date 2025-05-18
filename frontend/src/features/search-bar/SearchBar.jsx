@@ -8,6 +8,7 @@ import { useSearchModel } from "../../enitites/file/model/index.js";
 import { searchFile } from "../../api/SearchFile.js";
 import { useLocation } from "react-router-dom";
 import { UploadModalButton } from "../upload-file/index.jsx";
+import TablerSearch from "~icons/tabler/search";
 
 export const SearchBar = ({ wsID }) => {
   const { token, userInfo } = useAuthStore();
@@ -56,7 +57,7 @@ export const SearchBar = ({ wsID }) => {
         onChange={handleChange}
         action={
           <Button type="submit">
-            <img src="./search.svg" alt="Search" style={{ width: "1.2rem" }} />
+            <TablerSearch />
           </Button>
         }
       />

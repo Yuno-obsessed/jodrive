@@ -2,6 +2,7 @@ import React from "react";
 import { formatByteSize } from "../../../util/fileUtils.js";
 import { FileRow } from "./FileRow.jsx";
 import { FileActionButton } from "./FileActionButton.jsx";
+import { Filename } from "./Filename.jsx";
 
 export const FileEntry = ({
   file,
@@ -15,7 +16,7 @@ export const FileEntry = ({
   isSelected = false,
 }) => {
   const columnRenderers = {
-    name: (file) => file.name,
+    name: (file) => <Filename filename={file.name} />,
     uploadedAt: (file) => file.uploadedAt,
     size: (file) => formatByteSize(file.size),
     uploader: (file) => file.uploaderName,

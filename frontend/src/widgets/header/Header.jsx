@@ -28,7 +28,7 @@ export const Header = () => {
           }
         ></ProfileViewModalButton>
         <Button variant="icon" onClick={logout}>
-          <MaterialSymbolsLogoutSharp />
+          <MaterialSymbolsLogoutSharp className={styles.userImg} />
         </Button>
       </div>
     </header>

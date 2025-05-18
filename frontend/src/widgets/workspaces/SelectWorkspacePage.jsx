@@ -3,7 +3,7 @@ import useAuthStore from "../../util/authStore.js";
 import { getWorkspaces } from "../../api/WorkspaceAPI.js";
 import { useWorkspacesModel } from "../../enitites/workspace/model/index.js";
 import { Button } from "../../components/ui/button/index.jsx";
-import MajesticonsFolder from "~icons/majesticons/folder?width=24px&height=24px";
+import MajesticonsFolder from "~icons/majesticons/folder";
 
 export const Workspaces = () => {
   const { token } = useAuthStore();
@@ -18,7 +18,7 @@ export const Workspaces = () => {
 
   return userWorkspaces.map((workspace, index) => (
     <Button key={workspace.name} variant="ghost">
-      <MajesticonsFolder />
+      <MajesticonsFolder width="24px" height="24px" />
       {workspace.name}
     </Button>
   ));
