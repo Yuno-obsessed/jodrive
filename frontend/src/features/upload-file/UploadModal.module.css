@@ -15,7 +15,12 @@
   cursor: pointer;
 }
 
+.workspaces{
+  display: flex;
+  gap: 12px;
+}
 .directories {
+  align-items: center;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -23,16 +28,15 @@
 }
 
 .directories button {
-  width: 100px;
-  border: 2px solid black;
+  width: fit-content;
   padding: 4px 8px;
   text-align: center;
   cursor: pointer;
 }
 
-.chosenDir {
-  background-color: lightblue;
-  opacity: 0.8;
+.modalButton{
+display: flex;
+  height: 100%;
 }
 
 .uploadBtn {

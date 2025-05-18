@@ -12,12 +12,14 @@ const variants = {
 export const Button = ({
   children,
   className,
+  ref,
   type,
   onClick,
   variant = "default",
 }) => {
   return (
     <button
+      ref={ref}
       type={type}
       onClick={onClick}
       className={clsx(className, variants[variant], variants["default"])}

@@ -47,6 +47,7 @@ a:visited {
 
 
 .sidebarEl {
+  justify-content: left;
   color: rgba(var(--background-color), 0.6);
   align-items: center;
   background: transparent;

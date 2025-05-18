@@ -1,0 +1,19 @@
+.modalButton{
+    display: flex;
+    position: relative;
+    flex-direction: column;
+    align-items: center;
+}
+.overlay{
+    top: 36px;
+    right: 0;
+    height: 200px;
+    background: rgba(var(--widgets-color));
+    position: absolute;
+}
+.dropdown{
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+}

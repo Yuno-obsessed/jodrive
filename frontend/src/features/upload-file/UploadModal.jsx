@@ -14,20 +14,18 @@ import { Button } from "../../components/ui/button/index.jsx";
 import { useSearchModel } from "../../enitites/file/model/index.js";
 import { getDirectories } from "../../api/DirectoryAPI.js";
 import clsx from "clsx";
+import { Workspaces } from "../../widgets/workspaces/SelectWorkspacePage.jsx";
 
 export const UploadModal = ({ onClose }) => {
   const [progress, setProgress] = useState(0);
-  const [directories, setDirectories] = useState([]);
-  const [selectedDirectory, setSelectedDirectory] = useState(null);
+
   const { token } = useAuthStore();
   const { addSearchResult } = useSearchModel();
   const [file, setFile] = useState(null);
 
   const handleUpload = async () => {
     const chunkList = await getFileChunksToUpload(file, token);
-    let filename = selectedDirectory
-      ? selectedDirectory + file.name
-      : "/" + file.name;
+    let filename = "/" + file.name;
     const metadata = await checkChunkExistence(
       chunkList.chunks,
       filename,
@@ -77,30 +75,16 @@ export const UploadModal = ({ onClose }) => {
     }
   };
 
-  useEffect(() => {
-    getDirectories(1, "", token)
-      .then((res) => setDirectories(res))
-      .catch(console.log);
-  }, [token]);
-
   return (
     <Modal title={"Upload File"} onClose={onClose} className={styles.modal}>
-      <div className={styles.directories}>
-        {directories.map((dir, index) => (
-          <button
-            key={index}
-            onClick={() => setSelectedDirectory(dir)}
-            className={clsx(selectedDirectory === dir && styles.chosenDir)}
-          >
-            {dir}
-          </button>
-        ))}
+      <div className={styles.workspaces}>
+        <Workspaces />
       </div>
       <div className={styles.uploadBtn}>
         <input type="file" onChange={(e) => setFile(e.target.files[0])} />
       </div>
-      <Button variant={"submit"} onClick={() => handleUpload()}>
-        Upload
+      <Button variant={"ghost"} onClick={() => handleUpload()}>
+        <p> Upload</p>
       </Button>
       {file && (
         <div className={styles.uploadBar}>

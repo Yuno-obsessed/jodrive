@@ -1,8 +1,14 @@
-import { Button } from "../../components/ui/button/index.jsx";
 import useAuthStore from "../../util/authStore.js";
 import styles from "./ProfileViewModal.module.css";
+import { Button } from "../../components/ui/button/index.jsx";
 
-export const ProfileViewModal = () => {
+export const ProfileViewModal = ({ ref }) => {
   const { userInfo } = useAuthStore();
-  return <div className={styles.profile}></div>;
+  return (
+    <div className={styles.overlay}>
+      <div ref={ref} className={styles.dropdown}>
+        TODO: Profile View Modal
+      </div>
+    </div>
+  );
 };
