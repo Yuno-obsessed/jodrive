@@ -3,11 +3,31 @@ import { immer } from "zustand/middleware/immer";
 
 export const useTreeModel = create(
   immer((set) => ({
-    treeNodes: [],
+    files: [],
 
-    setTree: (nodes) =>
+    setFiles: (files) =>
       set((state) => {
-        state.treeNodes = nodes;
+        state.files = files;
       }),
+
+    addFile: (file) => {
+      set((state) => {
+        if (
+          !state.files.elements.some(
+            (r) => r.id === file.id && r.workspaceID === file.workspaceID,
+          )
+        ) {
+          state.files.elements.push(file);
+        }
+      });
+    },
+
+    removeFile: (file) => {
+      set((state) => {
+        state.files.elements = state.files.elements.filter(
+          (r) => r.id !== file.id && r.workspaceID !== file.workspaceID,
+        );
+      });
+    },
   })),
 );

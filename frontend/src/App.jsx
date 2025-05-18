@@ -24,7 +24,7 @@ function App() {
         <MainLayout header={<Header />} sidebar={<Sidebar />}>
           <Routes>
             <Route path="/" index element={<FileSearchPage />} />
-            <Route path="/drive" element={<FileTreePage />} />
+            <Route path="/workspace/:id" element={<FileTreePage />} />
             <Route path="/deleted" element={<FileDeletedPage />} />
           </Routes>
         </MainLayout>

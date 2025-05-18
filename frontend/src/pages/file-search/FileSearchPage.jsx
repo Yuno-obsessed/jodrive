@@ -9,14 +9,13 @@ import { RenameModal } from "../../features/rename-file/RenameModal.jsx";
 import { ShareModal } from "../../features/share-file/ShareModal.jsx";
 import { useSearchModel } from "../../enitites/file/model/index.js";
 import Table from "../../components/table";
-import { Workspace } from "../../enitites/workspace/ui/Workspace.jsx";
-import { Workspaces } from "../../widgets/workspaces/SelectWorkspacePage.jsx";
+import { Workspaces } from "../../widgets/workspaces/Workspaces.jsx";
 import { formatByteSize } from "../../util/fileUtils.js";
 import { FileRow } from "../../enitites/file/ui/FileRow.jsx";
 import TablerShare from "~icons/tabler/share";
 import LucideEdit3 from "~icons/lucide/edit-3";
 import TablerDownload from "~icons/tabler/download";
-import MingcuteDelete2Line from "~icons/mingcute/delete-2-line";
+import MynauiTrash from "~icons/mynaui/trash";
 import { Button } from "../../components/ui/button/index.jsx";
 import { getFilenameWithIcon } from "../../util/filenameUtils.jsx";
 
@@ -94,17 +93,17 @@ export const FileSearchPage = () => {
       isSelected={selected.has(file.id)}
       buttons={
         <>
-          <Button variant="icon" callback={() => handleShare(file)}>
+          <Button variant="icon" onClick={() => handleShare(file)}>
             <TablerShare className={styles.icons} />
           </Button>
-          <Button variant="icon" callback={() => setShowRenameModal(true)}>
+          <Button variant="icon" onClick={() => setShowRenameModal(true)}>
             <LucideEdit3 className={styles.icons} />
           </Button>
-          <Button variant="icon" callback={() => handleDownload(file)}>
+          <Button variant="icon" onClick={() => handleDownload(file)}>
             <TablerDownload className={styles.icons} />
           </Button>
-          <Button variant="icon" callback={() => handleDelete(file)}>
-            <MingcuteDelete2Line className={styles.icons} />
+          <Button variant="icon" onClick={() => handleDelete(file)}>
+            <MynauiTrash className={styles.icons} />
           </Button>
         </>
       }
@@ -113,9 +112,6 @@ export const FileSearchPage = () => {
 
   return (
     <div className={styles.page}>
-      <div className={styles.workSpace}>
-        <Workspaces />
-      </div>
       <Table
         columns={columns}
         data={searchResults?.elements || []}

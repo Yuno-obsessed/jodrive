@@ -36,6 +36,7 @@ import sanity.nil.meta.exceptions.InsufficientQuotaException;
 import sanity.nil.meta.mappers.FileMapper;
 import sanity.nil.meta.model.*;
 import sanity.nil.meta.security.LinkEncoder;
+import sanity.nil.security.Identity;
 import sanity.nil.security.Role;
 import sanity.nil.security.WorkspaceIdentityProvider;
 import sanity.nil.util.CollectionUtils;
@@ -185,6 +186,7 @@ public class MetadataService {
             }
         }
 
+        var existsInAnotherWorkspace = false;
         if (missingBlocks.isEmpty()) {
             log.debug("All blocks already exist");
             var existingFileOp = updateFileState(identity.getUserID(), request.workspaceID(), request.path());
@@ -198,6 +200,7 @@ public class MetadataService {
             } else {
                 // forse insert because file exists in another workspace
                 missingBlocks = requestSortedBlocks;
+                existsInAnotherWorkspace = true;
             }
         }
         var fileSize = calculateFileSize(missingBlocks.size(), request.lastBlockSize());
@@ -209,6 +212,9 @@ public class MetadataService {
         if (cachedMetadata != null && cachedMetadata.state().equals(FileState.IN_UPLOAD)) {
             // if file is not uploaded yet (some blocks weren't delivered) - resumable upload
             return new BlockMetadata(request.correlationID(), missingBlocks, null);
+        } else if (existsInAnotherWorkspace) {
+            file = postProcessExistingFileNewInWorkspace(request.path(), userUploader, missingBlocks, workspace, fileSize);
+            missingBlocks = null;
         } else if (missingBlocks.size() == requestSortedBlocks.size()) {
             file = postProcessNewFile(request.path(), userUploader, missingBlocks, workspace, fileSize);
         } else {
@@ -219,6 +225,22 @@ public class MetadataService {
         fileMetadataCache.persistFileMetadata(cacheEntry, request.workspaceID(), file.getFileID(), Duration.ofMinutes(10L));
 
         return new BlockMetadata(request.correlationID(), missingBlocks, fileMapper.journalToInfo(file));
+    }
+
+    @Transactional
+    protected FileJournalModel postProcessExistingFileNewInWorkspace(String path, UserModel userUploader, Collection<String> newBlocks, WorkspaceModel workspace, Long fileSize) {
+        // separate method because not sure how to treat such case, logic can be rethought
+        FileJournalModel fileJournal = new FileJournalModel(entityManager.merge(workspace), path, userUploader, FileState.UPLOADED,
+                fileSize, createBlockList(newBlocks.stream()));
+        fileJournalRepo.insert(fileJournal);
+        var userStatistics = entityManager.find(UserStatisticsModel.class, new UserStatisticsModel.UserStatisticsIDModel(
+                identityProvider.getCheckedIdentity().getUserID(), Quota.USER_STORAGE_USED.id())
+        );
+        userStatistics.setValue(String.valueOf(
+                Long.parseLong(userStatistics.getValue()) + fileSize)
+        );
+        entityManager.persist(userStatistics);
+        return fileJournal;
     }
 
     @Transactional
@@ -339,8 +361,16 @@ public class MetadataService {
                 file.getSize(), file.getUploader().getId(), file.getUploader().getUsername(), file.getCreatedAt());
     }
 
+    /**
+    * Returns a paginated list of information about files
+     **/
     public Paged<FileInfo> searchFiles(FileFilters filters) {
-        var identity = identityProvider.getIdentity(String.valueOf(filters.wsID()));
+        Identity identity;
+        if (filters.wsID() != null) {
+            identity = identityProvider.getIdentity(String.valueOf(filters.wsID()));
+        } else {
+            identity = identityProvider.getCheckedIdentity();
+        }
         if (!identity.hasRole(Role.USER)) {
             throw new ForbiddenException();
         }

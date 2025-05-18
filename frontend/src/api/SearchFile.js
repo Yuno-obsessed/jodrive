@@ -4,12 +4,13 @@ export async function searchFile(params, token) {
   if (params == null) {
     throw new Error("Invalid parameters");
   }
+  let wsParam = params.wsID != null ? `&wsID=${params.wsID}` : "";
   let page = params.page == null ? 0 : params.page;
   let size = params.size == null ? 10 : params.size;
   let deleted = params.deleted == null ? false : params.deleted;
   let name = params.name == null ? "" : params.name;
   const response = await fetch(
-    `${METADATA_URI}/file/search?wsID=${params.wsID}&userID=${params.userID}&name=${name}&deleted=${deleted}&page=${page}&size=${size}`,
+    `${METADATA_URI}/file/search?userID=${params.userID}${wsParam}&name=${name}&deleted=${deleted}&page=${page}&size=${size}`,
     {
       method: "GET",
       headers: {

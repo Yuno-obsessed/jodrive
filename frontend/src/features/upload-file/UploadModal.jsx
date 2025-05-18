@@ -12,7 +12,7 @@ import {
 import { Modal } from "../../components/modal/index.jsx";
 import { Button } from "../../components/ui/button/index.jsx";
 import { useSearchModel } from "../../enitites/file/model/index.js";
-import { Workspaces } from "../../widgets/workspaces/SelectWorkspacePage.jsx";
+import { Workspaces } from "../../widgets/workspaces/Workspaces.jsx";
 import { useWorkspacesModel } from "../../enitites/workspace/model/index.js";
 
 export const UploadModal = ({ onClose }) => {

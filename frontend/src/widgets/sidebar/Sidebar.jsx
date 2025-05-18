@@ -3,7 +3,7 @@ import useAuthStore from "../../util/authStore.js";
 import { Button } from "../../components/ui/button/index.jsx";
 import { useLocation, useNavigate } from "react-router-dom";
 import MingcuteHome4Line from "~icons/mingcute/home-4-line";
-import CarbonWorkspace from "~icons/carbon/workspace";
+import MaterialSymbolsGroups from "~icons/material-symbols/groups";
 import MynauiTrash from "~icons/mynaui/trash";
 import clsx from "clsx";
 
@@ -15,7 +15,7 @@ const navigation = [
   },
   {
     name: "Workspaces",
-    icon: <CarbonWorkspace className={styles.sidebarImages} />,
+    icon: <MaterialSymbolsGroups className={styles.sidebarImages} />,
     link: "/workspaces",
   },
   {

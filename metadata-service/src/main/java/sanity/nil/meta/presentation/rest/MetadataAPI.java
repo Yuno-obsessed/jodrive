@@ -94,7 +94,7 @@ public class MetadataAPI {
     }
 
     @GET
-    @Path("directory/{directory}/files}")
+    @Path("directory/{directory: .+}/files")
     @Produces(MediaType.APPLICATION_JSON)
     public RestResponse<Paged<FileInfo>> listDirectory(
             @PathParam("directory") String directory,

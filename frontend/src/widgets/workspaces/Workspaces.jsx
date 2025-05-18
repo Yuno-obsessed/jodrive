@@ -5,7 +5,7 @@ import { useWorkspacesModel } from "../../enitites/workspace/model/index.js";
 import { Button } from "../../components/ui/button/index.jsx";
 import MajesticonsFolder from "~icons/majesticons/folder";
 import clsx from "clsx";
-import styles from "./SelectWorkspacePage.module.css";
+import styles from "./Workspaces.module.css";
 
 export const Workspaces = () => {
   const { token } = useAuthStore();
@@ -27,7 +27,6 @@ export const Workspaces = () => {
       variant="ghost"
       onClick={() => {
         setActive(workspace);
-        console.log(activeWorkspace);
       }}
     >
       <MajesticonsFolder width="24px" height="24px" />

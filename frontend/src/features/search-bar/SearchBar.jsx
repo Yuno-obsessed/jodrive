@@ -9,14 +9,11 @@ import { searchFile } from "../../api/SearchFile.js";
 import { useLocation } from "react-router-dom";
 import { UploadModalButton } from "../upload-file/index.jsx";
 import TablerSearch from "~icons/tabler/search";
-import { useWorkspacesModel } from "../../enitites/workspace/model/index.js";
-import { getWorkspaces } from "../../api/WorkspaceAPI.js";
 
 export const SearchBar = () => {
   const { token, userInfo } = useAuthStore();
   const { setSearch } = useSearchModel();
   const [searchText, setSearchText] = useState("");
-  const { activeWorkspace, setWorkspaces, setActive } = useWorkspacesModel();
   const location = useLocation();
 
   const doSearch = useCallback(
@@ -28,7 +25,6 @@ export const SearchBar = () => {
       const files = await searchFile(
         {
           name: query,
-          wsID: activeWorkspace.id,
           userID: userInfo.id,
           deleted: deleted,
         },
@@ -36,7 +32,7 @@ export const SearchBar = () => {
       );
       setSearch(files);
     },
-    [token, activeWorkspace, userInfo.id],
+    [token, userInfo.id],
   );
 
   const debouncedSearch = useDebouncedCallback(doSearch, 500);
@@ -53,14 +49,6 @@ export const SearchBar = () => {
   };
 
   useEffect(() => {
-    if (!activeWorkspace) {
-      getWorkspaces(token)
-        .then((res) => {
-          setWorkspaces(res);
-          setActive(res[0]);
-        })
-        .catch(console.log);
-    }
     doSearch("");
   }, [doSearch]);
 

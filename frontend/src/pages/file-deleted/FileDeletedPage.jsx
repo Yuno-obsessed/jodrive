@@ -82,10 +82,10 @@ export const FileDeletedPage = () => {
       isSelected={selected.has(file.id)}
       buttons={
         <>
-          <Button variant="icon" callback={() => handleDelete(file)}>
+          <Button variant="icon" onClick={() => handleDelete(file)}>
             <MaterialSymbolsDeleteForever className={styles.icons} />
           </Button>
-          <Button variant="icon" callback={() => handleRestore(file)}>
+          <Button variant="icon" onClick={() => handleRestore(file)}>
             <MdiRestore className={styles.icons} />
           </Button>
         </>
