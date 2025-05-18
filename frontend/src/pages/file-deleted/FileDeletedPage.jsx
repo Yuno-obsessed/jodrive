@@ -1,11 +1,15 @@
 import { useSearchModel } from "../../enitites/file/model/index.js";
 import useAuthStore from "../../util/authStore.js";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { deleteFile } from "../../api/DeleteFile.js";
 import Table from "../../components/table/index.jsx";
-import styles from "../file-search/FileSearchPage.module.css";
-import { DeletedFile } from "../../enitites/file/ui/DeletedFile.jsx";
+import styles from "./FileDeletedPage.module.css";
 import { updateFile } from "../../api/UpdateFile.js";
+import { formatByteSize } from "../../util/fileUtils.js";
+import { FileRow } from "../../enitites/file/ui/FileRow.jsx";
+import { Button } from "../../components/ui/button/index.jsx";
+import MaterialSymbolsDeleteForever from "~icons/material-symbols/delete-forever";
+import MdiRestore from "~icons/mdi/restore";
+import { getFilenameWithIcon } from "../../util/filenameUtils.jsx";
 
 export const FileDeletedPage = () => {
   const { searchResults, removeSearchResult } = useSearchModel();
@@ -53,26 +57,47 @@ export const FileDeletedPage = () => {
       })
       .catch(console.error);
 
+  const columnRenderers = {
+    name: (file) => getFilenameWithIcon(file.name),
+    deletedBy: (file) => file.deletedBy?.username,
+    deletedAt: (file) => file.deletedAt,
+    size: (file) => formatByteSize(file.size),
+    workspace: (file) => file.workspaceID,
+    path: (file) => file.path,
+  };
+
   const columns = useMemo(
     () => ["Name", "Deleted By", "Deleted At", "Size", "Workspace", "Path"],
     [],
   );
 
   const renderRow = (file) => (
-    <DeletedFile
+    <FileRow
       key={`${file.id}_${file.workspaceID}`}
       file={file}
-      isSelected={selected.has(file.id)}
-      onDelete={() => handleDelete(file)}
-      onRestore={() => handleRestore(file)}
+      columns={["name", "deletedBy", "deletedAt", "size", "workspace", "path"]}
+      columnRenderers={columnRenderers}
       onClick={() => toggleSelect(file)}
       onMouseEnter={() => setHovered(file)}
-      onMouseLeave={() => setHovered(null)}
+      isSelected={selected.has(file.id)}
+      buttons={
+        <>
+          <Button variant="icon" callback={() => handleDelete(file)}>
+            <MaterialSymbolsDeleteForever className={styles.icons} />
+          </Button>
+          <Button variant="icon" callback={() => handleRestore(file)}>
+            <MdiRestore className={styles.icons} />
+          </Button>
+        </>
+      }
     />
   );
 
   return (
     <>
+      <div className={styles.deleteNotice}>
+        Items in trash will be deleted after 30 days
+      </div>
       <Table
         columns={columns}
         data={searchResults?.elements || []}

@@ -48,6 +48,18 @@ public class FileJournalRepo {
         return CollectionUtils.isEmpty(res) ? Optional.empty() : Optional.of(res.getFirst());
     }
 
+    public Optional<FileJournalModel> findLatestByPathAndState(Long wsID, String path, FileState fileState) {
+        var res = entityManager.createQuery("SELECT f FROM FileJournalModel f " +
+                        "WHERE id.workspaceID = :wsID AND f.path = :path " +
+                        "AND f.state = :state " +
+                        "ORDER BY f.historyID DESC", FileJournalModel.class)
+                .setParameter("wsID", wsID)
+                .setParameter("path", path)
+                .setParameter("state", fileState)
+                .getResultList();
+        return CollectionUtils.isEmpty(res) ? Optional.empty() : Optional.of(res.getFirst());
+    }
+
     public Optional<FileJournalModel> findByIdAndStateIn(Long fileID, Long wsID, FileState states) {
         var res = entityManager.createQuery("SELECT f FROM FileJournalModel f " +
                         "WHERE id.fileID = :fileID AND id.workspaceID = :wsID " +

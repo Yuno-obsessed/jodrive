@@ -1,6 +1,5 @@
 import styles from "./modal.module.css";
 import clsx from "clsx";
-import { Button } from "../ui/button/index.jsx";
 
 export const Modal = ({ children, className, onClose, title }) => {
   return (

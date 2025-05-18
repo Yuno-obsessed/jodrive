@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, forwardRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "../../components/ui/button/index.jsx";
 import styles from "./ProfileViewModal.module.css";
 import { ProfileViewModal } from "./ProfileViewModal.jsx";

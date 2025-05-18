@@ -19,8 +19,10 @@ import sanity.nil.block.model.TaskModel;
 import sanity.nil.minio.MinioOperations;
 import sanity.nil.util.CollectionUtils;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.stream.StreamSupport;
+import java.util.stream.Collectors;
 
 @JBossLog
 @ApplicationScoped
@@ -67,10 +69,9 @@ public class DeleteBlocksJob implements Job {
         userTransaction.begin();
         try {
             var metadata = task.getMetadata();
-            var blockToDeleteMeta = (ArrayNode) metadata.get("blocksToDelete");
-            List<String> blocksToDelete = StreamSupport.stream(blockToDeleteMeta.spliterator(), false)
-                    .map(JsonNode::asText)
-                    .toList();
+            var blockToDeleteMeta = metadata.get("blocksToDelete");
+            List<String> blocksToDelete = Arrays.stream(blockToDeleteMeta.asText().split(","))
+                    .collect(Collectors.toCollection(ArrayList::new));
             int i = 0;
             log.info("Blocks to delete: " + blocksToDelete.size());
             deleteBlocks(blocksToDelete);

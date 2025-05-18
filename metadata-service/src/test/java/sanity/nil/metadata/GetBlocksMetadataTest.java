@@ -115,7 +115,7 @@ public class GetBlocksMetadataTest {
     @Test
     public void given_Valid_Request_When_File_Exists_Then_Update() throws Exception {
         userTransaction.begin();
-        var existingFile = createExistingFile();
+        var existingFile = createExistingFile(FileState.UPLOADED);
         userTransaction.commit();
 
         var lastBlockSize = 14000;
@@ -212,9 +212,9 @@ public class GetBlocksMetadataTest {
     @Test
     public void given_Valid_Request_When_Max_File_Versions_Limit_Reached_Override_Oldest_Version_With_New() throws Exception {
         userTransaction.begin();
-        var existingFileVersion1 = createExistingFile();
-        var existingFileVersion2 = createExistingFile();
-        var existingFileVersion3 = createExistingFile();
+        var existingFileVersion1 = createExistingFile(FileState.UPLOADED);
+        var existingFileVersion2 = createExistingFile(FileState.UPLOADED);
+        var existingFileVersion3 = createExistingFile(FileState.UPLOADED);
         userTransaction.commit();
 
         var lastBlockSize = 14000;
@@ -259,7 +259,7 @@ public class GetBlocksMetadataTest {
 
         var files = getFileJournals(defaultPath);
 
-        var latestInsertedVersion = files.stream().max((a, b) -> a.getHistoryID() - b.getHistoryID()).get();
+        var latestInsertedVersion = files.stream().max(Comparator.comparingInt(FileJournalModel::getHistoryID)).get();
         assertThat(files.stream().filter(j -> j.getHistoryID() == 0).findAny()).isEmpty(); // oldest was deleted
 
         assertFileState(latestInsertedVersion, defaultPath, expectedBlockList, expectedFileSize, defaultUserID, FileState.IN_UPLOAD, 4);
@@ -392,13 +392,13 @@ public class GetBlocksMetadataTest {
         assertThat(file.getHistoryID()).isEqualTo(historyID);
     }
 
-    private FileJournalModel createExistingFile() {
+    private FileJournalModel createExistingFile(FileState state) {
         var workspace = entityManager.find(WorkspaceModel.class, 1L);
         var uploadUser = entityManager.find(UserModel.class, defaultUserID);
         var blockList = IntStream.range(1, 101)
                 .mapToObj(e -> UUID.randomUUID().toString())
                 .collect(Collectors.joining(","));
-        var fileJournal = new FileJournalModel(workspace, defaultPath, uploadUser, FileState.IN_UPLOAD,
+        var fileJournal = new FileJournalModel(workspace, defaultPath, uploadUser, state,
                 411053792L, blockList);
         fileJournalRepo.insert(fileJournal);
         var statistics = entityManager.find(UserStatisticsModel.class, new UserStatisticsModel.UserStatisticsIDModel(

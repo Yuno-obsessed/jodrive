@@ -75,7 +75,7 @@ public class UserService {
 
         String avatarURL = null;
         if (StringUtils.isNotBlank(user.getAvatar())) {
-            avatarURL = minioOperations.getObjectURL(user.getAvatar());
+            avatarURL = minioOperations.getObjectURL("user_avatars", user.getAvatar());
         }
 
         if (id.equals(identity.getUserID())) {
@@ -104,6 +104,7 @@ public class UserService {
             minioOperations.putObject(
                     PutObjectArgs.builder().contentType(photo.contentType())
                             .object(filename)
+                            .bucket("user_avatars")
                             .stream(new FileInputStream(photo.uploadedFile().toFile()), photo.size(), -1)
             );
         } catch (FileNotFoundException e) {
@@ -122,6 +123,6 @@ public class UserService {
         var user = entityManager.find(UserModel.class, identity.getUserID());
         user.setAvatar(photo);
         entityManager.persist(user);
-        return minioOperations.getObjectURL(photo);
+        return minioOperations.getObjectURL("user_avatars", photo);
     }
 }

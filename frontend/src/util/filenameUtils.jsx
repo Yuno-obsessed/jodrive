@@ -1,13 +1,13 @@
-import styles from "./Filename.module.css";
 import VscodeIconsFileTypePdf2 from "~icons/vscode-icons/file-type-pdf2";
 import FluentColorImage16 from "~icons/fluent-color/image-16";
 import TablerFileUnknown from "~icons/tabler/file-unknown";
 import MaterialIconThemeVideo from "~icons/material-icon-theme/video";
 import VscodeIconsFileTypeWord from "~icons/vscode-icons/file-type-word";
 import VscodeIconsFileTypeExcel from "~icons/vscode-icons/file-type-excel";
+import styles from "./filenameUtils.module.css";
 
-export const Filename = ({ filename }) => {
-  const getFilename = () => {
+export const getFilenameWithIcon = (filename) => {
+  const getIcon = () => {
     switch (filename.substring(filename.lastIndexOf(".") + 1)) {
       case "mp4":
         return <MaterialIconThemeVideo />;
@@ -28,7 +28,7 @@ export const Filename = ({ filename }) => {
   };
   return (
     <div className={styles.filename}>
-      {getFilename()}
+      {getIcon()}
       <a>{filename}</a>
     </div>
   );

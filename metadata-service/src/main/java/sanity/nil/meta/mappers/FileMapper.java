@@ -9,6 +9,7 @@ import sanity.nil.meta.dto.file.DeletedFileInfo;
 import sanity.nil.meta.dto.file.FileInfo;
 import sanity.nil.meta.model.FileJournalModel;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -65,6 +66,6 @@ public interface FileMapper {
     }
 
     default List<String> getBlocksFromBlockList(String blocklist) {
-        return Arrays.stream(blocklist.split(",")).collect(Collectors.toList());
+        return Arrays.stream(blocklist.split(",")).collect(Collectors.toCollection(ArrayList::new));
     }
 }

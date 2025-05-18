@@ -112,7 +112,7 @@ public class DeleteBlocksScheduledTaskTest {
 
     private TaskModel saveTask(List<String> filesToDelete) {
         var metadata = objectMapper.createObjectNode();
-        metadata.putPOJO("blocksToDelete", filesToDelete);
+        metadata.put("blocksToDelete", String.join(",", filesToDelete));
         var delayedTask = new TaskModel(null, TaskType.DELETE_BLOCKS, metadata, TaskStatus.CREATED);
         entityManager.persist(delayedTask);
         return delayedTask;

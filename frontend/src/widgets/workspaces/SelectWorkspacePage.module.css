@@ -1,4 +1,7 @@
-
+.activeWorkspace {
+    color: green;
+    background-color: rgba(var(--accent-color), 0.2);
+}
 
 .workspaces {
     display: flex;

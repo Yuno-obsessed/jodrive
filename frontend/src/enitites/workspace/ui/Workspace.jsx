@@ -1,5 +1,4 @@
 import { Button } from "../../../components/ui/button/index.jsx";
-import styles from "./Workspace.module.css";
 
 export const Workspace = ({ workspace, onClick }) => {
   return (

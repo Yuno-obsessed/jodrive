@@ -38,6 +38,7 @@ import java.io.InputStream;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -96,13 +97,11 @@ public class BlockService {
         } else {
             var existingBlockSet = existingBlocks.stream()
                     .map(BlockModel::getHash)
-                    .collect(Collectors.toSet());
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
             // check and filter out already existing hashes, maintaining position of new ones to insert
-            var missingBlocks = hashList.stream()
+            return hashList.stream()
                     .filter(hash -> !existingBlockSet.contains(hash))
-                    .toList();
-
-            return missingBlocks;
+                    .collect(Collectors.toCollection(ArrayList::new));
         }
     }
 

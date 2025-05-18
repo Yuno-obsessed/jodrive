@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import styles from "./UploadModal.module.css";
 import {
-  getFileChunksToUpload,
   checkChunkExistence,
+  getFileChunksToUpload,
 } from "../../api/UploadFile.js";
 import useAuthStore from "../../util/authStore.js";
 import {
@@ -12,21 +12,23 @@ import {
 import { Modal } from "../../components/modal/index.jsx";
 import { Button } from "../../components/ui/button/index.jsx";
 import { useSearchModel } from "../../enitites/file/model/index.js";
-import { getDirectories } from "../../api/DirectoryAPI.js";
-import clsx from "clsx";
 import { Workspaces } from "../../widgets/workspaces/SelectWorkspacePage.jsx";
+import { useWorkspacesModel } from "../../enitites/workspace/model/index.js";
 
 export const UploadModal = ({ onClose }) => {
   const [progress, setProgress] = useState(0);
-
   const { token } = useAuthStore();
   const { addSearchResult } = useSearchModel();
   const [file, setFile] = useState(null);
+  const { activeWorkspace } = useWorkspacesModel();
 
   const handleUpload = async () => {
     const chunkList = await getFileChunksToUpload(file, token);
     let filename = "/" + file.name;
+    let workspaceID = activeWorkspace.id;
+    console.log(`Uploading file to a workspace ${workspaceID}`);
     const metadata = await checkChunkExistence(
+      workspaceID,
       chunkList.chunks,
       filename,
       chunkList.lastChunkSize,
@@ -62,6 +64,7 @@ export const UploadModal = ({ onClose }) => {
     });
 
     const committedMetadata = await checkChunkExistence(
+      workspaceID,
       chunkList.chunks,
       filename,
       chunkList.lastChunkSize,

@@ -1,17 +1,24 @@
 import styles from "./FileSearchPage.module.css";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ConstructLink } from "../../api/ConstructLink.js";
 import useAuthStore from "../../util/authStore.js";
 import { downloadFile } from "../../api/DownloadFile.js";
 import { deleteFile } from "../../api/DeleteFile.js";
 import { METADATA_URI } from "../../consts/Constants.js";
 import { RenameModal } from "../../features/rename-file/RenameModal.jsx";
-import { FileEntry } from "../../enitites/file/ui/FileEntry.jsx";
 import { ShareModal } from "../../features/share-file/ShareModal.jsx";
 import { useSearchModel } from "../../enitites/file/model/index.js";
 import Table from "../../components/table";
 import { Workspace } from "../../enitites/workspace/ui/Workspace.jsx";
 import { Workspaces } from "../../widgets/workspaces/SelectWorkspacePage.jsx";
+import { formatByteSize } from "../../util/fileUtils.js";
+import { FileRow } from "../../enitites/file/ui/FileRow.jsx";
+import TablerShare from "~icons/tabler/share";
+import LucideEdit3 from "~icons/lucide/edit-3";
+import TablerDownload from "~icons/tabler/download";
+import MingcuteDelete2Line from "~icons/mingcute/delete-2-line";
+import { Button } from "../../components/ui/button/index.jsx";
+import { getFilenameWithIcon } from "../../util/filenameUtils.jsx";
 
 export const FileSearchPage = () => {
   const { searchResults, removeSearchResult } = useSearchModel();
@@ -68,18 +75,39 @@ export const FileSearchPage = () => {
     [],
   );
 
+  const columnRenderers = {
+    name: (file) => getFilenameWithIcon(file.name),
+    uploadedAt: (file) => file.uploadedAt,
+    size: (file) => formatByteSize(file.size),
+    uploader: (file) => file.uploaderName,
+    workspaceID: (file) => file.workspaceID,
+  };
+
   const renderRow = (file) => (
-    <FileEntry
+    <FileRow
       key={`${file.id}_${file.workspaceID}`}
       file={file}
-      isSelected={selected.has(file.id)}
-      onShare={() => handleShare(file)}
-      onRename={() => setShowRenameModal(true)}
-      onDownload={() => handleDownload(file)}
-      onDelete={() => handleDelete(file)}
+      columns={["name", "uploadedAt", "size", "uploader", "workspaceID"]}
+      columnRenderers={columnRenderers}
       onClick={() => toggleSelect(file)}
       onMouseEnter={() => setHovered(file)}
-      // onMouseLeave={() => setHovered(null)}
+      isSelected={selected.has(file.id)}
+      buttons={
+        <>
+          <Button variant="icon" callback={() => handleShare(file)}>
+            <TablerShare className={styles.icons} />
+          </Button>
+          <Button variant="icon" callback={() => setShowRenameModal(true)}>
+            <LucideEdit3 className={styles.icons} />
+          </Button>
+          <Button variant="icon" callback={() => handleDownload(file)}>
+            <TablerDownload className={styles.icons} />
+          </Button>
+          <Button variant="icon" callback={() => handleDelete(file)}>
+            <MingcuteDelete2Line className={styles.icons} />
+          </Button>
+        </>
+      }
     />
   );
 

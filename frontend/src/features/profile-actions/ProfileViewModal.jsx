@@ -1,6 +1,5 @@
 import useAuthStore from "../../util/authStore.js";
 import styles from "./ProfileViewModal.module.css";
-import { Button } from "../../components/ui/button/index.jsx";
 
 export const ProfileViewModal = ({ ref }) => {
   const { userInfo } = useAuthStore();

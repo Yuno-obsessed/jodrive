@@ -9,11 +9,14 @@ import { searchFile } from "../../api/SearchFile.js";
 import { useLocation } from "react-router-dom";
 import { UploadModalButton } from "../upload-file/index.jsx";
 import TablerSearch from "~icons/tabler/search";
+import { useWorkspacesModel } from "../../enitites/workspace/model/index.js";
+import { getWorkspaces } from "../../api/WorkspaceAPI.js";
 
-export const SearchBar = ({ wsID }) => {
+export const SearchBar = () => {
   const { token, userInfo } = useAuthStore();
   const { setSearch } = useSearchModel();
   const [searchText, setSearchText] = useState("");
+  const { activeWorkspace, setWorkspaces, setActive } = useWorkspacesModel();
   const location = useLocation();
 
   const doSearch = useCallback(
@@ -23,12 +26,17 @@ export const SearchBar = ({ wsID }) => {
         deleted = true;
       }
       const files = await searchFile(
-        { name: query, wsID: wsID, userID: userInfo.id, deleted: deleted },
+        {
+          name: query,
+          wsID: activeWorkspace.id,
+          userID: userInfo.id,
+          deleted: deleted,
+        },
         token,
       );
       setSearch(files);
     },
-    [token, (wsID = 1), userInfo.id],
+    [token, activeWorkspace, userInfo.id],
   );
 
   const debouncedSearch = useDebouncedCallback(doSearch, 500);
@@ -45,6 +53,14 @@ export const SearchBar = ({ wsID }) => {
   };
 
   useEffect(() => {
+    if (!activeWorkspace) {
+      getWorkspaces(token)
+        .then((res) => {
+          setWorkspaces(res);
+          setActive(res[0]);
+        })
+        .catch(console.log);
+    }
     doSearch("");
   }, [doSearch]);
 

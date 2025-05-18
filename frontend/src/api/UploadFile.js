@@ -1,4 +1,4 @@
-import { METADATA_URI, BLOCK_URI } from "../consts/Constants.js";
+import { BLOCK_URI, METADATA_URI } from "../consts/Constants.js";
 import { parallelHashChunks } from "../util/HashUtils.js";
 
 const CHUNK_SIZE = 4_000_000; // 4 MB
@@ -45,6 +45,7 @@ export async function uploadBatchOfChunks(batch, token) {
 }
 
 export async function checkChunkExistence(
+  workspaceID,
   chunks,
   filename,
   lastChunkSize,
@@ -61,7 +62,7 @@ export async function checkChunkExistence(
 
     const body = JSON.stringify({
       correlationID: "dfd040c1-283c-426c-8603-57065bd51553", //TODO: random UUID
-      workspaceID: 1, // TODO: user has to select which workspace to upload a file to
+      workspaceID: workspaceID,
       path: filename,
       blocks: batch,
       lastBlockSize: lastChunkSize,

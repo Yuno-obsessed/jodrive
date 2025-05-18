@@ -21,8 +21,9 @@ tasks:
   init-dev:
     cmds:
       - docker-compose up -d jodrive-db
-      - sleep 2
+      - sleep 3
       - docker exec -i jodrive-db psql -U sanity -d jodrive < ./config/keycloak/dump.sql
+      - sleep 2
       - docker-compose --profile dev up -d --build
 
   run:

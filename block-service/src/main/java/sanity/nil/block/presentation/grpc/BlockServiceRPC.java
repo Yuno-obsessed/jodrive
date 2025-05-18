@@ -12,6 +12,9 @@ import sanity.nil.block.service.BlockService;
 import sanity.nil.grpc.LogInterceptor;
 import sanity.nil.grpc.block.*;
 
+import java.util.ArrayList;
+import java.util.stream.Collectors;
+
 @GrpcService
 @JBossLog
 @RegisterInterceptor(LogInterceptor.class)
@@ -23,7 +26,9 @@ public class BlockServiceRPC extends BlockServiceGrpc.BlockServiceImplBase {
     @Override
     @Blocking
     public void checkBlocksExistence(CheckBlocksExistenceRequest request, StreamObserver<CheckBlocksExistenceResponse> responseObserver) {
-        Uni.createFrom().item(() -> blockService.checkBlocksExistence(request.getHashList().stream().toList()))
+        Uni.createFrom().item(() -> blockService.checkBlocksExistence(request.getHashList().stream()
+                        .distinct().collect(Collectors.toCollection(ArrayList::new)))
+                )
                 .runSubscriptionOn(Infrastructure.getDefaultExecutor())
                 .subscribe().with(
                         missingBlocks -> {
