@@ -1,6 +1,6 @@
 import { useSearchModel } from "../../enitites/file/model/index.js";
 import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
-import { fileTreeColumns } from "../file-tree/config/index.js";
+
 import { useMemo } from "react";
 import { FileTreeTable } from "../../components/ui/table-v2/index.jsx";
 import { DraggableRow } from "../../components/ui/draggable-item/index.jsx";
@@ -14,6 +14,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import { fileSearchColumns } from "./config/index.js";
 
 export const FileSearchPage = () => {
   const { searchResults } = useSearchModel();
@@ -31,7 +32,7 @@ export const FileSearchPage = () => {
 
   const table = useReactTable({
     data: elements,
-    columns: fileTreeColumns,
+    columns: fileSearchColumns,
     getCoreRowModel: getCoreRowModel(),
     getRowId: (row) => getRowID(row),
   });

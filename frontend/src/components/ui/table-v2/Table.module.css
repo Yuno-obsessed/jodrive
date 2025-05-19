@@ -1,0 +1,22 @@
+.table {
+    margin-left: auto;
+    margin-right: auto;
+    border-collapse: collapse;
+    width: 80%;
+    font-size: 14px;
+
+    thead th{
+        font-weight: 700;
+        padding: 14px;
+        text-transform: uppercase;
+        color: rgba(var(--background-color), 0.4);
+        text-align: left;
+        background: rgba(var(--accent-color), var(--opacity-very-low));
+    }
+
+    tbody td{
+        padding: 14px;
+    }
+
+
+}

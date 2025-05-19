@@ -1,0 +1,35 @@
+.contexify {
+    background: white;
+    border: 1px solid rgba(var(--background-color), var(--opacity-low));
+    box-shadow: none;
+}
+
+.contexify__submenu--is-open,
+.contexify__submenu--is-open > .contexify__item__content {
+
+}
+
+.contexify__submenu--is-open > .contexify__submenu {}
+
+.contexify .contexify__submenu {}
+
+.contexify__submenu-arrow {}
+
+.contexify__separator {}
+
+.contexify__will-leave--disabled {}
+
+.contexify__item {
+}
+
+.contexify__item:not(.contexify__item--disabled):focus {}
+
+.contexify__item:not(.contexify__item--disabled):hover > .contexify__item__content,
+.contexify__item:not(.contexify__item--disabled):focus > .contexify__item__content {}
+
+.contexify__item:not(.contexify__item--disabled):hover > .contexify__submenu {}
+
+.contexify__item--disabled {}
+
+.contexify__item__content {
+}

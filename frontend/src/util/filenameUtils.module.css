@@ -1,7 +1,8 @@
 .filename {
     display: flex;
     flex-direction: row;
-    gap: 2px
+    gap: 8px;
+    align-items: center;
 }
 
 .filename svg {
