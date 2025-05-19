@@ -87,7 +87,7 @@ public class FileJournalRepo {
         if (filters.userID() != null) {
             predicates.add(cb.equal(root.get("uploader").get("id"), filters.userID()));
         }
-        predicates.add(cb.notEqual(root.get("size"), 0L));
+//        predicates.add(cb.notEqual(root.get("size"), 0L));
         return predicates;
     }
 

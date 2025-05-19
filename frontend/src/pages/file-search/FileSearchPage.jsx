@@ -18,21 +18,22 @@ import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 export const FileSearchPage = () => {
   const { searchResults } = useSearchModel();
 
+  const getRowID = (row) => {
+    return row.id + "_" + row.workspaceID;
+  };
+
   const elements = useMemo(
     () => searchResults?.elements ?? [],
     [searchResults],
   );
 
-  const dataIds = useMemo(
-    () => elements.map((f) => f.id + "_" + f.workspaceID),
-    [elements],
-  );
+  const dataIds = useMemo(() => elements.map((f) => getRowID(f)), [elements]);
 
   const table = useReactTable({
     data: elements,
     columns: fileTreeColumns,
     getCoreRowModel: getCoreRowModel(),
-    getRowId: (row) => row.id + "_" + row.workspaceID,
+    getRowId: (row) => getRowID(row),
   });
 
   const sensors = useSensors(

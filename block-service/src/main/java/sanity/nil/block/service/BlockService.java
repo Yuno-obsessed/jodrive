@@ -37,10 +37,12 @@ import java.io.FileInputStream;
 import java.io.InputStream;
 import java.time.Duration;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @JBossLog
 @ApplicationScoped
@@ -85,18 +87,55 @@ public class BlockService {
         return new BlockUpload(request.correlationID(), results);
     }
 
+
+    public Set<String> findExistingHashes(List<String> hashes) {
+        ExecutorService executor = Executors.newFixedThreadPool(10); // adjust as needed
+
+        // Split list into batches of 100
+        List<List<String>> batches = IntStream.range(0, (hashes.size() + 200 - 1) / 200)
+                .mapToObj(i -> hashes.subList(i * 200, Math.min(hashes.size(), (i + 1) * 200)))
+                .collect(Collectors.toList());
+
+        // Query all batches in parallel
+        List<CompletableFuture<Set<String>>> futures = batches.stream()
+                .map(batch -> CompletableFuture.supplyAsync(() -> queryBatch(batch), executor))
+                .collect(Collectors.toList());
+
+        // Wait for all to complete and combine results
+        Set<String> foundHashes = futures.stream()
+                .map(CompletableFuture::join)
+                .flatMap(Set::stream)
+                .collect(Collectors.toSet());
+
+        executor.shutdown(); // always shut down the executor
+        return foundHashes;
+    }
+
+    private Set<String> queryBatch(List<String> batch) {
+        // Query using native SQL or HQL
+        String query = "SELECT b.hash FROM BlockModel b WHERE b.hash IN :hashes";
+        List<String> result = entityManager.createQuery(query, String.class)
+                .setParameter("hashes", batch)
+                .getResultList();
+        return new HashSet<>(result);
+    }
+
     public List<String> checkBlocksExistence(List<String> hashList) {
         log.info("BlockService thread: " + Thread.currentThread().getName());
 
-        var existingBlocks = entityManager.createQuery("SELECT u FROM BlockModel u WHERE u.hash in ?1 ", BlockModel.class)
-                .setParameter(1, hashList)
-                .getResultList();
+        Collection<String> existingBlocks = new ArrayList<>();
+        if (hashList.size() < 200) {
+            existingBlocks = entityManager.createQuery("SELECT u.hash FROM BlockModel u WHERE u.hash in ?1 ", String.class)
+                    .setParameter(1, hashList)
+                    .getResultList();
+        } else {
+            existingBlocks = findExistingHashes(hashList);
+        }
 
         if (existingBlocks.isEmpty()) {
             return hashList;
         } else {
             var existingBlockSet = existingBlocks.stream()
-                    .map(BlockModel::getHash)
                     .collect(Collectors.toCollection(LinkedHashSet::new));
             // check and filter out already existing hashes, maintaining position of new ones to insert
             return hashList.stream()

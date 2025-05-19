@@ -4,10 +4,14 @@ import TablerFileUnknown from "~icons/tabler/file-unknown";
 import MaterialIconThemeVideo from "~icons/material-icon-theme/video";
 import VscodeIconsFileTypeWord from "~icons/vscode-icons/file-type-word";
 import VscodeIconsFileTypeExcel from "~icons/vscode-icons/file-type-excel";
+import TablerFolder from "~icons/tabler/folder";
 import styles from "./filenameUtils.module.css";
 
 export const getFilenameWithIcon = (filename) => {
   const getIcon = () => {
+    if (filename[filename.length - 1] === "/") {
+      return <TablerFolder />;
+    }
     switch (filename.substring(filename.lastIndexOf(".") + 1)) {
       case "mp4":
         return <MaterialIconThemeVideo />;
