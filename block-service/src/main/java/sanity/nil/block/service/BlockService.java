@@ -13,6 +13,7 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.transaction.Transactional;
+import jakarta.transaction.UserTransaction;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.WebApplicationException;
 import lombok.extern.jbosslog.JBossLog;
@@ -58,6 +59,9 @@ public class BlockService {
     WorkspaceIdentityProvider identityProvider;
     @GrpcClient("metadataService")
     MutinyMetadataServiceGrpc.MutinyMetadataServiceStub metadataClient;
+    @Inject
+    UserTransaction userTransaction;
+    private final Integer BATCH_SIZE = 50;
 
     @Transactional
     public BlockUpload saveBlocks(List<FileUpload> files, BlockUploadRequest request) {
@@ -89,42 +93,45 @@ public class BlockService {
 
 
     public Set<String> findExistingHashes(List<String> hashes) {
-        ExecutorService executor = Executors.newFixedThreadPool(10); // adjust as needed
+        ExecutorService executor = Executors.newFixedThreadPool(hashes.size()/BATCH_SIZE);
 
-        // Split list into batches of 100
-        List<List<String>> batches = IntStream.range(0, (hashes.size() + 200 - 1) / 200)
-                .mapToObj(i -> hashes.subList(i * 200, Math.min(hashes.size(), (i + 1) * 200)))
+        List<List<String>> batches = IntStream.range(0, (hashes.size() + BATCH_SIZE - 1) / BATCH_SIZE)
+                .mapToObj(i -> hashes.subList(i * BATCH_SIZE, Math.min(hashes.size(), (i + 1) * BATCH_SIZE)))
                 .collect(Collectors.toList());
 
-        // Query all batches in parallel
-        List<CompletableFuture<Set<String>>> futures = batches.stream()
+        List<CompletableFuture<List<String>>> futures = batches.stream()
                 .map(batch -> CompletableFuture.supplyAsync(() -> queryBatch(batch), executor))
                 .collect(Collectors.toList());
 
-        // Wait for all to complete and combine results
         Set<String> foundHashes = futures.stream()
                 .map(CompletableFuture::join)
-                .flatMap(Set::stream)
+                .flatMap(List::stream)
                 .collect(Collectors.toSet());
 
-        executor.shutdown(); // always shut down the executor
+        executor.shutdown();
         return foundHashes;
     }
 
-    private Set<String> queryBatch(List<String> batch) {
-        // Query using native SQL or HQL
-        String query = "SELECT b.hash FROM BlockModel b WHERE b.hash IN :hashes";
-        List<String> result = entityManager.createQuery(query, String.class)
-                .setParameter("hashes", batch)
-                .getResultList();
-        return new HashSet<>(result);
+    private List<String> queryBatch(List<String> batch) {
+        List<String> res = new ArrayList<>();
+        try {
+            userTransaction.begin();
+            String query = "SELECT b.hash FROM BlockModel b WHERE b.hash IN :hashes";
+            res = entityManager.createQuery(query, String.class)
+                    .setParameter("hashes", batch)
+                    .getResultList();
+            userTransaction.commit();
+        } catch (Exception e) {
+            log.error(e.toString());
+        }
+        return res;
     }
 
     public List<String> checkBlocksExistence(List<String> hashList) {
         log.info("BlockService thread: " + Thread.currentThread().getName());
 
         Collection<String> existingBlocks = new ArrayList<>();
-        if (hashList.size() < 200) {
+        if (hashList.size() < BATCH_SIZE) {
             existingBlocks = entityManager.createQuery("SELECT u.hash FROM BlockModel u WHERE u.hash in ?1 ", String.class)
                     .setParameter(1, hashList)
                     .getResultList();

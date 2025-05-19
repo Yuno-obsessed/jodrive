@@ -30,7 +30,9 @@ export const DraggableRow = ({ row, MENU_ID, contextMenuItems }) => {
 
   const handleContext = (event) => {
     event.preventDefault();
-    show({ event, id: MENU_ID, props: { row } });
+    console.log(event);
+    console.log(row);
+    show({ event: event, id: MENU_ID, props: { row } });
   };
 
   return (

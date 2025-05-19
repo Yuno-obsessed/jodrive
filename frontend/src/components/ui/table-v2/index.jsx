@@ -7,10 +7,13 @@ import styles from "./Table.module.css";
 import clsx from "clsx";
 import "react-contexify/ReactContexify.css";
 import { Item } from "react-contexify";
+import { DraggableRow } from "../draggable-item/index.jsx";
+import TablerShare from "~icons/tabler/share";
+import LucideEdit3 from "~icons/lucide/edit-3";
+import TablerDownload from "~icons/tabler/download";
+import MynauiTrash from "~icons/mynaui/trash";
 
-const MENU_ID = "table";
-
-export const FileTreeTable = ({ table, dataIds, DraggableRow, className }) => {
+export const FileTreeTable = ({ table, dataIds, className, eventHandler }) => {
   return (
     <table className={clsx(styles.table, className)}>
       <thead>
@@ -33,15 +36,38 @@ export const FileTreeTable = ({ table, dataIds, DraggableRow, className }) => {
         <SortableContext items={dataIds} strategy={verticalListSortingStrategy}>
           {table.getRowModel().rows.map((row) => (
             <DraggableRow
-              MENU_ID={row.id}
+              MENU_ID={"table"}
               contextMenuItems={
-                <id>
-                  <Item>Create Directory</Item>
-                  <Item>Download</Item>
-                  <Item>Share</Item>
-                  <Item>Rename</Item>
-                  <Item>Delete</Item>
-                </id>
+                <>
+                  <Item
+                    id="download"
+                    data={row.original}
+                    onClick={eventHandler}
+                  >
+                    <>
+                      <TablerDownload />
+                      <a>Download</a>
+                    </>
+                  </Item>
+                  <Item id="share" data={row.original} onClick={eventHandler}>
+                    <>
+                      <TablerShare />
+                      <a>Share</a>
+                    </>
+                  </Item>
+                  <Item id="rename" data={row.original} onClick={eventHandler}>
+                    <>
+                      <LucideEdit3 />
+                      <a>Rename</a>
+                    </>
+                  </Item>
+                  <Item id="delete" data={row.original} onClick={eventHandler}>
+                    <>
+                      <MynauiTrash />
+                      <a>Delete</a>
+                    </>
+                  </Item>
+                </>
               }
               key={row.id}
               row={row}

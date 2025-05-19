@@ -102,8 +102,7 @@ export const FileDeletedPage = () => {
         columns={columns}
         data={searchResults?.elements || []}
         renderRow={renderRow}
-        tableClassName={styles.filesList}
-        headerRowClassName={styles.theader}
+        tableClassName={styles.table}
       />
     </>
   );

@@ -1,0 +1,43 @@
+.table {
+    margin-top: 40px;
+    margin-left: auto;
+    margin-right: auto;
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 14px;
+
+    tbody,
+    thead {
+        border-bottom: 1px solid #dddddd;
+        text-align: left;
+        padding: 8px;
+    }
+
+    tbody {
+        border-top: 1px solid #dddddd;
+    }
+
+    tr:not(.theader):hover {
+        background-color: #f0f1f1;
+    }
+}
+.page{
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    padding: 24px;
+}
+.deleteNotice {
+    background-color: lightgray;
+    margin: 15px 10px;
+    padding: 15px 20px;
+    font-size: 14px;
+}
+.icons{
+    height: 20px;
+    width: 20px;
+}
+.workSpace{
+    display: flex;
+    gap: 12px;
+}

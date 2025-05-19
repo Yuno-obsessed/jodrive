@@ -79,6 +79,8 @@ public class FileJournalRepo {
         if (StringUtils.isNotEmpty(filters.name())) {
             predicates.add(cb.like(cb.upper(root.get("path")), "%" + filters.name().toUpperCase() + "%"));
         }
+        // exclude root dirs
+        predicates.add(cb.notEqual(root.get("path"), "/"));
         if (filters.deleted() != null && filters.deleted()) {
             predicates.add(cb.equal(root.get("state"), FileState.DELETED));
         } else {
@@ -87,7 +89,6 @@ public class FileJournalRepo {
         if (filters.userID() != null) {
             predicates.add(cb.equal(root.get("uploader").get("id"), filters.userID()));
         }
-//        predicates.add(cb.notEqual(root.get("size"), 0L));
         return predicates;
     }
 

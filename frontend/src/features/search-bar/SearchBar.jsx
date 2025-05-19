@@ -16,6 +16,16 @@ export const SearchBar = () => {
   const [searchText, setSearchText] = useState("");
   const location = useLocation();
 
+  // to force request if called from deleted page
+  const getCaller = () => {
+    switch (location.pathname) {
+      case "/deleted":
+        return "deleted";
+      default:
+        return "other";
+    }
+  };
+
   const doSearch = useCallback(
     async (query) => {
       let deleted = false;
@@ -32,7 +42,7 @@ export const SearchBar = () => {
       );
       setSearch(files);
     },
-    [token, userInfo.id],
+    [token, userInfo.id, getCaller()],
   );
 
   const debouncedSearch = useDebouncedCallback(doSearch, 500);

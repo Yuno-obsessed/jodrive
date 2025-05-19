@@ -1,6 +1,6 @@
 import { METADATA_URI } from "../consts/Constants.js";
 
-export async function ConstructLink(file, timeUnit, expiration, token) {
+export async function constructLink(file, timeUnit, expiration, token) {
   if (file === null || file.id === null || file.workspaceID === null) {
     return new Error("Invalid parameters");
   }

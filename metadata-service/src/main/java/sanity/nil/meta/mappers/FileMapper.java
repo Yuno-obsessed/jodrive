@@ -55,6 +55,11 @@ public interface FileMapper {
 
     @Named("extractFilename")
     default String extractFilename(String path) {
+        if (path.charAt(path.length()-1) == DIRECTORY_CHAR) {
+            int lastDirChar = path.lastIndexOf('/');
+            int secondLastDirChar = path.lastIndexOf('/', lastDirChar - 1);
+            return path.substring(secondLastDirChar + 1, lastDirChar + 1);
+        }
         return StringUtils.substringAfterLast(path, DIRECTORY_CHAR);
     }
 
