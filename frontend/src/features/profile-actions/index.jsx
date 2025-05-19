@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../../components/ui/button/index.jsx";
-import styles from "./ProfileViewModal.module.css";
-import { ProfileViewModal } from "./ProfileViewModal.jsx";
+import styles from "./ProfileDropDown.module.css";
+import { ProfileDropDown } from "./ProfileDropDown.jsx";
 
-export const ProfileViewModalButton = ({ children }) => {
+export const ProfileDropDownButton = ({ children }) => {
   const [showProfile, setShowProfile] = useState(false);
   const modalRef = useRef(null);
   const btnRef = useRef(null);
@@ -27,19 +27,12 @@ export const ProfileViewModalButton = ({ children }) => {
 
   return (
     <div className={styles.modalButton}>
-      <Button
-        variant="icon"
-        ref={btnRef}
-        onClick={() => setShowProfile((prev) => !prev)}
-      >
+      <Button ref={btnRef} onClick={() => setShowProfile((prev) => !prev)}>
         {children}
       </Button>
 
       {showProfile && (
-        <ProfileViewModal
-          ref={modalRef}
-          onClose={() => setShowProfile(false)}
-        />
+        <ProfileDropDown ref={modalRef} onClose={() => setShowProfile(false)} />
       )}
     </div>
   );

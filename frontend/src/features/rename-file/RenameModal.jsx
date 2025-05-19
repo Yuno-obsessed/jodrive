@@ -2,7 +2,7 @@ import { useState } from "react";
 import styles from "./RenameModal.module.css";
 import useAuthStore from "../../util/authStore.js";
 import { updateFile } from "../../api/UpdateFile.js";
-import { Modal } from "../../components/modal/index.jsx";
+import { Modal } from "../../components/ui/modal/index.jsx";
 import { Input } from "../../components/ui/input/index.jsx";
 import { Button } from "../../components/ui/button/index.jsx";
 

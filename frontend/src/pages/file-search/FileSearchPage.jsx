@@ -1,135 +1,60 @@
-import styles from "./FileSearchPage.module.css";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { ConstructLink } from "../../api/ConstructLink.js";
-import useAuthStore from "../../util/authStore.js";
-import { downloadFile } from "../../api/DownloadFile.js";
-import { deleteFile } from "../../api/DeleteFile.js";
-import { METADATA_URI } from "../../consts/Constants.js";
-import { RenameModal } from "../../features/rename-file/RenameModal.jsx";
-import { ShareModal } from "../../features/share-file/ShareModal.jsx";
 import { useSearchModel } from "../../enitites/file/model/index.js";
-import Table from "../../components/table";
-import { Workspaces } from "../../widgets/workspaces/Workspaces.jsx";
-import { formatByteSize } from "../../util/fileUtils.js";
-import { FileRow } from "../../enitites/file/ui/FileRow.jsx";
-import TablerShare from "~icons/tabler/share";
-import LucideEdit3 from "~icons/lucide/edit-3";
-import TablerDownload from "~icons/tabler/download";
-import MynauiTrash from "~icons/mynaui/trash";
-import { Button } from "../../components/ui/button/index.jsx";
-import { getFilenameWithIcon } from "../../util/filenameUtils.jsx";
+import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import { fileTreeColumns } from "../file-tree/config/index.js";
+import { useMemo } from "react";
+import { FileTreeTable } from "../../components/ui/table-v2/index.jsx";
+import { DraggableRow } from "../../components/ui/draggable-item/index.jsx";
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 
 export const FileSearchPage = () => {
-  const { searchResults, removeSearchResult } = useSearchModel();
-  const { token } = useAuthStore();
+  const { searchResults } = useSearchModel();
 
-  const [hovered, setHovered] = useState(null);
-  const [selected, setSelected] = useState(new Set());
-  const [selectMode, setSelectMode] = useState(false);
-
-  const [showShareModal, setShowShareModal] = useState(false);
-  const [showRenameModal, setShowRenameModal] = useState(false);
-
-  useEffect(() => {
-    const handleKeyDown = (e) => e.ctrlKey && setSelectMode(true);
-    const handleKeyUp = (e) => !e.ctrlKey && setSelectMode(false);
-
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
-    };
-  }, []);
-
-  const toggleSelect = useCallback(
-    (file) => {
-      setSelected((prev) => {
-        if (!selectMode) return new Set([file.id]);
-        const next = new Set(prev);
-        next.has(file.id) ? next.delete(file.id) : next.add(file.id);
-        return next;
-      });
-    },
-    [selectMode],
+  const elements = useMemo(
+    () => searchResults?.elements ?? [],
+    [searchResults],
   );
 
-  const handleShare = (file) =>
-    ConstructLink(file, "MINUTE", 60, token)
-      .then(() => setShowShareModal(true))
-      .catch(console.error);
-
-  const handleDownload = (file) =>
-    downloadFile(file, token).catch(console.error);
-
-  const handleDelete = (file) =>
-    deleteFile(file, token)
-      .then(() => {
-        removeSearchResult(file);
-      })
-      .catch(console.error);
-
-  const columns = useMemo(
-    () => ["Name", "Updated at", "Size", "Uploader", "Workspace"],
-    [],
+  const dataIds = useMemo(
+    () => elements.map((f) => f.id + "_" + f.workspaceID),
+    [elements],
   );
 
-  const columnRenderers = {
-    name: (file) => getFilenameWithIcon(file.name),
-    uploadedAt: (file) => file.uploadedAt,
-    size: (file) => formatByteSize(file.size),
-    uploader: (file) => file.uploaderName,
-    workspaceID: (file) => file.workspaceID,
-  };
+  const table = useReactTable({
+    data: elements,
+    columns: fileTreeColumns,
+    getCoreRowModel: getCoreRowModel(),
+    getRowId: (row) => row.id + "_" + row.workspaceID,
+  });
 
-  const renderRow = (file) => (
-    <FileRow
-      key={`${file.id}_${file.workspaceID}`}
-      file={file}
-      columns={["name", "uploadedAt", "size", "uploader", "workspaceID"]}
-      columnRenderers={columnRenderers}
-      onClick={() => toggleSelect(file)}
-      onMouseEnter={() => setHovered(file)}
-      isSelected={selected.has(file.id)}
-      buttons={
-        <>
-          <Button variant="icon" onClick={() => handleShare(file)}>
-            <TablerShare className={styles.icons} />
-          </Button>
-          <Button variant="icon" onClick={() => setShowRenameModal(true)}>
-            <LucideEdit3 className={styles.icons} />
-          </Button>
-          <Button variant="icon" onClick={() => handleDownload(file)}>
-            <TablerDownload className={styles.icons} />
-          </Button>
-          <Button variant="icon" onClick={() => handleDelete(file)}>
-            <MynauiTrash className={styles.icons} />
-          </Button>
-        </>
-      }
-    />
+  const sensors = useSensors(
+    useSensor(MouseSensor),
+    useSensor(TouchSensor),
+    useSensor(KeyboardSensor),
   );
 
   return (
-    <div className={styles.page}>
-      <Table
-        columns={columns}
-        data={searchResults?.elements || []}
-        renderRow={renderRow}
-        tableClassName={styles.filesList}
-        headerRowClassName={styles.theader}
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      modifiers={[restrictToVerticalAxis]}
+      onDragEnd={(e) => {
+        console.log(e);
+      }}
+    >
+      <FileTreeTable
+        table={table}
+        dataIds={dataIds}
+        DraggableRow={DraggableRow}
       />
-
-      {showShareModal && (
-        <ShareModal
-          link={`${METADATA_URI}/file/${[...selected][0]}?link={shareLink}`}
-          onClose={() => setShowShareModal(false)}
-        />
-      )}
-
-      {showRenameModal && (
-        <RenameModal file={hovered} onClose={() => setShowRenameModal(false)} />
-      )}
-    </div>
+    </DndContext>
   );
 };

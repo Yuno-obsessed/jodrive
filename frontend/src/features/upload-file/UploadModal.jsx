@@ -9,7 +9,7 @@ import {
   uploadChunksWithRetry,
   UploadObserver,
 } from "../../util/chunkUpload.js";
-import { Modal } from "../../components/modal/index.jsx";
+import { Modal } from "../../components/ui/modal/index.jsx";
 import { Button } from "../../components/ui/button/index.jsx";
 import { useSearchModel } from "../../enitites/file/model/index.js";
 import { Workspaces } from "../../widgets/workspaces/Workspaces.jsx";

@@ -39,7 +39,7 @@ export const Sidebar = () => {
     return parseFloat(gb.toFixed(2));
   };
 
-  let usedStorage = userInfo.statistics
+  let usedStorage = userInfo?.statistics
     .filter((s) => s.quota === "USER_STORAGE_USED")
     .map((s) => mapToGB(s.value));
 

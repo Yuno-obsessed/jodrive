@@ -1,7 +1,7 @@
 import { useSearchModel } from "../../enitites/file/model/index.js";
 import useAuthStore from "../../util/authStore.js";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import Table from "../../components/table/index.jsx";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Table from "../../components/ui/table/index.jsx";
 import styles from "./FileDeletedPage.module.css";
 import { updateFile } from "../../api/UpdateFile.js";
 import { formatByteSize } from "../../util/fileUtils.js";

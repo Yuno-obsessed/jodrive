@@ -25,14 +25,35 @@
 }
 
 .destructionButton{
-  border: 1px solid #1976d2;
-  color: rgb(var(--accent-color));
+  background-color: rgba(
+          var(--destruction-color)
+          , var(--opacity-very-low)
+  );
+  transition: background-color 0.1s;
+  color: rgb(var(--destruction-color));
 }
+
+.destructionButton:hover{
+  background-color: rgba(
+          var(--destruction-color)
+          , var(--opacity-low)
+  );
+}
+
 
 .ghostButton{
   color:  rgb(var(--accent-color));
   background-color: rgba(
           var(--accent-color)
+    , var(--opacity-very-low)
+  );
+  transition: background-color 0.1s;
+}
+
+.ghostButton:hover{
+  background-color: rgba(
+          var(--accent-color)
     , var(--opacity-low)
   );
 }
+

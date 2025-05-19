@@ -29,7 +29,7 @@ function App() {
           </Routes>
         </MainLayout>
       ) : (
-        <div>Loading...</div>
+        <div></div>
       )}
     </>
   );

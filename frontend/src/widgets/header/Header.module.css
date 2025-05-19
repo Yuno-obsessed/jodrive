@@ -7,20 +7,3 @@
   height: 80px;
 }
 
-.user {
-  display: flex;
-  flex-direction: row;
-  gap: 5px
-}
-
-.userImg {
-  height: 30px;
-  width: 30px;
-}
-
-.user svg:hover {
-  background: #d8d2d2;
-  border-radius: 50%;
-  opacity: 0.8;
-  transition: opacity 0.4s ease;
-}

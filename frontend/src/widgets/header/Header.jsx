@@ -1,36 +1,17 @@
-import React from "react";
-import { SearchBar } from "../../features/search-bar/SearchBar.jsx";
 import styles from "./Header.module.css";
-import MaterialSymbolsLogoutSharp from "~icons/material-symbols/logout-sharp";
-import MdiUser from "~icons/mdi/user";
 import useAuthStore from "../../util/authStore.js";
-import { Button } from "../../components/ui/button/index.jsx";
-import { ProfileViewModalButton } from "../../features/profile-actions/index.jsx";
+import { ProfileDropDownButton } from "../../features/profile-actions/index.jsx";
+import MdiAccount from "~icons/mdi/account?width=42px&height=42px";
+import { SearchBar } from "../../features/search-bar/SearchBar.jsx";
 
 export const Header = () => {
-  const { userInfo, logout } = useAuthStore();
-
+  const { userInfo } = useAuthStore();
   return (
     <header className={styles.headerMain}>
       <SearchBar />
-      <div className={styles.user}>
-        <ProfileViewModalButton
-          children={
-            userInfo.avatarURL ? (
-              <img
-                alt="profile"
-                src={userInfo.avatarURL}
-                className={styles.userImg}
-              />
-            ) : (
-              <MdiUser className={styles.userImg} />
-            )
-          }
-        ></ProfileViewModalButton>
-        <Button variant="icon" onClick={logout}>
-          <MaterialSymbolsLogoutSharp className={styles.userImg} />
-        </Button>
-      </div>
+      <ProfileDropDownButton
+        children={userInfo ? <MdiAccount /> : <div></div>}
+      />
     </header>
   );
 };

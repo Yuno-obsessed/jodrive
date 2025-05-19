@@ -3,6 +3,9 @@
     position: relative;
     flex-direction: column;
     align-items: center;
+    button{
+        color: rgb(var(--accent-color));
+    }
 }
 .overlay{
     top: 36px;
