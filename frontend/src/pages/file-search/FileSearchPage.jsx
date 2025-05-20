@@ -18,6 +18,7 @@ import { RenameModal } from "../../features/rename-file/RenameModal.jsx";
 import { ShareModal } from "../../features/share-file/ShareModal.jsx";
 import { METADATA_URI } from "../../consts/Constants.js";
 import useAuthStore from "../../util/authStore.js";
+import { Breadcrumb } from "../../components/ui/breadcrumb/index.jsx";
 
 export const FileSearchPage = () => {
   const { searchResults } = useSearchModel();
@@ -116,7 +117,8 @@ export const FileSearchPage = () => {
   };
 
   return (
-    <>
+    <div>
+      <Breadcrumb />
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -146,6 +148,6 @@ export const FileSearchPage = () => {
           onClose={() => setFileToRename(null)}
         />
       )}
-    </>
+    </div>
   );
 };

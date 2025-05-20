@@ -4,12 +4,11 @@ import { Button } from "../../components/ui/button/index.jsx";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import clsx from "clsx";
-import { useWorkspacesModel } from "../../enitites/workspace/model/index.js";
 import { navigation } from "./navigation/index.jsx";
 
 export const Sidebar = () => {
   const { userInfo } = useAuthStore();
-  const { userWorkspaces, activeWorkspace, setActive } = useWorkspacesModel();
+
   const navigate = useNavigate();
   const location = useLocation();
 

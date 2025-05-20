@@ -18,6 +18,7 @@ import { DraggableRow } from "../../components/ui/draggable-item/index.jsx";
 import { useFileTree } from "./model/index.js";
 import { fileTreeColumns } from "./config/index.js";
 import { FileTreeTable } from "../../components/ui/table-v2/index.jsx";
+import { Breadcrumb } from "../../components/ui/breadcrumb/index.jsx";
 
 export const FileTreePage = () => {
   const { id } = useParams();
@@ -40,18 +41,39 @@ export const FileTreePage = () => {
     useSensor(TouchSensor),
     useSensor(KeyboardSensor),
   );
+  const handleEvents = ({ id, event, data }) => {
+    console.log(id, event, data);
+    switch (id) {
+      case "share":
+        console.log("share");
+        break;
+      case "download":
+        console.log("share");
+        break;
+      case "delete":
+        console.log("share");
+        break;
+      case "rename":
+        console.log("rename");
+        break;
+    }
+  };
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      modifiers={[restrictToVerticalAxis]}
-    >
-      <FileTreeTable
-        table={table}
-        dataIds={dataIds}
-        DraggableRow={DraggableRow}
-      />
-    </DndContext>
+    <div>
+      <Breadcrumb />
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        modifiers={[restrictToVerticalAxis]}
+      >
+        <FileTreeTable
+          table={table}
+          dataIds={dataIds}
+          DraggableRow={DraggableRow}
+          eventHandler={handleEvents}
+        />
+      </DndContext>
+    </div>
   );
 };

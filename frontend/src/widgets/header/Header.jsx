@@ -8,6 +8,7 @@ import { Button } from "../../components/ui/button/index.jsx";
 
 export const Header = () => {
   const { userInfo, logout } = useAuthStore();
+
   return (
     <header className={styles.headerMain}>
       <SearchBar />

@@ -1,0 +1,16 @@
+.crumb {
+    display: flex;
+    gap: 8px;
+    font-size: 14px;
+    a{
+        text-decoration: none;
+    }
+}
+.isLast{
+    opacity: 0.4;
+}
+
+.breadcrumb-item {
+    font-weight: bold;
+    color: gray;
+}

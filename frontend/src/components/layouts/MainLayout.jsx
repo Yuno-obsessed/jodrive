@@ -1,13 +1,17 @@
 import styles from "./MainLayout.module.css";
+import useAuthStore from "../../util/authStore.js";
+import { Outlet } from "react-router-dom";
 
-export const MainLayout = ({ sidebar, header, children }) => {
+export const MainLayout = ({ sidebar, header }) => {
+  const { authenticated } = useAuthStore();
+
   return (
     <div className={styles.layout}>
       <div className={styles.content}>
-        {sidebar}
+        {authenticated && sidebar}
         <main className={styles.main}>
-          {header}
-          {children}
+          {authenticated && header}
+          <Outlet />
         </main>
       </div>
     </div>
