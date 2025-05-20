@@ -1,9 +1,8 @@
 import { useSearchModel } from "../../enitites/file/model/index.js";
 import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
 
-import { act, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { FileTreeTable } from "../../components/ui/table-v2/index.jsx";
-import { DraggableRow } from "../../components/ui/draggable-item/index.jsx";
 import {
   closestCenter,
   DndContext,
@@ -15,9 +14,6 @@ import {
 } from "@dnd-kit/core";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { fileSearchColumns } from "./config/index.js";
-import { deleteFile } from "../../api/DeleteFile.js";
-import { downloadFile } from "../../api/DownloadFile.js";
-import { constructLink } from "../../api/ConstructLink.js";
 import { RenameModal } from "../../features/rename-file/RenameModal.jsx";
 import { ShareModal } from "../../features/share-file/ShareModal.jsx";
 import { METADATA_URI } from "../../consts/Constants.js";
@@ -133,7 +129,6 @@ export const FileSearchPage = () => {
           table={table}
           dataIds={dataIds}
           eventHandler={handleEvents}
-          // DraggableRow={DraggableRow}
         />
       </DndContext>
 
