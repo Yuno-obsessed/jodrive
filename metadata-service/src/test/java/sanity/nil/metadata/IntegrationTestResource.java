@@ -13,6 +13,7 @@ public class IntegrationTestResource implements QuarkusTestResourceLifecycleMana
 
     private PostgreSQLContainer<?> jdbcContainer;
     private GenericContainer<?> redisContainer;
+    private GenericContainer<?> minioContainer;
 
     @Override
     public Map<String, String> start() {
@@ -23,7 +24,13 @@ public class IntegrationTestResource implements QuarkusTestResourceLifecycleMana
         redisContainer = new GenericContainer<>("redis:alpine")
                 .withExposedPorts(6379)
                 .withCommand("redis-server");
+        minioContainer = new GenericContainer<>("quay.io/minio/minio:latest")
+                .withExposedPorts(9000)
+                .withCommand("server --address :9000 /mnt/data")
+                .withEnv("MINIO_ROOT_USER", "Q3AM3UQ867SPQQA43P2F")
+                .withEnv("MINIO_ROOT_PASSWORD", "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG");
 
+        minioContainer.start();
         jdbcContainer.start();
         redisContainer.start();
 
@@ -37,9 +44,12 @@ public class IntegrationTestResource implements QuarkusTestResourceLifecycleMana
         config.put("quarkus.datasource.username", jdbcContainer.getUsername());
         config.put("quarkus.datasource.password", jdbcContainer.getPassword());
         config.put("quarkus.redis.hosts", redisUrl);
+        config.put("application.minio.url", minioContainer.getHost());
+        config.put("application.minio.port", String.valueOf(minioContainer.getMappedPort(9000)));
 
         log.info("Postgres started at url: " + pgUrl);
         log.info("Redis started at url: " + redisUrl);
+        log.info("Minio started at url: " + minioContainer.getHost() + ":" + minioContainer.getMappedPort(9000));
         return config;
     }
 
@@ -47,5 +57,6 @@ public class IntegrationTestResource implements QuarkusTestResourceLifecycleMana
     public void stop() {
         if (jdbcContainer != null) jdbcContainer.stop();
         if (redisContainer != null) redisContainer.stop();
+        if (minioContainer != null) minioContainer.stop();
     }
 }

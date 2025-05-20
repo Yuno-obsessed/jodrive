@@ -2,31 +2,14 @@ import styles from "./Sidebar.module.css";
 import useAuthStore from "../../util/authStore.js";
 import { Button } from "../../components/ui/button/index.jsx";
 import { useLocation, useNavigate } from "react-router-dom";
-import MingcuteHome4Line from "~icons/mingcute/home-4-line";
-import MaterialSymbolsGroups from "~icons/material-symbols/groups";
-import MynauiTrash from "~icons/mynaui/trash";
-import clsx from "clsx";
 
-const navigation = [
-  {
-    name: "Home",
-    icon: <MingcuteHome4Line className={styles.sidebarImages} />,
-    link: "/",
-  },
-  {
-    name: "Workspaces",
-    icon: <MaterialSymbolsGroups className={styles.sidebarImages} />,
-    link: "/workspaces",
-  },
-  {
-    name: "Trash",
-    icon: <MynauiTrash className={styles.sidebarImages} />,
-    link: "/deleted",
-  },
-];
+import clsx from "clsx";
+import { useWorkspacesModel } from "../../enitites/workspace/model/index.js";
+import { navigation } from "./navigation/index.jsx";
 
 export const Sidebar = () => {
   const { userInfo } = useAuthStore();
+  const { userWorkspaces, activeWorkspace, setActive } = useWorkspacesModel();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -59,10 +42,16 @@ export const Sidebar = () => {
               styles.sidebarEl,
               isActive(item.link) && styles.activeButton,
             )}
-            onClick={() => navigate(item.link)}
+            onClick={() => {
+              console.log(item.children);
+              if (!item.children) {
+                navigate(item.link);
+              }
+            }}
           >
             {item.icon}
             {item.name}
+            {item.children ? item.children : <></>}
           </Button>
         ))}
 
