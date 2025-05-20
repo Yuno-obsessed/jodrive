@@ -14,10 +14,27 @@
     background: rgba(var(--widgets-color));
     position: absolute;
 }
-.dropdown{
+.userInfo {
     display: flex;
+    flex-wrap: wrap;
     flex-direction: column;
-    gap: 12px;
-    width: 100%;
-    margin: 10px;
+    align-items: flex-start;
+    max-height: 200px;
+}
+.userInfo {
+    img,svg {
+        height: 150px;
+        width: 150px;
+        padding-bottom: 5px;
+    }
+}
+.userInfoItem {
+    margin: 5px;
+    padding: 5px;
+    border: 1px solid #ddd;
+}
+.changeAvatar {
+    input {
+        display: none;
+    }
 }

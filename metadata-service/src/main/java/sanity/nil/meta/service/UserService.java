@@ -46,6 +46,7 @@ public class UserService {
     @Inject
     MinioOperations minioOperations;
     private final String DEFAULT_STATISTICS_VALUE = "0";
+    private final String AVATAR_BUCKET = "user.avatars";
 
     @Transactional
     public UserBaseDTO getUser(UUID id) {
@@ -75,7 +76,7 @@ public class UserService {
 
         String avatarURL = null;
         if (StringUtils.isNotBlank(user.getAvatar())) {
-            avatarURL = minioOperations.getObjectURL("user_avatars", user.getAvatar());
+            avatarURL = minioOperations.getObjectURL(AVATAR_BUCKET, user.getAvatar());
         }
 
         if (id.equals(identity.getUserID())) {
@@ -104,8 +105,8 @@ public class UserService {
             minioOperations.putObject(
                     PutObjectArgs.builder().contentType(photo.contentType())
                             .object(filename)
-                            .bucket("user_avatars")
-                            .stream(new FileInputStream(photo.uploadedFile().toFile()), photo.size(), -1)
+                            .bucket(AVATAR_BUCKET)
+                            .stream(new FileInputStream(photo.uploadedFile().toFile()), photo.size(), -1).build()
             );
         } catch (FileNotFoundException e) {
             log.error(e.getMessage());
@@ -123,6 +124,6 @@ public class UserService {
         var user = entityManager.find(UserModel.class, identity.getUserID());
         user.setAvatar(photo);
         entityManager.persist(user);
-        return minioOperations.getObjectURL("user_avatars", photo);
+        return minioOperations.getObjectURL(AVATAR_BUCKET, photo);
     }
 }

@@ -14,11 +14,11 @@
 }
 
 .userImg {
-  height: 30px;
-  width: 30px;
+  height: 25px;
+  width: 25px;
 }
 
-.user svg:hover {
+.userImg:hover {
   background: #d8d2d2;
   border-radius: 50%;
   opacity: 0.8;

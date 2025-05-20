@@ -65,10 +65,12 @@ public class MinioOperations {
     }
 
     public void putObject(PutObjectArgs.Builder argsBuilder) throws StorageException {
+       putObject(argsBuilder.bucket(DEFAULT_BUCKET).build());
+    }
+
+    public void putObject(PutObjectArgs args) throws StorageException {
         try {
-            var response = minioClient.putObject(
-                    argsBuilder.bucket(DEFAULT_BUCKET).build()
-            );
+            var response = minioClient.putObject(args);
             if (response.etag() == null) {
                 throw new StorageException("Error uploading object: " + response.etag());
             }

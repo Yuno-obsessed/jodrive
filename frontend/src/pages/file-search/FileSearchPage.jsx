@@ -99,6 +99,8 @@ export const FileSearchPage = () => {
         handleDelete(data);
         break;
       case "rename":
+        console.log("rename");
+        break;
     }
   };
 

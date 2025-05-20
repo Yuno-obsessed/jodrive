@@ -14,9 +14,10 @@ export async function changeUserAvatar(userID, filename, token) {
   if (response.status !== 200) {
     throw new Error("Error changing avatar");
   }
+  return response.text();
 }
 
-export async function uploadAvatar(file, token) {
+export async function uploadPhoto(file, token) {
   if ((!file) instanceof Blob) {
     return new Error("Invalid parameters");
   }
@@ -30,7 +31,7 @@ export async function uploadAvatar(file, token) {
     },
   });
   if (response.status !== 200) {
-    throw new Error("Failed uploading avatar");
+    throw new Error("Failed uploading photo");
   }
-  return await response.json();
+  return await response.text();
 }
