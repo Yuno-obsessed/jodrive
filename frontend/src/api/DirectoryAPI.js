@@ -30,7 +30,7 @@ export async function createDirectory(request, token) {
   }
   const response = await fetch(`${METADATA_URI}/directory`, {
     method: "POST",
-    body: request,
+    body: JSON.stringify(request),
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,

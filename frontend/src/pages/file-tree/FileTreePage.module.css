@@ -1,4 +1,6 @@
-.workSpace{
+.wrapper {
     display: flex;
-    gap: 12px;
+    flex-direction: column;
+    gap: 24px;
+    align-items: flex-end;
 }

@@ -4,37 +4,15 @@
   gap: 24px;
 }
 
-.closeButton {
-  color: black;
-  position: absolute;
-  top: 8px;
-  right: 12px;
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-}
-
 .workspaces{
   display: flex;
   gap: 12px;
 }
-.directories {
-  align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  max-width: fit-content;
-}
-
-.directories button {
-  width: fit-content;
-  padding: 4px 8px;
-  text-align: center;
-  cursor: pointer;
-}
 
 .modalButton{
+  button {
+    height: 41.6px;
+  }
   padding-left: 10px;
   display: flex;
   height: 100%;

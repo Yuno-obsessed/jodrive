@@ -5,6 +5,7 @@
     a{
         text-decoration: none;
     }
+    width: 100%;
 }
 .isLast{
     opacity: 0.4;

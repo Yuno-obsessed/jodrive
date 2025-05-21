@@ -7,7 +7,7 @@ export const UploadModalButton = () => {
   const [showUploadModal, setShowUploadModal] = useState(false);
   return (
     <div className={styles.modalButton}>
-      <Button onClick={() => setShowUploadModal(true)} variant={"destruction"}>
+      <Button onClick={() => setShowUploadModal(true)} variant={"ghost"}>
         Upload File
       </Button>
       {showUploadModal && (

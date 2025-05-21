@@ -1,7 +1,7 @@
 import { listDirectory } from "../../../api/DirectoryAPI.js";
 import { useEffect } from "react";
 
-export const useFileTree = (workspaceID, directory = "/", token, setFiles) => {
+export const useFileTree = (workspaceID, directory, token, setFiles) => {
   useEffect(() => {
     const fetchFiles = async () => {
       try {
@@ -11,6 +11,6 @@ export const useFileTree = (workspaceID, directory = "/", token, setFiles) => {
         console.error("Failed to load files:", err);
       }
     };
-    if (workspaceID && token) fetchFiles().then((r) => console.log(r));
-  }, [workspaceID, token, setFiles]);
+    if (workspaceID && token) void fetchFiles();
+  }, [directory, workspaceID, token, setFiles]);
 };
