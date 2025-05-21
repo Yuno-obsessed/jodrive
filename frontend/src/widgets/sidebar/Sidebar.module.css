@@ -45,13 +45,13 @@ a:visited {
 }
 
 
-
 .sidebarEl {
   justify-content: left;
   color: rgba(var(--background-color), 0.6);
-  align-items: center;
+  align-items: flex-start;
   background: transparent;
   display: flex;
+  flex-direction: column;
   gap: 12px;
   width: 100%;
   list-style: none;
@@ -60,6 +60,20 @@ a:visited {
 }
 .sidebarEl:hover:not(.activeButton){
   background: rgba(var(--accent-color), 0.08)
+}
+.item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.sidebarChildren {
+  display: flex;
+  flex-direction: column;
+}
+.wsItem {
+  padding-left: 10px;
+  display: flex;
+  align-content: flex-start;
 }
 
 .activeButton {

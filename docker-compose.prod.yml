@@ -1,9 +1,9 @@
 x-minio-common: &minio-common
   image: quay.io/minio/minio:latest
-  command: server --address ":9000" --console-address ":9001" http://minio1/minio.data{1...2}
-  ports:
-    - "9000:9000"
-    - "9001:9001"
+  command: server --address ":9000" --console-address ":9001" http://minio/minio.data{1...2}
+  expose:
+    - "9000"
+    - "9001"
   environment:
     - MINIO_ROOT_USER=Q3AM3UQ867SPQQA43P2F
     - MINIO_ROOT_PASSWORD=zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG
@@ -34,19 +34,13 @@ services:
     volumes:
       - ./pgdata:/var/lib/postgresql/users:rw
       - ./config/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
-    profiles:
-      - prod
-      - dev
 
-  minio1:
+  minio:
     <<: *minio-common
-    hostname: minio1
+    hostname: minio
     volumes:
       - minio.data1-1:/minio.data1
       - minio.data1-2:/minio.data2
-    profiles:
-      - prod
-      - dev
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.2.0
@@ -70,9 +64,6 @@ services:
         condition: service_started
     volumes:
       - ./config/keycloak/keycloak.conf:/opt/keycloak/conf/keycloak.conf
-    profiles:
-      - prod
-      - dev
 
   block-service:
     hostname: block-service
@@ -89,10 +80,8 @@ services:
         condition: service_healthy
       keycloak:
         condition: service_started
-      minio1:
+      minio:
         condition: service_started
-    profiles:
-      - prod
 
   metadata-service:
     hostname: metadata-service
@@ -109,10 +98,8 @@ services:
         condition: service_healthy
       keycloak:
         condition: service_started
-      minio1:
+      minio:
         condition: service_started
-    profiles:
-      - prod
 
   redis:
     container_name: redis
@@ -128,9 +115,6 @@ services:
       timeout: 4s
       retries: 5
       start_period: 10s
-    profiles:
-      - prod
-      - dev
 
   nginx:
     image: nginx:latest
@@ -139,15 +123,14 @@ services:
     restart: on-failure
     ports:
       - "80:80"
+      - "9000:9000"
+      - "9001:9001"
     depends_on:
       keycloak:
         condition: service_started
     volumes:
       - ./config/nginx/conf.prod/:/etc/nginx/conf.d/
       - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf
-    profiles:
-      - prod
-      - dev
 
 
 # Monitoring
@@ -159,8 +142,6 @@ services:
       - DATA_SOURCE_URI=jodrive-db:5432/jodrive?sslmode=disable
       - DATA_SOURCE_USER=sanity
       - DATA_SOURCE_PASS=wordpass
-    profiles:
-      - prod
 
   prometheus:
     image: prom/prometheus
@@ -184,8 +165,6 @@ services:
       - "3000:3000"
     volumes:
       - ./config/grafana:/etc/grafana/provisioning
-    profiles:
-      - prod
 
 #  minio2:
 #    <<: *minio-common

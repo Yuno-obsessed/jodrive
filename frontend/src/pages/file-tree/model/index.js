@@ -1,11 +1,11 @@
 import { listDirectory } from "../../../api/DirectoryAPI.js";
 import { useEffect } from "react";
 
-export const useFileTree = (workspaceID, token, setFiles) => {
+export const useFileTree = (workspaceID, directory = "/", token, setFiles) => {
   useEffect(() => {
     const fetchFiles = async () => {
       try {
-        const res = await listDirectory({ workspaceID, directory: "/" }, token);
+        const res = await listDirectory({ workspaceID, directory }, token);
         setFiles(res.elements);
       } catch (err) {
         console.error("Failed to load files:", err);

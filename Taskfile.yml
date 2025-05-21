@@ -14,26 +14,26 @@ tasks:
 
   init:
     cmds:
-      - docker-compose up -d jodrive-db
+      - docker-compose -f docker-compose.prod.yml up -d jodrive-db
       - docker exec -i jodrive-db psql -U sanity -d jodrive < ./config/keycloak/dump.sql
-      - docker-compose --profile prod up -d --build
+      - docker-compose -f docker-compose.prod.yml up -d --build
 
   init-dev:
     cmds:
-      - docker-compose up -d jodrive-db
+      - docker-compose -f docker-compose.dev.yml up -d jodrive-db
       - sleep 3
       - docker exec -i jodrive-db psql -U sanity -d jodrive < ./config/keycloak/dump.sql
       - sleep 2
-      - docker-compose --profile dev up -d --build
+      - docker-compose -f docker-compose.dev.yml up -d --build
 
   run:
     cmds:
-      - docker-compose --profile prod up -d --build
+      - docker-compose -f docker-compose.prod.yml up -d --build
 
   dev:
     cmds:
-      - docker-compose --profile dev up -d
+      - docker-compose -f docker-compose.dev.yml up -d
 
   down-dev:
     cmds:
-      - docker-compose --profile dev down -v
+      - docker-compose -f docker-compose.dev.yml dev down -v

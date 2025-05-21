@@ -2,19 +2,20 @@ import styles from "./Sidebar.module.css";
 import useAuthStore from "../../util/authStore.js";
 import { Button } from "../../components/ui/button/index.jsx";
 import { useLocation, useNavigate } from "react-router-dom";
+import MdiMenuRight from "~icons/mdi/menu-right";
 
 import clsx from "clsx";
-import { navigation } from "./navigation/index.jsx";
+import { navigationElements } from "./navigation/index.jsx";
+import { useEffect, useState } from "react";
+import { getWorkspaces } from "../../api/WorkspaceAPI.js";
 
 export const Sidebar = () => {
-  const { userInfo } = useAuthStore();
+  const { userInfo, token } = useAuthStore();
+  const [showWorkspaces, setShowWorkspaces] = useState(false);
+  const [workspaceItems, setWorkspaceItems] = useState([]);
 
   const navigate = useNavigate();
   const location = useLocation();
-
-  const isActive = (link) => {
-    return location.pathname === link;
-  };
 
   const mapToGB = (bytes) => {
     const gb = bytes / 1_073_741_824;
@@ -30,29 +31,79 @@ export const Sidebar = () => {
     return (storageLimit / 100) * usedStorage;
   };
 
+  useEffect(() => {
+    getWorkspaces(token)
+      .then((res) => {
+        const items = res.map((w) => ({
+          id: w.id,
+          name: w.name,
+          link: `/workspace/${w.id}`,
+        }));
+        setWorkspaceItems(items);
+      })
+      .catch(console.log);
+  }, [token]);
+
+  const navItems = navigationElements(token, workspaceItems);
+
+  const isLinkActive = (link) => location.pathname === link;
+  const isChildActive = (children) =>
+    children?.some((child) => location.pathname.startsWith(child.link));
+
   return (
     <aside className={styles.sidebar}>
       <ul className={styles.sidebarList}>
-        {navigation.map((item) => (
-          <Button
-            variant={"ghost"}
-            key={item.name}
-            className={clsx(
-              styles.sidebarEl,
-              isActive(item.link) && styles.activeButton,
-            )}
-            onClick={() => {
-              console.log(item.children);
-              if (!item.children) {
-                navigate(item.link);
-              }
-            }}
-          >
-            {item.icon}
-            {item.name}
-            {item.children ? item.children : <></>}
-          </Button>
-        ))}
+        {navItems.map((item) => {
+          const active = isLinkActive(item.link);
+
+          return (
+            <div key={item.name}>
+              <Button
+                variant="ghost"
+                className={clsx(
+                  styles.sidebarEl,
+                  active && styles.activeButton,
+                )}
+                onClick={() => {
+                  if (item.children) {
+                    setShowWorkspaces(!showWorkspaces);
+                  } else {
+                    navigate(item.link);
+                  }
+                }}
+              >
+                <div className={styles.item}>
+                  {item.icon}
+                  {item.name}
+                </div>
+              </Button>
+
+              {item.children && showWorkspaces && (
+                <div className={styles.sidebarChildren}>
+                  {item.children.map((child) => (
+                    <Button
+                      key={child.link}
+                      variant="ghost"
+                      className={clsx(
+                        styles.sidebarEl,
+                        isLinkActive(child.link) && styles.activeButton,
+                      )}
+                      onClick={(e) => {
+                        e.stopPropagation(); // prevent parent from toggling
+                        navigate(child.link);
+                      }}
+                    >
+                      <div className={styles.wsItem}>
+                        <MdiMenuRight />
+                        {child.name}
+                      </div>
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
 
         <div className={styles.storageBar}>
           <div

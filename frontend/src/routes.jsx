@@ -15,11 +15,11 @@ export const router = () =>
       },
       children: [
         {
-          path: "",
+          path: "/",
           element: <FileSearchPage />,
         },
         {
-          path: "workspace/:id",
+          path: "workspace/:id/*",
           element: <FileTreePage />,
           handle: {
             crumb: ({ params }) => <span>Workspace {params.id}</span>,

@@ -3,9 +3,8 @@
     flex-direction: row;
     gap: 8px;
     align-items: center;
-}
-
-.filename svg {
-    width: 20px;
-    height: 20px;
+    svg {
+        width: 20px;
+        height: 20px;
+    }
 }

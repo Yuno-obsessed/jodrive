@@ -21,7 +21,7 @@ scrape_configs:
     scheme: http
     bearer_token: eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJwcm9tZXRoZXVzIiwic3ViIjoiUTNBTTNVUTg2N1NQUVFBNDNQMkYiLCJleHAiOjQ5MDA2ODU0OTd9.4_Gw7tVJ8ixva7xQev3JxfusiE0gjU0UG7MKnCkVHXUwJ8pHlzpbphe56bR-BQd9Fw_GNr7NXmnX7v4Kp4ppRQ
     static_configs:
-      - targets: [ 'minio1:9000' ]
+      - targets: [ 'nginx:9000' ]
     metrics_path: /minio/metrics/v3
 
   - job_name: 'minio-blocks-bucket'
@@ -29,4 +29,4 @@ scrape_configs:
     bearer_token: eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJwcm9tZXRoZXVzIiwic3ViIjoiUTNBTTNVUTg2N1NQUVFBNDNQMkYiLCJleHAiOjQ5MDA2ODU0OTd9.4_Gw7tVJ8ixva7xQev3JxfusiE0gjU0UG7MKnCkVHXUwJ8pHlzpbphe56bR-BQd9Fw_GNr7NXmnX7v4Kp4ppRQ
     metrics_path: /minio/metrics/v3/bucket/api/blocks
     static_configs:
-      - targets: [ 'minio1:9000' ]
+      - targets: [ 'nginx:9000' ]

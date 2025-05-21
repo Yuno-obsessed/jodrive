@@ -1,6 +1,6 @@
 import useAuthStore from "../../util/authStore.js";
 import { useTreeModel } from "../../enitites/file-tree/model/index.js";
-import { useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import { useMemo } from "react";
 import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
 
@@ -19,13 +19,23 @@ import { useFileTree } from "./model/index.js";
 import { fileTreeColumns } from "./config/index.js";
 import { FileTreeTable } from "../../components/ui/table-v2/index.jsx";
 import { Breadcrumb } from "../../components/ui/breadcrumb/index.jsx";
+import { FileTreeMenuActions } from "./context/index.jsx";
 
 export const FileTreePage = () => {
   const { id } = useParams();
   const { token } = useAuthStore();
   const { files, setFiles } = useTreeModel();
 
-  useFileTree(id, token, setFiles);
+  const location = useLocation();
+
+  // Get the dynamic subpath (e.g. "/home/user/photos")
+  const basePath = `/workspace/${id}`;
+  const subPath = location.pathname.replace(basePath, "") || "/";
+  const folderSegments = subPath.split("/").filter(Boolean);
+  console.log(subPath);
+  console.log(folderSegments);
+
+  useFileTree(id, "/", token, setFiles);
 
   const table = useReactTable({
     data: files,
@@ -59,6 +69,25 @@ export const FileTreePage = () => {
     }
   };
 
+  const findByID = (rowID) => {
+    console.log(files);
+    return files.filter((f) => f.id === rowID)[0];
+  };
+
+  const moveFileInDirectory = (event) => {
+    const { active, over } = event;
+    const activeFile = findByID(active.id);
+    const overFile = findByID(over.id);
+    console.log(activeFile, overFile);
+    if (activeFile && overFile && active.id !== over.id) {
+      if (!activeFile.isDirectory && overFile.isDirectory) {
+        console.log(
+          `Putting file ${activeFile.id} to directory ${overFile.id}`,
+        );
+      }
+    }
+  };
+
   return (
     <div>
       <Breadcrumb />
@@ -66,12 +95,14 @@ export const FileTreePage = () => {
         sensors={sensors}
         collisionDetection={closestCenter}
         modifiers={[restrictToVerticalAxis]}
+        onDragEnd={(e) => {
+          moveFileInDirectory(e);
+        }}
       >
         <FileTreeTable
           table={table}
           dataIds={dataIds}
-          DraggableRow={DraggableRow}
-          eventHandler={handleEvents}
+          actions={<FileTreeMenuActions handleEvents={handleEvents} />}
         />
       </DndContext>
     </div>

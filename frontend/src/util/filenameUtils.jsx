@@ -31,9 +31,9 @@ export const getFilenameWithIcon = (filename) => {
     }
   };
   return (
-    <div className={styles.filename}>
+    <span className={styles.filename}>
       {getIcon()}
       <a>{filename}</a>
-    </div>
+    </span>
   );
 };

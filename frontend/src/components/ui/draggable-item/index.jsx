@@ -2,7 +2,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { flexRender } from "@tanstack/react-table";
 import { useContextMenu } from "react-contexify";
-import { useContextMenuStore } from "../../../pages/file-search/model/context.js";
+import { useContextMenuStore } from "../table-v2/config/store/index.js";
 
 export const DraggableRow = ({ row, MENU_ID = "table" }) => {
   const {

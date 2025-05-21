@@ -19,6 +19,7 @@ import { ShareModal } from "../../features/share-file/ShareModal.jsx";
 import { METADATA_URI } from "../../consts/Constants.js";
 import useAuthStore from "../../util/authStore.js";
 import { Breadcrumb } from "../../components/ui/breadcrumb/index.jsx";
+import { FileSearchMenuActions } from "./context/index.jsx";
 
 export const FileSearchPage = () => {
   const { searchResults } = useSearchModel();
@@ -57,17 +58,6 @@ export const FileSearchPage = () => {
     return row.id + "_" + row.workspaceID;
   };
 
-  const findByID = (rowID) => {
-    console.log(rowID.substring(0, rowID.indexOf("_")));
-    console.log(rowID.substring(rowID.indexOf("_") + 1, rowID.length));
-    console.log(elements);
-    return elements.filter(
-      (f) =>
-        f.id == rowID.substring(0, rowID.indexOf("_")) &&
-        f.workspaceID == rowID.substring(rowID.indexOf("_") + 1, rowID.length),
-    )[0];
-  };
-
   const dataIds = useMemo(() => elements.map((f) => getRowID(f)), [elements]);
 
   const table = useReactTable({
@@ -101,36 +91,17 @@ export const FileSearchPage = () => {
     }
   };
 
-  // TODO: This logic will be only in filetree page (per workspace)
-  const moveFileInDirectory = (event) => {
-    const { active, over } = event;
-    const activeFile = findByID(active.id);
-    const overFile = findByID(over.id);
-    console.log(activeFile, overFile);
-    if (activeFile && overFile && active.id !== over.id) {
-      if (!activeFile.isDirectory && overFile.isDirectory) {
-        console.log(
-          `Putting file ${activeFile.id} to directory ${overFile.id}`,
-        );
-      }
-    }
-  };
-
   return (
     <div>
-      <Breadcrumb />
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
         modifiers={[restrictToVerticalAxis]}
-        onDragEnd={(e) => {
-          moveFileInDirectory(e);
-        }}
       >
         <FileTreeTable
           table={table}
           dataIds={dataIds}
-          eventHandler={handleEvents}
+          actions={<FileSearchMenuActions handleEvents={handleEvents} />}
         />
       </DndContext>
 
