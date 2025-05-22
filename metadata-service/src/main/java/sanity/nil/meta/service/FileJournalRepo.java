@@ -4,6 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import org.apache.commons.lang3.StringUtils;
@@ -94,9 +95,30 @@ public class FileJournalRepo {
 
     public List<Predicate> buildPredicatesFromParams(CriteriaBuilder cb, Root<FileJournalModel> root, Long wsID, String pathLike) {
         List<Predicate> predicates = new ArrayList<>();
+        if (!pathLike.endsWith("/")) {
+            pathLike += "/";
+        }
+
+        Expression<String> pathExpr = cb.upper(root.get("path"));
+        String upperPathLike = pathLike.toUpperCase();
+
         predicates.add(cb.equal(root.get("id").get("workspaceID"), wsID));
-        predicates.add(cb.like(cb.upper(root.get("path")), pathLike.toUpperCase() + "_%"));
+        predicates.add(cb.like(pathExpr, upperPathLike + "%"));
+
+        Expression<String> subPath = cb.function(
+                "SUBSTRING",
+                String.class,
+                pathExpr,
+                cb.literal(upperPathLike.length() + 1)
+        );
+
+        predicates.add(cb.notLike(subPath, "%/%"));
+
         predicates.add(cb.equal(root.get("state"), FileState.UPLOADED));
+//        predicates.add(cb.equal(root.get("id").get("workspaceID"), wsID));
+//        predicates.add(cb.like(cb.upper(root.get("path")), pathLike.toUpperCase() + "_%"));
+//        predicates.add(cb.notLike(cb.upper(root.get("path")), pathLike.toUpperCase() + "%/_"));
+//        predicates.add(cb.equal(root.get("state"), FileState.UPLOADED));
         return predicates;
     }
 

@@ -1,8 +1,8 @@
 import { BLOCK_URI, METADATA_URI } from "../consts/Constants.js";
 import { parallelHashChunks } from "../util/HashUtils.js";
 
-const CHUNK_SIZE = 4_000_000; // 4 MB
-const MAX_BODY_SIZE = 8_000_000; // 8 MB
+const CHUNK_SIZE = 4_194_304; // 4 MB
+const MAX_BODY_SIZE = 8_289_608; // 8 MB
 const HASH_SIZE = 64;
 const MAX_HASHES_PER_REQUEST = Math.floor(MAX_BODY_SIZE / HASH_SIZE);
 

@@ -1,6 +1,6 @@
 import useAuthStore from "../../util/authStore.js";
 import { useTreeModel } from "../../enitites/file-tree/model/index.js";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useMemo } from "react";
 import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
 
@@ -22,23 +22,23 @@ import { FileTreeMenuActions } from "./context/index.jsx";
 import { useContextMenuStore } from "../../components/ui/table-v2/config/store/index.js";
 import styles from "./FileTreePage.module.css";
 import { CreateDirectoryModalButton } from "../../features/create-dir/index.jsx";
+import { useSyncFilesystemPath } from "../../shared/fs-dir/hook.js";
+import { useFilesystemStore } from "../../shared/fs-dir/index.js";
 
 export const FileTreePage = () => {
   const { id } = useParams();
   const { token } = useAuthStore();
   const { files, setFiles } = useTreeModel();
   const navigate = useNavigate();
+  useSyncFilesystemPath(); // sync filesystem vars
+  const { currentPath, basePath } = useFilesystemStore();
 
-  const location = useLocation();
-
-  // Get the dynamic subpath (e.g. "/home/user/photos")
-  const basePath = `/workspace/${id}`;
-  const subPath = location.pathname.replace(basePath, "") || "/";
-  const folderSegments = subPath.split("/").filter(Boolean);
-  console.log(subPath);
+  console.log(currentPath, basePath);
+  const folderSegments = currentPath.split("/").filter(Boolean);
+  console.log(currentPath);
   console.log(folderSegments);
 
-  useFileTree(id, subPath, token, setFiles);
+  useFileTree(id, currentPath, token, setFiles);
 
   const table = useReactTable({
     data: files,
@@ -62,8 +62,8 @@ export const FileTreePage = () => {
       case "open":
         console.log("open");
         if (eventRow.isDirectory) {
-          console.log("opening " + basePath + subPath + eventRow.name);
-          navigate(basePath + subPath + eventRow.name);
+          console.log("opening " + basePath + currentPath + eventRow.name);
+          navigate(basePath + currentPath + eventRow.name);
           // useFileTree(id, subPath + eventRow.name);
           break;
         }
@@ -114,7 +114,7 @@ export const FileTreePage = () => {
       >
         <div className={styles.wrapper}>
           <Breadcrumb />
-          <CreateDirectoryModalButton path={subPath} wsID={id} />
+          <CreateDirectoryModalButton path={currentPath} wsID={id} />
           <FileTreeTable
             table={table}
             dataIds={dataIds}

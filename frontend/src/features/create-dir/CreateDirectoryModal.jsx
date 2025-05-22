@@ -28,7 +28,7 @@ export const CreateDirectoryModal = ({ path, wsID, onClose }) => {
             { workspaceID: wsID, path: path, name: newDir },
             token,
           )
-            .then(onClose)
+            .then(onClose())
             .catch(console.log);
         }}
       >

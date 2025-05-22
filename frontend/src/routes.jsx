@@ -5,6 +5,7 @@ import Sidebar from "./widgets/sidebar/Sidebar.jsx";
 import { FileSearchPage } from "./pages/file-search/FileSearchPage.jsx";
 import { FileTreePage } from "./pages/file-tree/FileTreePage.jsx";
 import { FileDeletedPage } from "./pages/file-deleted/FileDeletedPage.jsx";
+import { WorkspaceBreadcrumb } from "./shared/auth/WorkspaceBreadcrumb.jsx";
 
 export const router = () =>
   createBrowserRouter([
@@ -22,7 +23,7 @@ export const router = () =>
           path: "workspace/:id/*",
           element: <FileTreePage />,
           handle: {
-            crumb: ({ params }) => <span>Workspace {params.id}</span>,
+            crumb: WorkspaceBreadcrumb,
           },
         },
         {

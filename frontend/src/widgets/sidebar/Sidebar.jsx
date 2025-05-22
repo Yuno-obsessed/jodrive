@@ -89,7 +89,7 @@ export const Sidebar = () => {
                         isLinkActive(child.link) && styles.activeButton,
                       )}
                       onClick={(e) => {
-                        e.stopPropagation(); // prevent parent from toggling
+                        e.stopPropagation();
                         navigate(child.link);
                       }}
                     >

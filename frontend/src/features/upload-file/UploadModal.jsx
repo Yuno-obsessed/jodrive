@@ -14,6 +14,9 @@ import { Button } from "../../components/ui/button/index.jsx";
 import { useSearchModel } from "../../enitites/file/model/index.js";
 import { Workspaces } from "../../widgets/workspaces/Workspaces.jsx";
 import { useWorkspacesModel } from "../../enitites/workspace/model/index.js";
+import { useSyncFilesystemPath } from "../../shared/fs-dir/hook.js";
+import { useFilesystemStore } from "../../shared/fs-dir/index.js";
+import { useParams } from "react-router-dom";
 
 export const UploadModal = ({ onClose }) => {
   const [progress, setProgress] = useState(0);
@@ -21,10 +24,16 @@ export const UploadModal = ({ onClose }) => {
   const { addSearchResult } = useSearchModel();
   const [file, setFile] = useState(null);
   const { activeWorkspace } = useWorkspacesModel();
+  const { id } = useParams();
+  useSyncFilesystemPath(); // sync filesystem vars
+  const { currentPath, basePath } = useFilesystemStore();
 
   const handleUpload = async () => {
     const chunkList = await getFileChunksToUpload(file, token);
     let filename = "/" + file.name;
+    if (basePath.startsWith("/workspace") && id == activeWorkspace.id) {
+      filename = currentPath + file.name;
+    }
     let workspaceID = activeWorkspace.id;
     console.log(`Uploading file to a workspace ${workspaceID}`);
     const metadata = await checkChunkExistence(
@@ -72,7 +81,7 @@ export const UploadModal = ({ onClose }) => {
     );
 
     if (!committedMetadata.chunks || committedMetadata.chunks.length === 0) {
-      console.log("File was uploaded");
+      console.log(`File ${filename} was uploaded`);
       addSearchResult(metadata.fileInfo);
       onClose();
     }
