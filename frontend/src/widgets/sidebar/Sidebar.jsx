@@ -2,6 +2,7 @@ import styles from "./Sidebar.module.css";
 import useAuthStore from "../../util/authStore.js";
 import { Button } from "../../components/ui/button/index.jsx";
 import { useLocation, useNavigate } from "react-router-dom";
+
 import MdiMenuRight from "~icons/mdi/menu-right";
 
 import clsx from "clsx";
@@ -75,29 +76,37 @@ export const Sidebar = () => {
                 <div className={styles.item}>
                   {item.icon}
                   {item.name}
+                  {item.name === "Workspaces" && (
+                    <MdiMenuRight
+                      style={
+                        showWorkspaces
+                          ? { transform: "rotate(-90deg)" }
+                          : { transform: "rotate(90deg)" }
+                      }
+                    />
+                  )}
                 </div>
               </Button>
 
               {item.children && showWorkspaces && (
                 <div className={styles.sidebarChildren}>
                   {item.children.map((child) => (
-                    <Button
-                      key={child.link}
-                      variant="ghost"
-                      className={clsx(
-                        styles.sidebarEl,
-                        isLinkActive(child.link) && styles.activeButton,
-                      )}
-                      onClick={(e) => {
-                        e.stopPropagation(); // prevent parent from toggling
-                        navigate(child.link);
-                      }}
-                    >
-                      <div className={styles.wsItem}>
-                        <MdiMenuRight />
-                        {child.name}
-                      </div>
-                    </Button>
+                    <div>
+                      <Button
+                        key={child.link}
+                        variant="ghost"
+                        className={clsx(
+                          styles.sidebarEl,
+                          isLinkActive(child.link) && styles.activeButton,
+                        )}
+                        onClick={(e) => {
+                          e.stopPropagation(); // prevent parent from toggling
+                          navigate(child.link);
+                        }}
+                      >
+                        <div className={styles.wsItem}>{child.name}</div>
+                      </Button>
+                    </div>
                   ))}
                 </div>
               )}
