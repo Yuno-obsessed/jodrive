@@ -24,11 +24,12 @@ import styles from "./FileTreePage.module.css";
 import { CreateDirectoryModalButton } from "../../features/create-dir/index.jsx";
 import { useSyncFilesystemPath } from "../../shared/fs-dir/hook.js";
 import { useFilesystemStore } from "../../shared/fs-dir/index.js";
+import { deleteFile } from "../../api/DeleteFile.js";
 
 export const FileTreePage = () => {
   const { id } = useParams();
   const { token } = useAuthStore();
-  const { files, setFiles } = useTreeModel();
+  const { files, setFiles, removeFile } = useTreeModel();
   const navigate = useNavigate();
   useSyncFilesystemPath(); // sync filesystem vars
   const { currentPath, basePath } = useFilesystemStore();
@@ -64,10 +65,8 @@ export const FileTreePage = () => {
         if (eventRow.isDirectory) {
           console.log("opening " + basePath + currentPath + eventRow.name);
           navigate(basePath + currentPath + eventRow.name);
-          // useFileTree(id, subPath + eventRow.name);
-          break;
         }
-      // useFileTree(id, "/" + data);
+        break;
       case "share":
         console.log("share");
         break;
@@ -75,7 +74,13 @@ export const FileTreePage = () => {
         console.log("share");
         break;
       case "delete":
-        console.log("share");
+        console.log("Deleting file");
+        deleteFile(
+          { id: eventRow.id, workspaceID: eventRow.workspaceID },
+          token,
+        )
+          .then(() => removeFile(eventRow.id))
+          .catch(console.log);
         break;
       case "rename":
         console.log("rename");

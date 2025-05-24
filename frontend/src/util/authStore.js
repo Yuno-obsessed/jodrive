@@ -6,6 +6,7 @@ import {
   KEYCLOAK_REALM,
   KEYCLOAK_URI,
 } from "../consts/Constants.js";
+import { getWorkspaces } from "../api/WorkspaceAPI.js";
 
 const keycloak = new Keycloak({
   url: KEYCLOAK_URI,
@@ -25,6 +26,7 @@ const useAuthStore = create((set) => ({
     if (authenticated) {
       const userInfo = await keycloak.loadUserInfo();
       const user = await getUserInfo(userInfo.sub, keycloak.token);
+      user.workspaces = await getWorkspaces(keycloak.token);
       set({
         token: keycloak.token,
         authenticated: true,

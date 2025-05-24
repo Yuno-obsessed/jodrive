@@ -4,6 +4,7 @@ import TablerFileUnknown from "~icons/tabler/file-unknown";
 import MaterialIconThemeVideo from "~icons/material-icon-theme/video";
 import VscodeIconsFileTypeWord from "~icons/vscode-icons/file-type-word";
 import VscodeIconsFileTypeExcel from "~icons/vscode-icons/file-type-excel";
+import FlatColorIconsMusic from "~icons/flat-color-icons/music";
 import TablerFolder from "~icons/tabler/folder";
 import styles from "./filenameUtils.module.css";
 
@@ -24,8 +25,12 @@ export const getFilenameWithIcon = (filename) => {
       case "docx":
       case "doc":
         return <VscodeIconsFileTypeWord />;
-      case "xslx":
+      case "xlsx":
         return <VscodeIconsFileTypeExcel />;
+      case "mp3":
+      case "ogg":
+      case "m4a":
+        return <FlatColorIconsMusic />;
       default:
         return <TablerFileUnknown />;
     }

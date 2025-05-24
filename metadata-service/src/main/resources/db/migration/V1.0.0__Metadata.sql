@@ -28,7 +28,7 @@ create table if not exists metadata_db.file_journal (
     latest smallint,
     path text NOT NULL,
     uploader_id uuid not null,
-    state varchar(50) check (state in ('UPLOADED', 'IN_UPLOAD', 'DELETED')),
+    state varchar(50) check (state in ('UPLOADED', 'IN_UPLOAD', 'DELETED', 'DELETING')),
     size bigint,
     blocklist text,
     history_id integer,

@@ -97,6 +97,8 @@ public class FileJournalRepo {
         List<Predicate> predicates = new ArrayList<>();
         if (!pathLike.endsWith("/")) {
             pathLike += "/";
+        } else {
+            pathLike += "_";
         }
 
         Expression<String> pathExpr = cb.upper(root.get("path"));
@@ -112,13 +114,9 @@ public class FileJournalRepo {
                 cb.literal(upperPathLike.length() + 1)
         );
 
-        predicates.add(cb.notLike(subPath, "%/%"));
+        predicates.add(cb.notLike(subPath, "%/_%"));
 
         predicates.add(cb.equal(root.get("state"), FileState.UPLOADED));
-//        predicates.add(cb.equal(root.get("id").get("workspaceID"), wsID));
-//        predicates.add(cb.like(cb.upper(root.get("path")), pathLike.toUpperCase() + "_%"));
-//        predicates.add(cb.notLike(cb.upper(root.get("path")), pathLike.toUpperCase() + "%/_"));
-//        predicates.add(cb.equal(root.get("state"), FileState.UPLOADED));
         return predicates;
     }
 

@@ -13,6 +13,10 @@ function App() {
     }
   }, []);
 
+  if (!authenticated) {
+    return <div>Loading...</div>;
+  }
+
   return <RouterProvider router={router()} />;
 }
 

@@ -29,9 +29,6 @@ export const router = () =>
         {
           path: "deleted",
           element: <FileDeletedPage />,
-          handle: {
-            crumb: () => <span>Trash</span>,
-          },
         },
       ],
     },

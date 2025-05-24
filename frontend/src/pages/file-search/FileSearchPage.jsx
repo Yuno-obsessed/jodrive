@@ -18,12 +18,11 @@ import { RenameModal } from "../../features/rename-file/RenameModal.jsx";
 import { ShareModal } from "../../features/share-file/ShareModal.jsx";
 import { METADATA_URI } from "../../consts/Constants.js";
 import useAuthStore from "../../util/authStore.js";
-import { Breadcrumb } from "../../components/ui/breadcrumb/index.jsx";
 import { FileSearchMenuActions } from "./context/index.jsx";
 
 export const FileSearchPage = () => {
   const { searchResults } = useSearchModel();
-  const { token } = useAuthStore();
+  const { token, userInfo } = useAuthStore();
 
   const [fileToRename, setFileToRename] = useState(null);
   const [fileToShare, setFileToShare] = useState(false);
@@ -62,7 +61,7 @@ export const FileSearchPage = () => {
 
   const table = useReactTable({
     data: elements,
-    columns: fileSearchColumns,
+    columns: fileSearchColumns(userInfo),
     getCoreRowModel: getCoreRowModel(),
     getRowId: (row) => getRowID(row),
   });

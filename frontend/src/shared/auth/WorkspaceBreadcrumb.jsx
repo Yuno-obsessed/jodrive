@@ -1,10 +1,12 @@
-import { useFilesystemStore } from "../fs-dir/index.js";
 import { Link } from "react-router-dom";
+import useAuthStore from "../../util/authStore.js";
 
 export const WorkspaceBreadcrumb = ({ params }) => {
-  const { workspaceNames } = useFilesystemStore();
-  // const { userWorkspaces } = useWorkspacesModel();
-  // TODO: add workspace name here
-  const name = workspaceNames?.[params.id] || `Workspace ${params.id}`;
+  const { userInfo } = useAuthStore();
+  console.log(userInfo);
+  const name =
+    userInfo.workspaces.filter((w) => w.id == params.id).map((w) => w.name) ||
+    `Workspace ${params.id}`;
+  console.log(name);
   return <Link to={`/workspace/${params.id}`}>{name}</Link>;
 };
