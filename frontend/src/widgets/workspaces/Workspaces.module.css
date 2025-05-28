@@ -1,5 +1,5 @@
 .activeWorkspace {
-    color: green;
+    color: rgba(var(--accent-color));
     background-color: rgba(var(--accent-color), 0.2);
 }
 
@@ -7,4 +7,8 @@
     display: flex;
     gap: 12px;
     justify-content: center;
+}
+
+.btn {
+    color: rgba(var(--accent-color));
 }

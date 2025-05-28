@@ -23,8 +23,11 @@ export const Workspaces = () => {
   return userWorkspaces.map((workspace) => (
     <Button
       key={workspace.name}
-      className={clsx(workspace === activeWorkspace && styles.activeWorkspace)}
-      variant="ghost"
+      className={clsx(
+        workspace === activeWorkspace && styles.activeWorkspace,
+        styles.btn,
+      )}
+      variant="default"
       onClick={() => {
         setActive(workspace);
       }}

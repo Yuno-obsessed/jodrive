@@ -13,7 +13,7 @@ export const getFilenameWithIcon = (filename) => {
     if (filename[filename.length - 1] === "/") {
       return <TablerFolder />;
     }
-    switch (filename.substring(filename.lastIndexOf(".") + 1)) {
+    switch (filename.substring(filename.lastIndexOf(".") + 1).toLowerCase()) {
       case "mp4":
         return <MaterialIconThemeVideo />;
       case "png":

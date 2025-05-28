@@ -13,11 +13,11 @@ export const useTreeModel = create(
     addFile: (file) => {
       set((state) => {
         if (
-          !state.files.elements.some(
+          !state.files.some(
             (r) => r.id === file.id && r.workspaceID === file.workspaceID,
           )
         ) {
-          state.files.elements.push(file);
+          state.files.push(file);
         }
       });
     },

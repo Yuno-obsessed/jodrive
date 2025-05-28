@@ -4,3 +4,12 @@
     gap: 15px;
     align-items: flex-end;
 }
+
+.workspaceActions {
+    display: flex;
+}
+
+.secondaryActions {
+    color: rgb(var(--accent-color));
+    gap: 12px;
+}

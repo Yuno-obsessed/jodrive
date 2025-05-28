@@ -18,11 +18,12 @@ export const SearchBar = () => {
 
   // to force request if called from deleted page
   const getCaller = () => {
-    switch (location.pathname) {
-      case "/deleted":
-        return "deleted";
-      default:
-        return "other";
+    if (location.pathname === "/deleted") {
+      return "deleted";
+    } else if (/^\/workspace\/\d+/.test(location.pathname)) {
+      return "workspace";
+    } else {
+      return "other";
     }
   };
 
@@ -59,7 +60,9 @@ export const SearchBar = () => {
   };
 
   useEffect(() => {
-    doSearch("");
+    if (getCaller() != "workspace") {
+      doSearch("");
+    }
   }, [doSearch]);
 
   return (

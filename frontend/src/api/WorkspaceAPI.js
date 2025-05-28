@@ -30,3 +30,25 @@ export async function getWorkspaces(token) {
   }
   return await response.json();
 }
+
+export async function getUsers(request, token) {
+  if (request.wsID === null) {
+    return new Error("Invalid parameters");
+  }
+  let page = request.page ? request.page : 0;
+  let size = request.size ? request.size : 10;
+  const response = await fetch(
+    `${WORKSPACE_URI}/${request.wsID}/users?page=${page}&size=${size}`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+  if (response.status !== 200) {
+    throw new Error("Error listing workspace users");
+  }
+  return await response.json();
+}

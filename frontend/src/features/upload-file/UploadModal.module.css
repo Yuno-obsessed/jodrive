@@ -19,12 +19,15 @@
 }
 
 .uploadBtn {
+  align-self: center;
+  width: fit-content;
   background-color: rgba(0, 0, 0, 0.06);
-  color: black;
-  padding: 8px 16px;
   border: none;
   border-radius: 6px;
   cursor: pointer;
+  input {
+    display: none;
+  }
 }
 
 .uploadBar {

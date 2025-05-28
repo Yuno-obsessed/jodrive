@@ -25,6 +25,7 @@ import { CreateDirectoryModalButton } from "../../features/create-dir/index.jsx"
 import { useSyncFilesystemPath } from "../../shared/fs-dir/hook.js";
 import { useFilesystemStore } from "../../shared/fs-dir/index.js";
 import { deleteFile } from "../../api/DeleteFile.js";
+import { Button } from "../../components/ui/button/index.jsx";
 
 export const FileTreePage = () => {
   const { id } = useParams();
@@ -119,7 +120,15 @@ export const FileTreePage = () => {
       >
         <div className={styles.wrapper}>
           <Breadcrumb />
-          <CreateDirectoryModalButton path={currentPath} wsID={id} />
+          <div className={styles.workspaceActions}>
+            <Button variant="default" className={styles.secondaryActions}>
+              List users
+            </Button>
+            <Button variant="default" className={styles.secondaryActions}>
+              Add user
+            </Button>
+            <CreateDirectoryModalButton path={currentPath} wsID={id} />
+          </div>
           <FileTreeTable
             table={table}
             dataIds={dataIds}
