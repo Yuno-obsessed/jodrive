@@ -15,7 +15,12 @@ export const Workspaces = () => {
   useEffect(() => {
     if (!userWorkspaces || userWorkspaces.length === 0) {
       getWorkspaces(token)
-        .then((res) => setWorkspaces(res))
+        .then((res) => {
+          setWorkspaces(res);
+          if (!activeWorkspace) {
+            setActive(res[0]);
+          }
+        })
         .catch(console.log);
     }
   }, []);

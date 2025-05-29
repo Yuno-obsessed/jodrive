@@ -13,3 +13,10 @@
     color: rgb(var(--accent-color));
     gap: 12px;
 }
+
+.secondaryActions:hover {
+    background-color: rgba(
+            var(--accent-color)
+            , var(--opacity-low)
+    );
+}

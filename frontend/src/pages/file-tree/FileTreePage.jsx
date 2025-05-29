@@ -26,11 +26,13 @@ import { useSyncFilesystemPath } from "../../shared/fs-dir/hook.js";
 import { useFilesystemStore } from "../../shared/fs-dir/index.js";
 import { deleteFile } from "../../api/DeleteFile.js";
 import { Button } from "../../components/ui/button/index.jsx";
+import { useWorkspacesModel } from "../../enitites/workspace/model/index.js";
 
 export const FileTreePage = () => {
   const { id } = useParams();
   const { token } = useAuthStore();
   const { files, setFiles, removeFile } = useTreeModel();
+  const { setActive, userWorkspaces } = useWorkspacesModel();
   const navigate = useNavigate();
   useSyncFilesystemPath(); // sync filesystem vars
   const { currentPath, basePath } = useFilesystemStore();
@@ -41,6 +43,7 @@ export const FileTreePage = () => {
   console.log(folderSegments);
 
   useFileTree(id, currentPath, token, setFiles);
+  setActive(userWorkspaces.filter((e) => e.id == id)[0]);
 
   const table = useReactTable({
     data: files,
@@ -121,7 +124,11 @@ export const FileTreePage = () => {
         <div className={styles.wrapper}>
           <Breadcrumb />
           <div className={styles.workspaceActions}>
-            <Button variant="default" className={styles.secondaryActions}>
+            <Button
+              variant="default"
+              className={styles.secondaryActions}
+              onClick={() => navigate(`${basePath}/users`)}
+            >
               List users
             </Button>
             <Button variant="default" className={styles.secondaryActions}>

@@ -61,6 +61,7 @@ create table if not exists metadata_db.user_workspaces (
     user_id UUID not null,
     ws_id bigint not null,
     role varchar(255),
+    joined_at timestamptz,
     primary key (user_id, ws_id)
 );
 create table if not exists metadata_db.users (
@@ -149,10 +150,10 @@ insert into metadata_db.users (id, username, email, subscription_id, created_at,
 insert into metadata_db.users (id, username, email, subscription_id, created_at, updated_at) values ('29849880-ddd4-4000-b100-460f4c505045', 'anonymous', 'anon@gmail.com', 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 insert into metadata_db.workspaces (name, description) values ('w1', 'first workspace');
 insert into metadata_db.workspaces (name, description) values ('w2', 'second workspace');
-insert into metadata_db.user_workspaces (user_id, ws_id, role) values ('5a9bf3fa-d99a-4ccc-b64f-b2ddf20ee5e5', 1, 'OWNER');
-insert into metadata_db.user_workspaces (user_id, ws_id, role) values ('5a9bf3fa-d99a-4ccc-b64f-b2ddf20ee5e5', 2, 'USER');
-insert into metadata_db.user_workspaces (user_id, ws_id, role) values ('29849880-ddd4-4000-b100-460f4c505045', 1, 'USER');
-insert into metadata_db.user_workspaces (user_id, ws_id, role) values ('29849880-ddd4-4000-b100-460f4c505045', 2, 'OWNER');
+insert into metadata_db.user_workspaces (user_id, ws_id, role, joined_at) values ('5a9bf3fa-d99a-4ccc-b64f-b2ddf20ee5e5', 1, 'OWNER', CURRENT_TIMESTAMP);
+insert into metadata_db.user_workspaces (user_id, ws_id, role, joined_at) values ('5a9bf3fa-d99a-4ccc-b64f-b2ddf20ee5e5', 2, 'USER', CURRENT_TIMESTAMP);
+insert into metadata_db.user_workspaces (user_id, ws_id, role, joined_at) values ('29849880-ddd4-4000-b100-460f4c505045', 1, 'USER', CURRENT_TIMESTAMP);
+insert into metadata_db.user_workspaces (user_id, ws_id, role, joined_at) values ('29849880-ddd4-4000-b100-460f4c505045', 2, 'OWNER', CURRENT_TIMESTAMP);
 insert into metadata_db.file_journal (ws_id, file_id, latest, path, uploader_id, state, "size", blocklist, history_id, created_at, updated_at) values (1, (SELECT metadata_db.next_file_id(1)), 1, '/', '5a9bf3fa-d99a-4ccc-b64f-b2ddf20ee5e5', 'UPLOADED', 0, null, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 insert into metadata_db.file_journal (ws_id, file_id, latest, path, uploader_id, state, "size", blocklist, history_id, created_at, updated_at) values (2, (SELECT metadata_db.next_file_id(2)), 1, '/', '29849880-ddd4-4000-b100-460f4c505045', 'UPLOADED', 0, null, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 insert into metadata_db.statistics(quota, description) values ('USER_STORAGE_USED', 'Indicates how much storage user has used up');

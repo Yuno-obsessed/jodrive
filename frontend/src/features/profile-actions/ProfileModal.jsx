@@ -20,8 +20,6 @@ export const ProfileModal = ({ ref, onClose, targetUser }) => {
     }
   };
 
-  console.log(userInfo);
-  console.log(avatar);
   return (
     <Modal title="Profile" ref={ref} onClose={onClose}>
       <div className={styles.userInfo}>

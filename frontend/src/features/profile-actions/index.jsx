@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../../components/ui/button/index.jsx";
-import styles from "./ProfileModal.module.css";
 import { ProfileModal } from "./ProfileModal.jsx";
 
-export const ProfileModalButton = ({ children, currentUser }) => {
+export const ProfileModalButton = ({
+  variant,
+  className,
+  children,
+  currentUser,
+}) => {
   const [showProfile, setShowProfile] = useState(false);
   const modalRef = useRef(null);
   const btnRef = useRef(null);
@@ -26,8 +30,13 @@ export const ProfileModalButton = ({ children, currentUser }) => {
   }, []);
 
   return (
-    <div className={styles.modalButton}>
-      <Button ref={btnRef} onClick={() => setShowProfile((prev) => !prev)}>
+    <>
+      <Button
+        className={className}
+        variant={variant}
+        ref={btnRef}
+        onClick={() => setShowProfile((prev) => !prev)}
+      >
         {children}
       </Button>
 
@@ -38,6 +47,6 @@ export const ProfileModalButton = ({ children, currentUser }) => {
           onClose={() => setShowProfile(false)}
         />
       )}
-    </div>
+    </>
   );
 };

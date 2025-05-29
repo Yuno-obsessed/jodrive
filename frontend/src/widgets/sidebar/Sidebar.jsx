@@ -47,8 +47,6 @@ export const Sidebar = () => {
   const navItems = navigationElements(token, workspaceItems);
 
   const isLinkActive = (link) => location.pathname === link;
-  const isChildActive = (children) =>
-    children?.some((child) => location.pathname.startsWith(child.link));
 
   return (
     <aside className={styles.sidebar}>
@@ -73,8 +71,11 @@ export const Sidebar = () => {
                 }}
               >
                 <div className={styles.item}>
-                  {item.icon}
-                  {item.name}
+                  <div className={styles.itemMain}>
+                    {item.icon}
+                    {item.name}
+                  </div>
+                  <div className={styles.itemButtons}>{item.buttons}</div>
                 </div>
               </Button>
 

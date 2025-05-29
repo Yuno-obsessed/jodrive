@@ -31,7 +31,7 @@ export async function getWorkspaces(token) {
   return await response.json();
 }
 
-export async function getUsers(request, token) {
+export async function getWorkspaceUsers(request, token) {
   if (request.wsID === null) {
     return new Error("Invalid parameters");
   }

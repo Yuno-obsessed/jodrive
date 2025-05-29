@@ -1,8 +1,8 @@
 import styles from "./FileRow.module.css";
 import clsx from "clsx";
 
-export const FileRow = ({
-  file,
+export const TableRow = ({
+  entity,
   columns,
   columnRenderers,
   onClick,
@@ -21,8 +21,8 @@ export const FileRow = ({
       {columns.map((column) => (
         <td key={column}>
           {columnRenderers[column]
-            ? columnRenderers[column](file)
-            : file[column]}
+            ? columnRenderers[column](entity)
+            : entity[column]}
         </td>
       ))}
       <td>

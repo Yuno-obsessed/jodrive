@@ -5,7 +5,7 @@ import Table from "../../components/ui/table/index.jsx";
 import styles from "./FileDeletedPage.module.css";
 import { updateFile } from "../../api/UpdateFile.js";
 import { formatByteSize } from "../../util/fileUtils.js";
-import { FileRow } from "../../enitites/file/ui/FileRow.jsx";
+import { TableRow } from "../../enitites/file/ui/TableRow.jsx";
 import { Button } from "../../components/ui/button/index.jsx";
 import MaterialSymbolsDeleteForever from "~icons/material-symbols/delete-forever";
 import MdiRestore from "~icons/mdi/restore";
@@ -72,9 +72,9 @@ export const FileDeletedPage = () => {
   );
 
   const renderRow = (file) => (
-    <FileRow
+    <TableRow
       key={`${file.id}_${file.workspaceID}`}
-      file={file}
+      entity={file}
       columns={["name", "deletedBy", "deletedAt", "size", "workspace", "path"]}
       columnRenderers={columnRenderers}
       onClick={() => toggleSelect(file)}

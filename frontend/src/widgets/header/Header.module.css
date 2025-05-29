@@ -10,7 +10,7 @@
 .user {
   display: flex;
   flex-direction: row;
-  gap: 5px
+  gap: 5px;
 }
 
 .userImg {

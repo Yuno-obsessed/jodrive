@@ -15,6 +15,7 @@ import sanity.nil.meta.dto.workspace.WorkspaceDTO;
 import sanity.nil.meta.dto.workspace.WorkspaceUserDTO;
 import sanity.nil.meta.exceptions.InsufficientQuotaException;
 import sanity.nil.meta.model.*;
+import sanity.nil.minio.MinioOperations;
 import sanity.nil.security.IdentityProvider;
 
 import java.util.Collections;
@@ -36,6 +37,9 @@ public class WorkspaceService {
     MetadataService metadataService;
     @Inject
     SubscriptionQuotaCache subscriptionQuotaCache;
+    @Inject
+    MinioOperations minioOperations;
+    private final String AVATAR_BUCKET = "user.avatars";
 
     public WorkspaceDTO getWorkspace(String id) {
         var workspaceID = Long.valueOf(id);
@@ -74,8 +78,7 @@ public class WorkspaceService {
         List<UserWorkspaceModel> users = entityManager.createQuery(
                         "SELECT u FROM UserWorkspaceModel u " +
                                 "JOIN FETCH u.user " +
-                                "WHERE u.id.workspaceID = :workspaceID " +
-                                "GROUP BY u.id.userID, u.role, u.user.id, u.user.username",
+                                "WHERE u.id.workspaceID = :workspaceID ",
                         UserWorkspaceModel.class)
                 .setParameter("workspaceID", workspaceID)
                 .setFirstResult(page * size)
@@ -86,8 +89,10 @@ public class WorkspaceService {
                 .map(u -> new WorkspaceUserDTO(
                         u.getUser().getId(),
                         u.getUser().getUsername(),
-                        null,
-                        u.getRole()
+                        u.getUser().getAvatar() == null ? null :
+                                minioOperations.getObjectURL(AVATAR_BUCKET, u.getUser().getAvatar()),
+                        u.getRole(),
+                        u.getJoinedAt()
                 )).toList();
 
         int totalPages = (int) Math.ceil((double) totalUsers / size);

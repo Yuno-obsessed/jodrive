@@ -5,7 +5,9 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Getter
@@ -30,6 +32,10 @@ public class UserWorkspaceModel {
     private UserModel user;
 
     private String role;
+
+    @CreationTimestamp
+    @Column(name = "joined_at", columnDefinition = "timestamptz")
+    private LocalDateTime joinedAt;
 
     @Embeddable
     public record UserWorkspaceIDModel(

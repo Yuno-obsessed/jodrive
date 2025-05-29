@@ -1,0 +1,15 @@
+.modal {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.innerBtn {
+  display: block;
+  height: 24px;
+  width: 24px;
+}
+.innerBtn:hover {
+  background-color: rgba(var(--accent-color), 0.2);
+  border-radius: 10px;
+}
