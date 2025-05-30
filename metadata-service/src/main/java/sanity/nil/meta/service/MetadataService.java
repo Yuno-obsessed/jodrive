@@ -33,6 +33,7 @@ import sanity.nil.meta.dto.block.GetBlocksMetadata;
 import sanity.nil.meta.dto.file.*;
 import sanity.nil.meta.exceptions.CryptoException;
 import sanity.nil.meta.exceptions.InsufficientQuotaException;
+import sanity.nil.meta.exceptions.InvalidParametersException;
 import sanity.nil.meta.mappers.FileMapper;
 import sanity.nil.meta.model.*;
 import sanity.nil.meta.security.LinkEncoder;
@@ -342,15 +343,22 @@ public class MetadataService {
         return Optional.of(workspaces.getFirst());
     }
 
-    public FileInfo getFileInfo(String fileID, String wsID, String link) {
+    /**
+     * Link
+     * @param fileID has to be provided if access made by user with permanent access
+     * @param wsID has to be provided if access made by user with permanent access
+     * @param link has to be provided if access made by external guest user
+     * @return FileInfo
+     */
+    public FileInfo getFileInfo(Long fileID, Long wsID, String link) {
         if (!hasFileAccessPermissions(wsID, link)) {
             throw new ForbiddenException();
         }
-        if (!StringUtils.isNumeric(fileID)) {
-            return null;
+        if ((fileID == null || wsID == null) && StringUtils.isEmpty(link)) {
+            throw new InvalidParametersException("Either link for file access is invalid or workspace/file id wasn't provided");
         }
         // TODO: optimize reads by not selecting not needed columns (blocklist)
-        var fileOp = fileJournalRepo.findByIdAndStateIn(Long.valueOf(fileID), Long.valueOf(wsID), FileState.UPLOADED);
+        var fileOp = fileJournalRepo.findByIdAndStateIn(fileID, wsID, FileState.UPLOADED);
         if (fileOp.isEmpty()) {
             throw new NotFoundException();
         }
@@ -504,11 +512,12 @@ public class MetadataService {
         return new FileNode(StringUtils.substringAfter(fileInfo.name, dir.substring(0, dir.length()-1)), fileInfo);
     }
 
-    public String createDirectory(CreateDirectory request) {
+    public FileInfo createDirectory(CreateDirectory request) {
         var identity = identityProvider.getIdentity(String.valueOf(request.workspaceID()));
         if (!identity.hasRole(Role.USER)) {
             throw new UnauthorizedException();
         }
+        FileJournalModel newDirectory = null;
         var dir = request.path() + request.name() + "/";
         try {
             var externalTransaction = true;
@@ -519,7 +528,7 @@ public class MetadataService {
             var workspace = getWorkspace(request.workspaceID(), identity.getUserID());
             var userUploader = entityManager.find(UserModel.class, identity.getUserID());
 
-            var newDirectory = new FileJournalModel(workspace.get(), dir, userUploader, FileState.UPLOADED, 0L, null);
+            newDirectory = new FileJournalModel(workspace.get(), dir, userUploader, FileState.UPLOADED, 0L, null);
             fileJournalRepo.insert(newDirectory);
             if (!externalTransaction) {
                 userTransaction.commit();
@@ -528,7 +537,7 @@ public class MetadataService {
             log.error("Error creating directory", e);
             throw new RuntimeException("Application error");
         }
-        return dir;
+        return fileMapper.journalToInfo(newDirectory);
     }
 
     public List<String> getDirectories(Long wsID, String path) {
@@ -540,12 +549,12 @@ public class MetadataService {
                 .getResultList();
     }
 
-    private boolean hasFileAccessPermissions(String wsID, String link) {
+    private boolean hasFileAccessPermissions(Long wsID, String link) {
         if (StringUtils.isNotEmpty(link)) {
             var verifiedLink = verifyLink(link);
             return verifiedLink.valid() && !verifiedLink.expired();
         } else {
-            var identity = identityProvider.getIdentity(wsID);
+            var identity = identityProvider.getIdentity(String.valueOf(wsID));
             return identity.hasRole(Role.USER);
         }
     }
@@ -555,9 +564,9 @@ public class MetadataService {
     }
 
     @Transactional
-    public String constructLinkForSharing(String fileID, String wsID, TimeUnit timeUnit, Long expiresIn) {
+    public String constructLinkForSharing(Long fileID, Long wsID, TimeUnit timeUnit, Long expiresIn) {
         // TODO: include device identification (user-agent or fingerprint) in link construction
-        var identity = identityProvider.getIdentity(wsID);
+        var identity = identityProvider.getIdentity(String.valueOf(wsID));
 
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime expiresAt = now.plus(expiresIn, timeUnit.toTemporalUnit());
@@ -578,10 +587,12 @@ public class MetadataService {
     }
 
     @Transactional
-    public String updateFile(String fileID, Long wsID, String newName, FileAction fileAction) {
+    public String updateFile(Long fileID, Long wsID, String newName, FileAction fileAction) {
+        // TODO: make so that each file has a parent except of a root directory '/', so that when a folder
+        // is renamed, only it has to be changed, also search will be a lot easier
         var identity = identityProvider.getIdentity(String.valueOf(wsID));
 
-        var fileJournalOp = fileJournalRepo.findById(Long.valueOf(fileID), wsID);
+        var fileJournalOp = fileJournalRepo.findById(fileID, wsID);
         if (fileJournalOp.isEmpty()) {
             throw new NotFoundException();
         }
@@ -591,7 +602,13 @@ public class MetadataService {
         }
 
         if (StringUtils.isNotBlank(newName)) {
-            fileJournal.setPath(newName);
+            if (isFileDirectory(fileJournal.getPath())) {
+                fileJournal.setPath(newName);
+            } else {
+                var currPath = StringUtils.substringBeforeLast(fileJournal.getPath(), "/");
+                var extention = StringUtils.substringAfterLast(fileJournal.getPath(), ".");
+                fileJournal.setPath(String.format("%s/%s.%s", currPath, newName, extention));
+            }
         }
         if (fileJournal.getState().equals(FileState.DELETED)) {
             List<TaskModel> deletionTasks = entityManager.createNativeQuery("SELECT * FROM metadata_db.tasks t " +
@@ -625,7 +642,9 @@ public class MetadataService {
             }
         }
         entityManager.persist(fileJournal);
-        return newName;
+        // return new name
+        return isFileDirectory(fileJournal.getPath()) ? newName
+                : StringUtils.substringAfterLast(fileJournal.getPath(), "/");
     }
 
     public LinkValidity verifyLink(String bareLink) {

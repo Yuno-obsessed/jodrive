@@ -5,19 +5,32 @@ import { updateFile } from "../../api/UpdateFile.js";
 import { Modal } from "../../components/ui/modal/index.jsx";
 import { Input } from "../../components/ui/input/index.jsx";
 import { Button } from "../../components/ui/button/index.jsx";
+import { useTreeModel } from "../../enitites/file-tree/model/index.js";
 
 export const RenameModal = ({ file, onClose }) => {
-  console.log(file);
-  const [newName, setNewName] = useState(file?.name);
+  const getShortenedFileName = () => {
+    return file.isDirectory
+      ? file.name
+      : file.name.substring(0, file.name.lastIndexOf("."));
+  };
+  const [newName, setNewName] = useState(getShortenedFileName);
+  const { addFile, removeFile } = useTreeModel();
   const { token } = useAuthStore();
 
   const handleRename = async () => {
-    await updateFile(file, newName, null, token);
+    let changedName = await updateFile(file, newName, null, token);
+    let changedFile = { ...file, name: changedName };
+    removeFile(file.id);
+    addFile(changedFile);
     onClose();
   };
 
   return (
-    <Modal title={"Rename"} onClose={onClose}>
+    <Modal
+      title={"Rename"}
+      description="Enter a new name for a file"
+      onClose={onClose}
+    >
       <Input
         type="text"
         placeholder="New name"
@@ -28,7 +41,7 @@ export const RenameModal = ({ file, onClose }) => {
         <Button variant={"destruction"} onClick={onClose}>
           Cancel
         </Button>
-        <Button variant={"submit"} onClick={handleRename}>
+        <Button variant={"ghost"} onClick={handleRename}>
           OK
         </Button>
       </div>

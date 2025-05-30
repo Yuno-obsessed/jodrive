@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { getWorkspaceUsers } from "../../api/WorkspaceAPI.js";
 import useAuthStore from "../../util/authStore.js";
 import { useEffect, useMemo, useState } from "react";
@@ -6,6 +6,7 @@ import { TableRow } from "../../enitites/file/ui/TableRow.jsx";
 import { Button } from "../../components/ui/button/index.jsx";
 import CuidaUserRemoveOutline from "~icons/cuida/user-remove-outline";
 import TablerInfoCircle from "~icons/tabler/info-circle";
+import TablerArrowBackUp from "~icons/tabler/arrow-back-up";
 import styles from "./WorkspaceUsers.module.css";
 import Table from "../../components/ui/table/index.jsx";
 import { useWorkspaceUsersModel } from "../../enitites/ws-users/model/index.js";
@@ -16,6 +17,8 @@ export const WorkspaceUsers = () => {
   const { id } = useParams();
   const [selected, setSelected] = useState(null);
   const [hovered, setHovered] = useState();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { workspaceUsers, setWorkspaceUsers } = useWorkspaceUsersModel();
 
   useEffect(() => {
@@ -24,13 +27,11 @@ export const WorkspaceUsers = () => {
       .catch(console.log);
   }, [id]);
 
+  const getWorkspaceUser = () => {
+    return workspaceUsers.filter((u) => u.id === userInfo.id)[0];
+  };
+
   const handleRemove = (user) => {};
-  const handleInfo = (user) => {};
-  // updateFile(file, null, "RESTORE", token)
-  //   .then(() => {
-  //     removeSearchResult(file);
-  //   })
-  //   .catch(console.error);
 
   const columnRenderers = {
     name: (user) => user.username,
@@ -57,13 +58,16 @@ export const WorkspaceUsers = () => {
           <p className={styles.actions}>It's you</p>
         ) : (
           <>
-            <Button
-              className={styles.btn}
-              variant="icon"
-              onClick={() => handleRemove(file)}
-            >
-              <CuidaUserRemoveOutline className={styles.icons} />
-            </Button>
+            {getWorkspaceUser().role === "OWNER" && user.role !== "OWNER" && (
+              <Button
+                className={styles.btn}
+                variant="icon"
+                onClick={() => handleRemove(file)}
+              >
+                <CuidaUserRemoveOutline className={styles.icons} />
+              </Button>
+            )}
+
             <ProfileModalButton
               className={styles.btn}
               variant="icon"
@@ -78,6 +82,16 @@ export const WorkspaceUsers = () => {
 
   return (
     <>
+      <Button
+        variant="icon"
+        className={styles.backBtn}
+        onClick={() => {
+          const currPath = location.pathname;
+          navigate(currPath.substring(0, currPath.lastIndexOf("/")));
+        }}
+      >
+        <TablerArrowBackUp />
+      </Button>
       <Table
         columns={columns}
         data={workspaceUsers || []}

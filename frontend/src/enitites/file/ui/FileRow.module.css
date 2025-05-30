@@ -10,6 +10,5 @@ th {
 
 .fileIcons {
     display: flex;
-    gap: 4px;
     padding: 2px;
 }

@@ -12,7 +12,7 @@ export const CreateWorkspaceModal = ({ onClose }) => {
 
   return (
     <Modal
-      title={"Create Directory"}
+      title={"Create Workspace"}
       onClose={onClose}
       className={styles.modal}
     >

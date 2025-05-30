@@ -5,9 +5,11 @@ import { createDirectory } from "../../api/DirectoryAPI.js";
 import authStore from "../../util/authStore.js";
 import styles from "./CreateDirectoryModal.module.css";
 import { Input } from "../../components/ui/input/index.jsx";
+import { useTreeModel } from "../../enitites/file-tree/model/index.js";
 
 export const CreateDirectoryModal = ({ path, wsID, onClose }) => {
   const [newDir, setNewDir] = useState(null);
+  const { addFile } = useTreeModel();
   const { token } = authStore();
 
   return (
@@ -28,7 +30,10 @@ export const CreateDirectoryModal = ({ path, wsID, onClose }) => {
             { workspaceID: wsID, path: path, name: newDir },
             token,
           )
-            .then(onClose())
+            .then((res) => {
+              addFile(res);
+              onClose();
+            })
             .catch(console.log);
         }}
       >

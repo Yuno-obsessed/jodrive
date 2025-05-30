@@ -39,6 +39,7 @@ export async function createDirectory(request, token) {
   if (response.status !== 201) {
     throw new Error("Error creating directory");
   }
+  return await response.json();
 }
 
 export async function getDirectories(wsID, path, token) {

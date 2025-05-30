@@ -1,7 +1,7 @@
 import useAuthStore from "../../util/authStore.js";
 import { useTreeModel } from "../../enitites/file-tree/model/index.js";
 import { useNavigate, useParams } from "react-router-dom";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
 
 import {
@@ -27,6 +27,9 @@ import { useFilesystemStore } from "../../shared/fs-dir/index.js";
 import { deleteFile } from "../../api/DeleteFile.js";
 import { Button } from "../../components/ui/button/index.jsx";
 import { useWorkspacesModel } from "../../enitites/workspace/model/index.js";
+import { downloadFile } from "../../api/DownloadFile.js";
+import { RenameModal } from "../../features/rename-file/RenameModal.jsx";
+import { ShareModal } from "../../features/share-file/ShareModal.jsx";
 
 export const FileTreePage = () => {
   const { id } = useParams();
@@ -36,11 +39,11 @@ export const FileTreePage = () => {
   const navigate = useNavigate();
   useSyncFilesystemPath(); // sync filesystem vars
   const { currentPath, basePath } = useFilesystemStore();
+  const [fileToRename, setFileToRename] = useState(null);
+  const [fileToShare, setFileToShare] = useState(null);
 
   console.log(currentPath, basePath);
-  const folderSegments = currentPath.split("/").filter(Boolean);
-  console.log(currentPath);
-  console.log(folderSegments);
+  // const folderSegments = currentPath.split("/").filter(Boolean);
 
   useFileTree(id, currentPath, token, setFiles);
   setActive(userWorkspaces.filter((e) => e.id == id)[0]);
@@ -72,10 +75,12 @@ export const FileTreePage = () => {
         }
         break;
       case "share":
+        setFileToShare(eventRow);
         console.log("share");
         break;
       case "download":
-        console.log("share");
+        downloadFile(eventRow, token).then().catch(console.log);
+        console.log("download");
         break;
       case "delete":
         console.log("Deleting file");
@@ -87,6 +92,7 @@ export const FileTreePage = () => {
           .catch(console.log);
         break;
       case "rename":
+        setFileToRename(eventRow);
         console.log("rename");
         break;
     }
@@ -143,6 +149,16 @@ export const FileTreePage = () => {
           />
         </div>
       </DndContext>
+
+      {fileToRename && (
+        <RenameModal
+          file={fileToRename}
+          onClose={() => setFileToRename(null)}
+        />
+      )}
+      {fileToShare && (
+        <ShareModal file={fileToShare} onClose={() => setFileToShare(null)} />
+      )}
     </div>
   );
 };

@@ -152,8 +152,8 @@ insert into metadata_db.workspaces (name, description) values ('w1', 'first work
 insert into metadata_db.workspaces (name, description) values ('w2', 'second workspace');
 insert into metadata_db.user_workspaces (user_id, ws_id, role, joined_at) values ('5a9bf3fa-d99a-4ccc-b64f-b2ddf20ee5e5', 1, 'OWNER', CURRENT_TIMESTAMP);
 insert into metadata_db.user_workspaces (user_id, ws_id, role, joined_at) values ('5a9bf3fa-d99a-4ccc-b64f-b2ddf20ee5e5', 2, 'USER', CURRENT_TIMESTAMP);
-insert into metadata_db.user_workspaces (user_id, ws_id, role, joined_at) values ('29849880-ddd4-4000-b100-460f4c505045', 1, 'USER', CURRENT_TIMESTAMP);
-insert into metadata_db.user_workspaces (user_id, ws_id, role, joined_at) values ('29849880-ddd4-4000-b100-460f4c505045', 2, 'OWNER', CURRENT_TIMESTAMP);
+insert into metadata_db.user_workspaces (user_id, ws_id, role, joined_at) values ('4d70da54-5ec5-4042-b011-b829bff6f8de', 1, 'USER', CURRENT_TIMESTAMP);
+insert into metadata_db.user_workspaces (user_id, ws_id, role, joined_at) values ('4d70da54-5ec5-4042-b011-b829bff6f8de', 2, 'OWNER', CURRENT_TIMESTAMP);
 insert into metadata_db.file_journal (ws_id, file_id, latest, path, uploader_id, state, "size", blocklist, history_id, created_at, updated_at) values (1, (SELECT metadata_db.next_file_id(1)), 1, '/', '5a9bf3fa-d99a-4ccc-b64f-b2ddf20ee5e5', 'UPLOADED', 0, null, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 insert into metadata_db.file_journal (ws_id, file_id, latest, path, uploader_id, state, "size", blocklist, history_id, created_at, updated_at) values (2, (SELECT metadata_db.next_file_id(2)), 1, '/', '4d70da54-5ec5-4042-b011-b829bff6f8de', 'UPLOADED', 0, null, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 insert into metadata_db.statistics(quota, description) values ('USER_STORAGE_USED', 'Indicates how much storage user has used up');

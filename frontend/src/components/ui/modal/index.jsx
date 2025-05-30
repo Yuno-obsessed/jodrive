@@ -19,7 +19,7 @@ export const Modal = ({
               &times;
             </button>
           </div>
-          {description && <p>{description}</p>}
+          {description && <p className={styles.description}>{description}</p>}
         </div>
         {children}
       </div>

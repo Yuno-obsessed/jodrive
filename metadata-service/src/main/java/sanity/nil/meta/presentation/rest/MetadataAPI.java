@@ -17,6 +17,7 @@ import sanity.nil.meta.dto.file.CreateDirectory;
 import sanity.nil.meta.dto.file.FileFilters;
 import sanity.nil.meta.dto.file.FileInfo;
 import sanity.nil.meta.dto.file.FileNode;
+import sanity.nil.meta.model.FileJournalModel;
 import sanity.nil.meta.service.MetadataService;
 
 import java.util.List;
@@ -51,8 +52,11 @@ public class MetadataAPI {
     @Path("directory")
     @Produces(MediaType.APPLICATION_JSON)
     @Blocking
-    public String createDirectory(CreateDirectory request) {
-        return metadataService.createDirectory(request);
+    public RestResponse<FileInfo> createDirectory(CreateDirectory request) {
+        return RestResponse.status(
+                RestResponse.Status.CREATED,
+                metadataService.createDirectory(request)
+        );
     }
 
     @GET
@@ -66,12 +70,12 @@ public class MetadataAPI {
     }
 
     @GET
-    @Path("file/{id}")
+    @Path("file")
     @Produces(MediaType.APPLICATION_JSON)
     @RunOnVirtualThread
     public FileInfo getFileInfo(
-            @PathParam("id") String fileID,
-            @QueryParam("wsID") String wsID,
+            @QueryParam("id") Long fileID,
+            @QueryParam("wsID") Long wsID,
             @QueryParam("link") String link
     ) {
         return metadataService.getFileInfo(fileID, wsID, link);
@@ -119,8 +123,8 @@ public class MetadataAPI {
     @Path("file/{id}/share")
     @Produces(MediaType.APPLICATION_JSON)
     public String shareFile(
-            @PathParam("id") String fileID,
-            @QueryParam("wsID") String wsID,
+            @PathParam("id") Long fileID,
+            @QueryParam("wsID") Long wsID,
             @QueryParam("timeUnit") TimeUnit timeUnit,
             @QueryParam("expiresIn") Long expiresIn
     ) {
@@ -130,7 +134,7 @@ public class MetadataAPI {
     @PATCH
     @Path("file/{id}")
     public String updateFile(
-            @PathParam("id") String fileID,
+            @PathParam("id") Long fileID,
             @QueryParam("wsID") Long wsID,
             @QueryParam("newName") String newName,
             @QueryParam("fileAction") FileAction fileAction

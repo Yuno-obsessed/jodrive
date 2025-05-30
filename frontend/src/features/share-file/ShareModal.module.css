@@ -1,13 +1,31 @@
-
-
-.closeButton {
-  position: absolute;
-  top: 8px;
-  right: 12px;
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
+.shareForm {
+  p {
+    font-size: 14px;
+    text-align: left;
+    opacity: 40%;
+    padding: 5px;
+  }
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.radioUnits {
+  display: flex;
+  flex-wrap: wrap;
+  label {
+    margin: 2px;
+    text-align: left;
+    flex: 0 0 48.5%;
+    box-sizing: border-box;
+  }
+  a {
+    margin-left: 2px;
+  }
+}
+.quantity {
+  margin-top: 5px;
+  margin-bottom: 10px;
+  max-width: 200px;
 }
 
 .link {

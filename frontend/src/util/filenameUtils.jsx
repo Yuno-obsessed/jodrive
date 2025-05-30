@@ -10,6 +10,7 @@ import styles from "./filenameUtils.module.css";
 
 export const getFilenameWithIcon = (filename) => {
   const getIcon = () => {
+    if (!filename) return;
     if (filename[filename.length - 1] === "/") {
       return <TablerFolder />;
     }
