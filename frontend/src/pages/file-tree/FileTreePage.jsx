@@ -34,7 +34,7 @@ import { ShareModal } from "../../features/share-file/ShareModal.jsx";
 export const FileTreePage = () => {
   const { id } = useParams();
   const { token } = useAuthStore();
-  const { files, setFiles, removeFile } = useTreeModel();
+  const { files, setFiles, removeFile, renameFile } = useTreeModel();
   const { setActive, userWorkspaces } = useWorkspacesModel();
   const navigate = useNavigate();
   useSyncFilesystemPath(); // sync filesystem vars
@@ -153,6 +153,7 @@ export const FileTreePage = () => {
       {fileToRename && (
         <RenameModal
           file={fileToRename}
+          renameFile={renameFile}
           onClose={() => setFileToRename(null)}
         />
       )}

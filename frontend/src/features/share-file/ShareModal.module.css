@@ -7,7 +7,7 @@
   }
   display: flex;
   flex-direction: column;
-  align-items: center;
+  text-align: left;
 }
 .radioUnits {
   display: flex;
@@ -22,18 +22,9 @@
     margin-left: 2px;
   }
 }
-.quantity {
-  margin-top: 5px;
-  margin-bottom: 10px;
-  max-width: 200px;
-}
 
 .link {
-  word-break: break-all;
-  background-color: #f3f3f3;
-  padding: 10px;
-  border-radius: 4px;
-  margin: 12px 0;
+  margin-top: 12px;
 }
 
 .copyButton {

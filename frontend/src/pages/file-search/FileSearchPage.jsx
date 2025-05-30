@@ -16,37 +16,19 @@ import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { fileSearchColumns } from "./config/index.js";
 import { RenameModal } from "../../features/rename-file/RenameModal.jsx";
 import { ShareModal } from "../../features/share-file/ShareModal.jsx";
-import { METADATA_URI } from "../../consts/Constants.js";
 import useAuthStore from "../../util/authStore.js";
 import { FileSearchMenuActions } from "./context/index.jsx";
+import { useContextMenuStore } from "../../components/ui/table-v2/config/store/index.js";
+import { downloadFile } from "../../api/DownloadFile.js";
+import { deleteFile } from "../../api/DeleteFile.js";
 
 export const FileSearchPage = () => {
-  const { searchResults } = useSearchModel();
+  const { searchResults, removeSearchResult, renameSearchResult } =
+    useSearchModel();
   const { token, userInfo } = useAuthStore();
 
   const [fileToRename, setFileToRename] = useState(null);
-  const [fileToShare, setFileToShare] = useState(false);
-
-  const handleShare = (file) => {
-    console.log(`HANDLE SHARE FOR ${getRowID(file)}`);
-    // constructLink(file, "MINUTE", 60, token)
-    //     .then(() => setShowShareModal(true))
-    //     .catch(console.error);
-  };
-
-  const handleDownload = (file) => {
-    console.log(`HANDLE Download FOR ${getRowID(file)}`);
-    // downloadFile(file, token).catch(console.error);
-  };
-
-  const handleDelete = (file) => {
-    console.log(`HANDLE Delete FOR ${getRowID(file)}`);
-    // deleteFile(file, token)
-    //     .then(() => {
-    //       removeSearchResult(file);
-    //     })
-    //     .catch(console.error);
-  };
+  const [fileToShare, setFileToShare] = useState(null);
 
   const elements = useMemo(
     () => searchResults?.elements ?? [],
@@ -72,19 +54,26 @@ export const FileSearchPage = () => {
     useSensor(KeyboardSensor),
   );
 
-  const handleEvents = ({ id, event, data }) => {
-    console.log(id, event, data);
+  const row = useContextMenuStore();
+  const handleEvents = ({ id }) => {
+    let eventRow = row.row;
     switch (id) {
       case "share":
-        handleShare(data);
+        setFileToShare(eventRow);
         break;
       case "download":
-        handleDownload(data);
+        downloadFile(eventRow, token).then().catch(console.log);
         break;
       case "delete":
-        handleDelete(data);
+        deleteFile(
+          { id: eventRow.id, workspaceID: eventRow.workspaceID },
+          token,
+        )
+          .then(() => removeSearchResult(eventRow))
+          .catch(console.log);
         break;
       case "rename":
+        setFileToRename(eventRow);
         console.log("rename");
         break;
     }
@@ -104,19 +93,15 @@ export const FileSearchPage = () => {
         />
       </DndContext>
 
-      {fileToShare && (
-        <ShareModal
-          // TODO: call share api in modal?
-          link={`${METADATA_URI}/file/${fileToShare.id + "_" + fileToShare.workspaceID}?link={shareLink}`}
-          onClose={() => setFileToShare(null)}
-        />
-      )}
-
       {fileToRename && (
         <RenameModal
           file={fileToRename}
+          renameFile={renameSearchResult}
           onClose={() => setFileToRename(null)}
         />
+      )}
+      {fileToShare && (
+        <ShareModal file={fileToShare} onClose={() => setFileToShare(null)} />
       )}
     </div>
   );

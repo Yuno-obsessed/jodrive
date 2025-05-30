@@ -16,7 +16,6 @@ import org.junit.jupiter.api.Test;
 import sanity.nil.grpc.meta.MetadataServiceGrpc;
 import sanity.nil.grpc.meta.VerifyLinkRequest;
 import sanity.nil.meta.consts.FileState;
-import sanity.nil.meta.consts.TimeUnit;
 import sanity.nil.meta.model.FileJournalModel;
 import sanity.nil.meta.model.LinkModel;
 import sanity.nil.meta.model.UserModel;
@@ -25,6 +24,7 @@ import sanity.nil.meta.security.LinkEncoder;
 import sanity.nil.meta.service.FileJournalRepo;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.TimeZone;
 import java.util.UUID;
 
@@ -72,14 +72,14 @@ public class LinkIntegrationTest {
         var file = generateTestFile(defaultPath);
 
         String workspaceID = "1";
-        var expiration = 60000L;
+        var expiresAt = LocalDateTime.now().plusHours(4);
+        var expiresAtExpected = expiresAt.toEpochSecond(ZoneOffset.UTC);
 
-        var expectedLink = String.format("%s:%s:%s:%s", defaultUserID, file.getFileID(), workspaceID, expiration);
+        var expectedLink = String.format("%s:%s:%s:%s", defaultUserID, file.getFileID(), workspaceID, expiresAtExpected);
 
         String constructedLink = given()
                 .queryParam("wsID", workspaceID)
-                .queryParam("timeUnit", TimeUnit.MINUTE.name())
-                .queryParam("expiresIn", 1)
+                .queryParam("expiresAt", expiresAtExpected)
                 .when()
                 .post("/api/v1/metadata/file/{id}/share", file.getFileID())
                 .then()

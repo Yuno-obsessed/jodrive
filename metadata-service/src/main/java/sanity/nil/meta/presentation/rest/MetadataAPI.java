@@ -9,7 +9,6 @@ import jakarta.ws.rs.core.Response;
 import lombok.extern.jbosslog.JBossLog;
 import org.jboss.resteasy.reactive.RestResponse;
 import sanity.nil.meta.consts.FileAction;
-import sanity.nil.meta.consts.TimeUnit;
 import sanity.nil.meta.dto.Paged;
 import sanity.nil.meta.dto.block.BlockMetadata;
 import sanity.nil.meta.dto.block.GetBlocksMetadata;
@@ -17,7 +16,6 @@ import sanity.nil.meta.dto.file.CreateDirectory;
 import sanity.nil.meta.dto.file.FileFilters;
 import sanity.nil.meta.dto.file.FileInfo;
 import sanity.nil.meta.dto.file.FileNode;
-import sanity.nil.meta.model.FileJournalModel;
 import sanity.nil.meta.service.MetadataService;
 
 import java.util.List;
@@ -74,7 +72,7 @@ public class MetadataAPI {
     @Produces(MediaType.APPLICATION_JSON)
     @RunOnVirtualThread
     public FileInfo getFileInfo(
-            @QueryParam("id") Long fileID,
+            @QueryParam("fileID") Long fileID,
             @QueryParam("wsID") Long wsID,
             @QueryParam("link") String link
     ) {
@@ -125,10 +123,9 @@ public class MetadataAPI {
     public String shareFile(
             @PathParam("id") Long fileID,
             @QueryParam("wsID") Long wsID,
-            @QueryParam("timeUnit") TimeUnit timeUnit,
-            @QueryParam("expiresIn") Long expiresIn
+            @QueryParam("expiresAt") Long expiresAt
     ) {
-        return metadataService.constructLinkForSharing(fileID, wsID, timeUnit, expiresIn);
+        return metadataService.constructLinkForSharing(fileID, wsID, expiresAt);
     }
 
     @PATCH

@@ -9,7 +9,7 @@ export async function downloadFile(file, token) {
       Authorization: `Bearer ${token}`,
     };
     const infoRes = await fetch(
-      `${METADATA_URI}/file/${file.id}?wsID=${file.workspaceID}`,
+      `${METADATA_URI}/file?fileID=${file.id}&wsID=${file.workspaceID}`,
       {
         method: "GET",
         headers: headers,

@@ -23,7 +23,7 @@ export async function updateFile(file, newName, fileAction, token) {
     },
   );
   if (!response.ok) {
-    throw new Error("Error renaming file");
+    throw new Error("Error updating file");
   }
   return response.text();
 }

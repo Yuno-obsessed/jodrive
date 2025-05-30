@@ -34,5 +34,17 @@ export const useSearchModel = create(
       set((state) => {
         state.searchResults = [];
       }),
+
+    renameSearchResult: (targetFile, newName) => {
+      set((state) => {
+        const file = state.searchResults.elements.find(
+          (f) =>
+            f.id === targetFile.id && f.workspaceID === targetFile.workspaceID,
+        );
+        if (file) {
+          file.name = newName;
+        }
+      });
+    },
   })),
 );

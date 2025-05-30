@@ -27,5 +27,14 @@ export const useTreeModel = create(
         state.files = state.files.filter((r) => r.id !== id);
       });
     },
+
+    renameFile: (targetFile, newName) => {
+      set((state) => {
+        const file = state.files.find((f) => f.id === targetFile.id);
+        if (file) {
+          file.name = newName;
+        }
+      });
+    },
   })),
 );

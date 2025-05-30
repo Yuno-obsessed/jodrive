@@ -564,14 +564,10 @@ public class MetadataService {
     }
 
     @Transactional
-    public String constructLinkForSharing(Long fileID, Long wsID, TimeUnit timeUnit, Long expiresIn) {
+    public String constructLinkForSharing(Long fileID, Long wsID, Long expiresAt) {
         // TODO: include device identification (user-agent or fingerprint) in link construction
         var identity = identityProvider.getIdentity(String.valueOf(wsID));
-
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime expiresAt = now.plus(expiresIn, timeUnit.toTemporalUnit());
-        long diff = expiresAt.toInstant(ZoneOffset.UTC).toEpochMilli() - now.toInstant(ZoneOffset.UTC).toEpochMilli();
-        String link = String.format("%s:%s:%s:%s", identity.getUserID(), fileID, wsID, diff);
+        String link = String.format("%s:%s:%s:%s", identity.getUserID(), fileID, wsID, expiresAt);
 
         String encryptedLink = "";
         try {
@@ -580,7 +576,7 @@ public class MetadataService {
             log.error("Could not encrypt link " + link, e);
             return "";
         }
-        LinkModel linkModel = new LinkModel(identity.getUserID(), link, expiresAt);
+        LinkModel linkModel = new LinkModel(identity.getUserID(), link, LocalDateTime.now());
         entityManager.persist(linkModel);
 
         return encryptedLink;
@@ -613,7 +609,7 @@ public class MetadataService {
         if (fileJournal.getState().equals(FileState.DELETED)) {
             List<TaskModel> deletionTasks = entityManager.createNativeQuery("SELECT * FROM metadata_db.tasks t " +
                             "WHERE t.object_id = :fileID AND metadata ->> 'workspace' = :workspaceID", TaskModel.class)
-                    .setParameter("fileID", fileID)
+                    .setParameter("fileID", String.valueOf(fileID))
                     .setParameter("workspaceID", String.valueOf(wsID))
                     .getResultList();
             Optional<TaskModel> deletionTask = Optional.empty();
