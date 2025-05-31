@@ -10,6 +10,7 @@ import sanity.nil.meta.dto.workspace.WorkspaceUserDTO;
 import sanity.nil.meta.service.WorkspaceService;
 
 import java.util.List;
+import java.util.UUID;
 
 @Path("/api/v1/workspace")
 public class WorkspaceAPI {
@@ -52,5 +53,15 @@ public class WorkspaceAPI {
                 RestResponse.Status.CREATED,
                 workspaceService.createWorkspace(dto)
         );
+    }
+
+    @DELETE
+    @Path("/{id}/kick")
+    public RestResponse<WorkspaceDTO> kickUser(
+            @PathParam("id") Long wsID,
+            @QueryParam("userID") UUID userID
+    ) {
+        workspaceService.kickWorkspaceUser(wsID, userID);
+        return RestResponse.noContent();
     }
 }

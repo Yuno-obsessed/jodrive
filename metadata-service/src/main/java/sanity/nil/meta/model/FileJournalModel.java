@@ -58,13 +58,14 @@ public class FileJournalModel {
     @Column(name = "updated_at", columnDefinition = "timestamptz")
     private LocalDateTime updatedAt;
 
-    public FileJournalModel(WorkspaceModel workspace, String path, UserModel uploader, FileState state,
+    public FileJournalModel(WorkspaceModel workspace, String path, UserModel uploader, FileState state, short latest,
                             Long size, String blocklist) {
         this.id = new FileJournalIDModel(workspace.getId(), null);
         this.workspace = workspace;
         this.path = path;
         this.uploader = uploader;
         this.state = state;
+        this.latest = latest;
         this.size = size;
         this.blocklist = blocklist;
     }

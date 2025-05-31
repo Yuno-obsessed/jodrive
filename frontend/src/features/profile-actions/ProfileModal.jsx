@@ -36,11 +36,18 @@ export const ProfileModal = ({ ref, onClose, targetUser }) => {
         ) : (
           <></>
         )}
-        <a className={styles.userInfoItem}>{targetUser.username}</a>
-        <a className={styles.userInfoItem}>{targetUser.email}</a>
-        <a className={styles.userInfoItem}>
-          {targetUser.subscription.description}
-        </a>
+        <div className={styles.userInfoItem}>
+          <label>Username</label>
+          <a>{targetUser.username}</a>
+        </div>
+        <div className={styles.userInfoItem}>
+          <label>Email</label>
+          <a>{targetUser.email}</a>
+        </div>
+        <div className={styles.userInfoItem}>
+          <label>Subscription</label>
+          <a>{targetUser.subscription.description}</a>
+        </div>
       </div>
     </Modal>
   );

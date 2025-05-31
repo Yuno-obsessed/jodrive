@@ -398,7 +398,7 @@ public class GetBlocksMetadataTest {
         var blockList = IntStream.range(1, 101)
                 .mapToObj(e -> UUID.randomUUID().toString())
                 .collect(Collectors.joining(","));
-        var fileJournal = new FileJournalModel(workspace, defaultPath, uploadUser, state,
+        var fileJournal = new FileJournalModel(workspace, defaultPath, uploadUser, state, (short) 1,
                 411053792L, blockList);
         fileJournalRepo.insert(fileJournal);
         var statistics = entityManager.find(UserStatisticsModel.class, new UserStatisticsModel.UserStatisticsIDModel(

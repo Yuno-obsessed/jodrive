@@ -232,7 +232,7 @@ public class MetadataService {
     @Transactional
     protected FileJournalModel postProcessExistingFileNewInWorkspace(String path, UserModel userUploader, Collection<String> newBlocks, WorkspaceModel workspace, Long fileSize) {
         // separate method because not sure how to treat such case, logic can be rethought
-        FileJournalModel fileJournal = new FileJournalModel(entityManager.merge(workspace), path, userUploader, FileState.UPLOADED,
+        FileJournalModel fileJournal = new FileJournalModel(entityManager.merge(workspace), path, userUploader, FileState.UPLOADED, (short) 1,
                 fileSize, createBlockList(newBlocks.stream()));
         fileJournalRepo.insert(fileJournal);
         var userStatistics = entityManager.find(UserStatisticsModel.class, new UserStatisticsModel.UserStatisticsIDModel(
@@ -247,7 +247,7 @@ public class MetadataService {
 
     @Transactional
     protected FileJournalModel postProcessNewFile(String path, UserModel userUploader, Collection<String> newBlocks, WorkspaceModel workspace, Long fileSize) {
-        FileJournalModel fileJournal = new FileJournalModel(entityManager.merge(workspace), path, userUploader, FileState.IN_UPLOAD,
+        FileJournalModel fileJournal = new FileJournalModel(entityManager.merge(workspace), path, userUploader, FileState.IN_UPLOAD, (short) 1,
                 fileSize, createBlockList(newBlocks.stream()));
         fileJournalRepo.insert(fileJournal);
         var userStatistics = entityManager.find(UserStatisticsModel.class, new UserStatisticsModel.UserStatisticsIDModel(
@@ -277,9 +277,16 @@ public class MetadataService {
             entityManager.createQuery("DELETE FROM FileJournalModel fj " +
                             "WHERE fj.id.workspaceID = :wsID AND fj.historyID = :version")
                     .setParameter("wsID", workspace.getId())
-                    .setParameter("version", existingVersions.getFirst()) // latest version
+                    .setParameter("version", existingVersions.getFirst()) // the oldest version
                     .executeUpdate();
         }
+
+        // unmark previous version as latest
+        entityManager.createQuery("UPDATE FileJournalModel f SET latest = 0 " +
+                "WHERE f.historyID = :version AND f.id.workspaceID = :wsID")
+                .setParameter("version", existingVersions.getLast())
+                .setParameter("wsID", workspace.getId())
+                .executeUpdate();
 
         var fileJournal = entityManager.createQuery("SELECT fj FROM FileJournalModel fj " +
                         "WHERE fj.id.workspaceID = ?1 AND fj.path = ?2 " +
@@ -290,7 +297,7 @@ public class MetadataService {
                 .getSingleResult();
 
         var newFileJournalEntry = new FileJournalModel(entityManager.merge(workspace), path, userUploader,
-                FileState.IN_UPLOAD, fileJournal.getSize() + fileSize, createBlockList(newBlocks.stream())
+                FileState.IN_UPLOAD, (short) 1, fileJournal.getSize() + fileSize, createBlockList(newBlocks.stream())
         );
         newFileJournalEntry.setUpdatedBy(userUploader);
         fileJournalRepo.insert(newFileJournalEntry);
@@ -349,15 +356,27 @@ public class MetadataService {
      * @param fileID has to be provided if access made by user with permanent access
      * @param wsID has to be provided if access made by user with permanent access
      * @param link has to be provided if access made by external guest user
+     * @param listVersions used when needs to get info about file versions
+     * @param version used to get a specific version of a file
      * @return FileInfo
      */
-    public FileInfo getFileInfo(Long fileID, Long wsID, String link) {
+    public FileInfo getFileInfo(Long fileID, Long wsID, String link, String path, Boolean listVersions, Integer version) {
         if (!hasFileAccessPermissions(wsID, link)) {
             throw new ForbiddenException();
         }
         if ((fileID == null || wsID == null) && StringUtils.isEmpty(link)) {
             throw new InvalidParametersException("Either link for file access is invalid or workspace/file id wasn't provided");
         }
+
+        if (version != null && StringUtils.isNotBlank(path)) {
+            var fileOp = fileJournalRepo.findByPathAndVersion(wsID, path, version);
+            if (fileOp.isEmpty()) {
+                throw new NotFoundException();
+            }
+            log.debug("Returning file info for specific version");
+            return fileMapper.journalToInfo(fileOp.get());
+        }
+
         // TODO: optimize reads by not selecting not needed columns (blocklist)
         var fileOp = fileJournalRepo.findByIdAndStateIn(fileID, wsID, FileState.UPLOADED);
         if (fileOp.isEmpty()) {
@@ -365,9 +384,15 @@ public class MetadataService {
         }
         var file = fileOp.get();
 
-        var isDirectory = file.getPath().charAt(file.getPath().length()-1) == DIRECTORY_CHAR;
-        return new FileInfo(file.getFileID(), file.getId().getWorkspaceID(), file.getPath(), isDirectory,
-                file.getSize(), file.getUploader().getId(), file.getUploader().getUsername(), file.getCreatedAt());
+        if (listVersions && StringUtils.isNotBlank(path)) {
+            int versions = fileJournalRepo.countByPath(wsID, path);
+            var versionedFile = fileMapper.journalToVersionedInfo(file);
+            versionedFile.versions = versions;
+            log.debug("Returning file info with versions");
+            return versionedFile;
+        }
+
+        return fileMapper.journalToInfo(file);
     }
 
     /**
@@ -529,7 +554,7 @@ public class MetadataService {
             var workspace = getWorkspace(request.workspaceID(), identity.getUserID());
             var userUploader = entityManager.find(UserModel.class, identity.getUserID());
 
-            newDirectory = new FileJournalModel(workspace.get(), dir, userUploader, FileState.UPLOADED, 0L, null);
+            newDirectory = new FileJournalModel(workspace.get(), dir, userUploader, FileState.UPLOADED, (short) 1, 0L, null);
             fileJournalRepo.insert(newDirectory);
             if (!externalTransaction) {
                 userTransaction.commit();

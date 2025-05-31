@@ -1,5 +1,8 @@
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { getWorkspaceUsers } from "../../api/WorkspaceAPI.js";
+import {
+  getWorkspaceUsers,
+  kickWorkspaceUser,
+} from "../../api/WorkspaceAPI.js";
 import useAuthStore from "../../util/authStore.js";
 import { useEffect, useMemo, useState } from "react";
 import { TableRow } from "../../enitites/file/ui/TableRow.jsx";
@@ -19,7 +22,8 @@ export const WorkspaceUsers = () => {
   const [hovered, setHovered] = useState();
   const location = useLocation();
   const navigate = useNavigate();
-  const { workspaceUsers, setWorkspaceUsers } = useWorkspaceUsersModel();
+  const { workspaceUsers, setWorkspaceUsers, removeWorkspaceUser } =
+    useWorkspaceUsersModel();
 
   useEffect(() => {
     getWorkspaceUsers({ wsID: id }, token)
@@ -31,7 +35,11 @@ export const WorkspaceUsers = () => {
     return workspaceUsers.filter((u) => u.id === userInfo.id)[0];
   };
 
-  const handleRemove = (user) => {};
+  const handleKick = (user) => {
+    kickWorkspaceUser(id, user.id, token)
+      .then(() => removeWorkspaceUser(user))
+      .catch(console.log);
+  };
 
   const columnRenderers = {
     name: (user) => user.username,
@@ -55,14 +63,14 @@ export const WorkspaceUsers = () => {
       isSelected={selected === user}
       buttons={
         userInfo.id === user.id ? (
-          <p className={styles.actions}>It's you</p>
+          <p className={styles.actions}></p>
         ) : (
           <>
             {getWorkspaceUser().role === "OWNER" && user.role !== "OWNER" && (
               <Button
                 className={styles.btn}
                 variant="icon"
-                onClick={() => handleRemove(file)}
+                onClick={() => handleKick(user)}
               >
                 <CuidaUserRemoveOutline className={styles.icons} />
               </Button>

@@ -13,7 +13,7 @@ import { getFilenameWithIcon } from "../../util/filenameUtils.jsx";
 
 export const FileDeletedPage = () => {
   const { searchResults, removeSearchResult } = useSearchModel();
-  const { token } = useAuthStore();
+  const { token, userInfo } = useAuthStore();
 
   const [hovered, setHovered] = useState(null);
   const [selected, setSelected] = useState(new Set());
@@ -62,7 +62,8 @@ export const FileDeletedPage = () => {
     deletedBy: (file) => file.deletedBy?.username,
     deletedAt: (file) => file.deletedAt,
     size: (file) => formatByteSize(file.size),
-    workspace: (file) => file.workspaceID,
+    workspace: (file) =>
+      userInfo.workspaces.filter((f) => f.id == file.workspaceID)[0].name,
     path: (file) => file.path,
   };
 

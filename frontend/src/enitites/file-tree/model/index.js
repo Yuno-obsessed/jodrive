@@ -14,7 +14,10 @@ export const useTreeModel = create(
       set((state) => {
         if (
           !state.files.some(
-            (r) => r.id === file.id && r.workspaceID === file.workspaceID,
+            (r) =>
+              r.id === file.id &&
+              r.workspaceID === file.workspaceID &&
+              r.path === file.path,
           )
         ) {
           state.files.push(file);

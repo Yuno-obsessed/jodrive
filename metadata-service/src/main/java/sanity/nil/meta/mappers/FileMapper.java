@@ -7,6 +7,7 @@ import org.mapstruct.Named;
 import sanity.nil.meta.cache.model.FileMetadata;
 import sanity.nil.meta.dto.file.DeletedFileInfo;
 import sanity.nil.meta.dto.file.FileInfo;
+import sanity.nil.meta.dto.file.VersionedFileInfo;
 import sanity.nil.meta.model.FileJournalModel;
 
 import java.nio.file.Path;
@@ -36,6 +37,16 @@ public interface FileMapper {
     @Mapping(target = "uploaderName", source = "uploader.username")
     @Mapping(target = "uploadedAt", source = "createdAt")
     FileInfo journalToInfo(FileJournalModel journal);
+
+    @Mapping(target = "id", source = "id.fileID")
+    @Mapping(target = "workspaceID", source = "id.workspaceID")
+    @Mapping(target = "name", qualifiedByName = "extractFilename", source = "path")
+    @Mapping(target = "isDirectory", expression = "java(isFileDirectory(journal.getPath()))")
+    @Mapping(target = "size", source = "size")
+    @Mapping(target = "uploader", source = "uploader.id")
+    @Mapping(target = "uploaderName", source = "uploader.username")
+    @Mapping(target = "uploadedAt", source = "createdAt")
+    VersionedFileInfo journalToVersionedInfo(FileJournalModel journal);
 
     @Mapping(target = "id", source = "id.fileID")
     @Mapping(target = "workspaceID", source = "id.workspaceID")

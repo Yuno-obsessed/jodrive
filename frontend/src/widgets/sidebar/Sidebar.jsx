@@ -33,7 +33,6 @@ export const Sidebar = () => {
   };
 
   useEffect(() => {
-    console.log("WHYYY", userWorkspaces);
     if (!userWorkspaces || userWorkspaces.length === 0) {
       getWorkspaces(token)
         .then((res) => {

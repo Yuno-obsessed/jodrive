@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import sanity.nil.meta.consts.WsRole;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -31,7 +32,8 @@ public class UserWorkspaceModel {
     @JoinColumn(name = "user_id", columnDefinition = "bigint")
     private UserModel user;
 
-    private String role;
+    @Enumerated(EnumType.STRING)
+    private WsRole role;
 
     @CreationTimestamp
     @Column(name = "joined_at", columnDefinition = "timestamptz")
@@ -45,7 +47,7 @@ public class UserWorkspaceModel {
             UUID userID
     ) {}
 
-    public UserWorkspaceModel(WorkspaceModel workspace, UserModel user, String role) {
+    public UserWorkspaceModel(WorkspaceModel workspace, UserModel user, WsRole role) {
         this.id = new UserWorkspaceIDModel(workspace.getId(), user.getId());
         this.workspace = workspace;
         this.user = user;

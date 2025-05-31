@@ -74,9 +74,12 @@ public class MetadataAPI {
     public FileInfo getFileInfo(
             @QueryParam("fileID") Long fileID,
             @QueryParam("wsID") Long wsID,
-            @QueryParam("link") String link
+            @QueryParam("link") String link,
+            @QueryParam("path") String path,
+            @QueryParam("listVersions") Boolean listVersions,
+            @QueryParam("version") Integer version
     ) {
-        return metadataService.getFileInfo(fileID, wsID, link);
+        return metadataService.getFileInfo(fileID, wsID, link, path, listVersions, version);
     }
 
     @GET

@@ -1,13 +1,16 @@
 package sanity.nil.meta.service;
 
+import io.quarkus.security.ForbiddenException;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.persistence.EntityManager;
+import jakarta.transaction.Transactional;
 import jakarta.transaction.UserTransaction;
 import lombok.extern.jbosslog.JBossLog;
 import sanity.nil.meta.cache.SubscriptionQuotaCache;
 import sanity.nil.meta.consts.Quota;
+import sanity.nil.meta.consts.WsRole;
 import sanity.nil.meta.dto.Paged;
 import sanity.nil.meta.dto.file.CreateDirectory;
 import sanity.nil.meta.dto.workspace.CreateWorkspaceDTO;
@@ -21,6 +24,7 @@ import sanity.nil.security.IdentityProvider;
 import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.UUID;
 
 @JBossLog
 @ApplicationScoped
@@ -128,7 +132,7 @@ public class WorkspaceService {
                 throw new InsufficientQuotaException(Quota.USER_WORKSPACES, workspacesLimit.toString());
             }
             entityManager.persist(newWorkspace);
-            var workspaceUser = new UserWorkspaceModel(newWorkspace, creator, "OWNER");
+            var workspaceUser = new UserWorkspaceModel(newWorkspace, creator, WsRole.OWNER);
             entityManager.persist(workspaceUser);
             // TODO: refactor this
             metadataService.createDirectory(new CreateDirectory(newWorkspace.getId(), "", ""));
@@ -138,5 +142,30 @@ public class WorkspaceService {
             throw new RuntimeException("Error creating workspace");
         }
         return new WorkspaceDTO(newWorkspace.getId(), newWorkspace.getName(), newWorkspace.getDescription());
+    }
+
+    @Transactional
+    public void kickWorkspaceUser(Long wsID, UUID userID) {
+        var identity = identityProvider.getCheckedIdentity();
+        var issuerRole = getUserWorkspaceRole(wsID, identity.getUserID());
+        var userToKickRole = getUserWorkspaceRole(wsID, userID);
+
+        if (!userToKickRole.equals(WsRole.OWNER) && issuerRole.equals(WsRole.OWNER)) {
+            entityManager.createQuery("DELETE FROM UserWorkspaceModel u " +
+                            "WHERE u.id.userID = :userID AND u.id.workspaceID = :wsID")
+                    .setParameter("userID", userID)
+                    .setParameter("wsID", wsID)
+                    .executeUpdate();
+        } else {
+            throw new ForbiddenException("Can't kick user");
+        }
+    }
+
+    private WsRole getUserWorkspaceRole(Long wsID, UUID userID) {
+        return entityManager.createQuery("SELECT u.role FROM UserWorkspaceModel u " +
+                        "WHERE u.id.workspaceID = :wsID AND u.id.userID = :userID", WsRole.class)
+                .setParameter("wsID", wsID)
+                .setParameter("userID", userID)
+                .getSingleResult();
     }
 }

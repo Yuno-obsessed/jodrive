@@ -14,7 +14,6 @@ export const fileSearchColumns = (userInfo) => [
     cell: (info) => info.getValue().name,
     header: "Workspace",
   },
-  { accessorKey: "workspaceID", header: "Workspace" },
   {
     accessorFn: (row) => formatByteSize(row.size),
     cell: (info) => info.getValue(),

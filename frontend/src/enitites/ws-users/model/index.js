@@ -18,7 +18,7 @@ export const useWorkspaceUsersModel = create(
       });
     },
 
-    removeWorkspaceUsers: (workspaceUser) => {
+    removeWorkspaceUser: (workspaceUser) => {
       set((state) => {
         state.workspaceUsers = state.workspaceUsers.filter(
           (r) => r.id !== workspaceUser.id,

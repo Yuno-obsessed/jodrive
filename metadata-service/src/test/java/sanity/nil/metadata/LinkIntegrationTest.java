@@ -157,7 +157,7 @@ public class LinkIntegrationTest {
         userTransaction.begin();
         var userUploader = entityManager.find(UserModel.class, defaultUserID);
         var workspace = entityManager.find(WorkspaceModel.class, 1L);
-        var journal = new FileJournalModel(workspace, UUID.randomUUID().toString(), userUploader, FileState.UPLOADED,
+        var journal = new FileJournalModel(workspace, UUID.randomUUID().toString(), userUploader, FileState.UPLOADED, (short) 1,
                 4256400L, UUID.randomUUID().toString());
         fileJournalRepo.insert(journal);
         userTransaction.commit();

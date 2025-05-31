@@ -30,6 +30,7 @@ import { useWorkspacesModel } from "../../enitites/workspace/model/index.js";
 import { downloadFile } from "../../api/DownloadFile.js";
 import { RenameModal } from "../../features/rename-file/RenameModal.jsx";
 import { ShareModal } from "../../features/share-file/ShareModal.jsx";
+import { updateFile } from "../../api/UpdateFile.js";
 
 export const FileTreePage = () => {
   const { id } = useParams();
@@ -113,6 +114,10 @@ export const FileTreePage = () => {
         console.log(
           `Putting file ${activeFile.id} to directory ${overFile.id}`,
         );
+        let newName = overFile.name + activeFile.name;
+        updateFile(activeFile, newName, null, token)
+          .then(() => removeFile(activeFile.id))
+          .catch(console.log);
       }
     }
   };

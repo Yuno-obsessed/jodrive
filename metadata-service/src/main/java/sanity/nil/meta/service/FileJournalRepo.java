@@ -53,6 +53,7 @@ public class FileJournalRepo {
         var res = entityManager.createQuery("SELECT f FROM FileJournalModel f " +
                         "WHERE id.workspaceID = :wsID AND f.path = :path " +
                         "AND f.state = :state " +
+                        "AND f.latest = 1 " +
                         "ORDER BY f.historyID DESC", FileJournalModel.class)
                 .setParameter("wsID", wsID)
                 .setParameter("path", path)
@@ -61,15 +62,38 @@ public class FileJournalRepo {
         return CollectionUtils.isEmpty(res) ? Optional.empty() : Optional.of(res.getFirst());
     }
 
-    public Optional<FileJournalModel> findByIdAndStateIn(Long fileID, Long wsID, FileState states) {
+    public Optional<FileJournalModel> findByIdAndStateIn(Long fileID, Long wsID, FileState state) {
         var res = entityManager.createQuery("SELECT f FROM FileJournalModel f " +
                         "WHERE id.fileID = :fileID AND id.workspaceID = :wsID " +
-                        "AND state in :states", FileJournalModel.class)
+                        "AND state in :state", FileJournalModel.class)
                 .setParameter("fileID", fileID)
                 .setParameter("wsID", wsID)
-                .setParameter("states", states)
+                .setParameter("state", state)
                 .getResultList();
         return CollectionUtils.isEmpty(res) ? Optional.empty() : Optional.of(res.getFirst());
+    }
+
+    public Optional<FileJournalModel> findByPathAndVersion(Long wsID, String path, int version) {
+        var res = entityManager.createQuery("SELECT f FROM FileJournalModel f " +
+                        "WHERE id.workspaceID = :wsID AND f.path = :path " +
+                        "AND state in :state " +
+                        "ORDER BY f.historyID DESC", FileJournalModel.class)
+                .setParameter("wsID", wsID)
+                .setParameter("path", path)
+                .setParameter("state", FileState.UPLOADED)
+                .setFirstResult(version)
+                .getResultList();
+        return CollectionUtils.isEmpty(res) ? Optional.empty() : Optional.of(res.getFirst());
+    }
+
+    public Integer countByPath(Long wsID, String path) {
+        return entityManager.createQuery("SELECT COUNT(f) FROM FileJournalModel f " +
+                        "WHERE id.workspaceID = :wsID AND f.path = :path " +
+                        "AND state in :state", Integer.class)
+                .setParameter("path", path)
+                .setParameter("wsID", wsID)
+                .setParameter("state", FileState.UPLOADED)
+                .getSingleResult();
     }
 
     public List<Predicate> buildPredicatesFromParams(CriteriaBuilder cb, Root<FileJournalModel> root, FileFilters filters) {
@@ -115,6 +139,7 @@ public class FileJournalRepo {
         );
 
         predicates.add(cb.notLike(subPath, "%/_%"));
+        predicates.add(cb.equal(root.get("latest"), (short) 1));
 
         predicates.add(cb.equal(root.get("state"), FileState.UPLOADED));
         return predicates;

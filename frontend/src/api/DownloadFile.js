@@ -1,4 +1,5 @@
-import { BLOCK_URI, METADATA_URI } from "../consts/Constants.js";
+import { BLOCK_URI } from "../consts/Constants.js";
+import { getFileInfo } from "./GetFileInfo.js";
 
 export async function downloadFile(file, token) {
   if (file === null || file.id === null || file.workspaceID === null) {
@@ -8,14 +9,10 @@ export async function downloadFile(file, token) {
     const headers = {
       Authorization: `Bearer ${token}`,
     };
-    const infoRes = await fetch(
-      `${METADATA_URI}/file?fileID=${file.id}&wsID=${file.workspaceID}`,
-      {
-        method: "GET",
-        headers: headers,
-      },
+    const info = await getFileInfo(
+      { wsID: file.workspaceID, id: file.id, listVersions: true },
+      token,
     );
-    const info = await infoRes.json();
 
     const downloadRes = await fetch(
       `${BLOCK_URI}/download/${file.id}?wsID=${file.workspaceID}`,

@@ -53,3 +53,22 @@ export async function getWorkspaceUsers(request, token) {
   }
   return await response.json();
 }
+
+export async function kickWorkspaceUser(wsID, userID, token) {
+  if (!wsID || !userID) {
+    return new Error("Invalid parameters");
+  }
+  const response = await fetch(
+    `${WORKSPACE_URI}/${wsID}/kick?userID=${userID}`,
+    {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+  if (response.status !== 204) {
+    throw new Error("Error kicking workspace user");
+  }
+}
