@@ -8,7 +8,13 @@ import FlatColorIconsMusic from "~icons/flat-color-icons/music";
 import TablerFolder from "~icons/tabler/folder";
 import styles from "./filenameUtils.module.css";
 
-export const getFilenameWithIcon = (filename) => {
+export const getFilenameWithIcon = (filename, maxText) => {
+  const shortenText = (maxLength) => {
+    if (!filename) return "";
+    if (filename.length <= maxLength) return filename;
+    return filename.slice(0, maxLength - 3) + "...";
+  };
+
   const getIcon = () => {
     if (!filename) return;
     if (filename[filename.length - 1] === "/") {
@@ -37,9 +43,9 @@ export const getFilenameWithIcon = (filename) => {
     }
   };
   return (
-    <span className={styles.filename}>
+    <span title={filename} className={styles.filename}>
       {getIcon()}
-      <a>{filename}</a>
+      <a>{shortenText(maxText)}</a>
     </span>
   );
 };

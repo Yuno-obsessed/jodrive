@@ -9,6 +9,8 @@ import sanity.nil.meta.dto.file.DeletedFileInfo;
 import sanity.nil.meta.dto.file.FileInfo;
 import sanity.nil.meta.model.FileJournalModel;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -65,9 +67,12 @@ public interface FileMapper {
 
     @Named("extractPath")
     default String extractPath(String path) {
-        // TODO: make it return only the closest directory to a file
-        var directory = StringUtils.substringBefore(path, DIRECTORY_CHAR.toString());
-        return directory.isBlank() ? "/" : directory;
+        Path filePath = Paths.get(path);
+        Path parent = filePath.getParent();
+        if (parent != null && parent.getNameCount() > 0) {
+            return parent.getFileName().toString() + "/";
+        }
+        return "/";
     }
 
     default List<String> getBlocksFromBlockList(String blocklist) {

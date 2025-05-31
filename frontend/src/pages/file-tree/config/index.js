@@ -1,10 +1,11 @@
 import { getFilenameWithIcon } from "../../../util/filenameUtils.jsx";
 import { formatByteSize } from "../../../util/fileUtils.js";
+import { getUserAvatar } from "../../../util/userAvatarUtils.jsx";
 
 export const fileTreeColumns = [
   {
-    accessorFn: (row) => getFilenameWithIcon(row.name),
-    cell: (info) => info.getValue(),
+    accessorFn: (row) => getFilenameWithIcon(row.name, 35),
+    cell: (filename) => filename.getValue(),
     header: "Name",
   },
   {
@@ -12,6 +13,10 @@ export const fileTreeColumns = [
     cell: (info) => info.getValue(),
     header: "Size",
   },
-  { accessorKey: "uploaderName", header: "Uploader" },
+  {
+    accessorFn: (row) => getUserAvatar(row),
+    cell: (avatar) => avatar.getValue(),
+    header: "Uploader",
+  },
   { accessorKey: "uploadedAt", header: "Uploaded At" },
 ];

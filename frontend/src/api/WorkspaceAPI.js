@@ -6,7 +6,7 @@ export async function createWorkspace(request, token) {
   }
   const response = await fetch(`${WORKSPACE_URI}`, {
     method: "POST",
-    body: request,
+    body: JSON.stringify(request),
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
@@ -15,6 +15,7 @@ export async function createWorkspace(request, token) {
   if (response.status !== 201) {
     throw new Error("Error creating workspace");
   }
+  return await response.json();
 }
 
 export async function getWorkspaces(token) {

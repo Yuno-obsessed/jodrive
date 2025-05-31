@@ -10,7 +10,7 @@ import { constructLink } from "../../api/ConstructLink.js";
 
 export const ShareModal = ({ file, onClose }) => {
   const [copied, setCopied] = useState(false);
-  const [date, setDate] = useState(new Date());
+  const [date] = useState(new Date());
   const { token } = useAuthStore();
 
   const createEntireLink = (link) => {

@@ -124,7 +124,7 @@ public class WorkspaceService {
                 var subscription = entityManager.find(UserSubscriptionModel.class, subscriptionID);
                 workspacesLimit = subscription.getWorkspacesLimit();
             }
-            if (workspacesUserIn - workspacesLimit < 1) {
+            if (workspacesLimit - workspacesUserIn < 1) {
                 throw new InsufficientQuotaException(Quota.USER_WORKSPACES, workspacesLimit.toString());
             }
             entityManager.persist(newWorkspace);

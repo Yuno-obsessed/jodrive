@@ -1,5 +1,4 @@
 self.onmessage = async (e) => {
-  console.log(e.data);
   const { chunk, index } = e.data;
   const buffer = await chunk.arrayBuffer();
   const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);

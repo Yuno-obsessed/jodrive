@@ -23,7 +23,6 @@ export async function parallelHashChunks(chunks, workerCount = 4) {
           ...chunks[e.data.index],
           hash: e.data.hash,
         };
-        console.log(result);
 
         completed++;
         if (completed === chunks.length) {

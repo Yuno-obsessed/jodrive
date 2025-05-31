@@ -7,12 +7,13 @@ import MdiMenuRight from "~icons/mdi/menu-right";
 import clsx from "clsx";
 import { navigationElements } from "./navigation/index.jsx";
 import { useEffect, useState } from "react";
+import { useWorkspacesModel } from "../../enitites/workspace/model/index.js";
 import { getWorkspaces } from "../../api/WorkspaceAPI.js";
 
 export const Sidebar = () => {
   const { userInfo, token } = useAuthStore();
   const [showWorkspaces, setShowWorkspaces] = useState(false);
-  const [workspaceItems, setWorkspaceItems] = useState([]);
+  const { userWorkspaces, setWorkspaces } = useWorkspacesModel();
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -32,19 +33,17 @@ export const Sidebar = () => {
   };
 
   useEffect(() => {
-    getWorkspaces(token)
-      .then((res) => {
-        const items = res.map((w) => ({
-          id: w.id,
-          name: w.name,
-          link: `/workspace/${w.id}`,
-        }));
-        setWorkspaceItems(items);
-      })
-      .catch(console.log);
+    console.log("WHYYY", userWorkspaces);
+    if (!userWorkspaces || userWorkspaces.length === 0) {
+      getWorkspaces(token)
+        .then((res) => {
+          setWorkspaces(res);
+        })
+        .catch(console.log);
+    }
   }, [token]);
 
-  const navItems = navigationElements(token, workspaceItems);
+  const navItems = navigationElements(token, userWorkspaces);
 
   const isLinkActive = (link) => location.pathname === link;
 
@@ -62,7 +61,8 @@ export const Sidebar = () => {
                   styles.sidebarEl,
                   active && styles.activeButton,
                 )}
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   if (item.children) {
                     setShowWorkspaces(!showWorkspaces);
                   } else {
@@ -75,7 +75,12 @@ export const Sidebar = () => {
                     {item.icon}
                     {item.name}
                   </div>
-                  <div className={styles.itemButtons}>{item.buttons}</div>
+                  <div
+                    className={styles.itemButtons}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {item.buttons}
+                  </div>
                 </div>
               </Button>
 

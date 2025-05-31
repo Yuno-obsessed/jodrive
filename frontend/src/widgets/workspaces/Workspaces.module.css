@@ -10,5 +10,7 @@
 }
 
 .btn {
+    max-width: 150px;
+    padding: 6px 14px;
     color: rgba(var(--accent-color));
 }

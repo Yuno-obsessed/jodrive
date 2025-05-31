@@ -58,7 +58,7 @@ export const FileDeletedPage = () => {
       .catch(console.error);
 
   const columnRenderers = {
-    name: (file) => getFilenameWithIcon(file.name),
+    name: (file) => getFilenameWithIcon(file.name, 30),
     deletedBy: (file) => file.deletedBy?.username,
     deletedAt: (file) => file.deletedAt,
     size: (file) => formatByteSize(file.size),

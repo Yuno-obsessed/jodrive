@@ -18,9 +18,10 @@ import { useSyncFilesystemPath } from "../../shared/fs-dir/hook.js";
 import { useFilesystemStore } from "../../shared/fs-dir/index.js";
 import { useParams } from "react-router-dom";
 import { useTreeModel } from "../../enitites/file-tree/model/index.js";
+import toast from "react-hot-toast";
+import { UploadToast } from "./toast/index.jsx";
 
 export const UploadModal = ({ onClose }) => {
-  const [progress, setProgress] = useState(0);
   const { token } = useAuthStore();
   const { addSearchResult } = useSearchModel();
   const { addFile } = useTreeModel();
@@ -56,7 +57,6 @@ export const UploadModal = ({ onClose }) => {
       } else {
         addSearchResult(metadata.fileInfo);
       }
-      onClose();
     }
 
     const total = metadata.chunks.length;
@@ -64,21 +64,38 @@ export const UploadModal = ({ onClose }) => {
     const observer = new UploadObserver();
     let uploaded = 0;
 
+    const toastId = "upload-progress";
+    toast.custom((t) => <UploadToast t={t} progress={0} />, {
+      id: toastId,
+      duration: Infinity,
+    });
     observer.subscribe(({ type, count }) => {
       if (type === "batchUploaded") {
         uploaded += count;
-        setProgress((uploaded / total) * 100);
+        const newProgress = Math.floor((uploaded / total) * 100);
+
+        toast.custom((t) => <UploadToast t={t} progress={newProgress} />, {
+          id: toastId,
+          duration: Infinity,
+        });
       }
     });
+    onClose();
+    try {
+      await uploadChunksWithRetry({
+        chunks: metadata.chunks,
+        token,
+        batchSize: 2,
+        poolSize: 8,
+        maxRetries: 3,
+        observer,
+      });
 
-    await uploadChunksWithRetry({
-      chunks: metadata.chunks,
-      token,
-      batchSize: 2,
-      poolSize: 8,
-      maxRetries: 3,
-      observer,
-    });
+      toast.success("File uploaded", { id: toastId });
+    } catch (err) {
+      console.log(err);
+      toast.error("Upload failed", { id: toastId });
+    }
 
     const committedMetadata = await checkChunkExistence(
       workspaceID,
@@ -121,14 +138,6 @@ export const UploadModal = ({ onClose }) => {
       <Button variant={"ghost"} onClick={() => handleUpload()}>
         <p> Upload</p>
       </Button>
-      {file && (
-        <div className={styles.uploadBar}>
-          <div
-            className={styles.uploadBarProgress}
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      )}
     </Modal>
   );
 };

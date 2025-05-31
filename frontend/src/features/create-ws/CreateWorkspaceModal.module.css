@@ -3,11 +3,13 @@
   flex-direction: column;
   gap: 24px;
 }
-
+.inputs {
+  margin: 10px 0;
+}
 .innerBtn {
   display: block;
-  height: 24px;
-  width: 24px;
+  height: 20px;
+  width: 20px;
 }
 .innerBtn:hover {
   background-color: rgba(var(--accent-color), 0.2);

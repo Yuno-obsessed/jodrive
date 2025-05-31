@@ -19,6 +19,7 @@ import jakarta.ws.rs.NotFoundException;
 import lombok.extern.jbosslog.JBossLog;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.faulttolerance.Retry;
+import org.hibernate.query.Order;
 import sanity.nil.grpc.block.BlockService;
 import sanity.nil.grpc.block.CheckBlocksExistenceRequest;
 import sanity.nil.grpc.block.Code;
@@ -390,7 +391,7 @@ public class MetadataService {
 
         var selectPredicates = fileJournalRepo.buildPredicatesFromParams(cb, selectRoot, filters);
 
-        selectQuery.select(selectRoot).where(cb.and(selectPredicates.toArray(new Predicate[0])));
+        selectQuery.select(selectRoot).where(cb.and(selectPredicates.toArray(new Predicate[0]))).orderBy(cb.desc(selectRoot.get("updatedAt")));
 
         CriteriaQuery<Long> countQuery = cb.createQuery(Long.class);
         Root<FileJournalModel> countRoot = countQuery.from(FileJournalModel.class);
@@ -432,7 +433,7 @@ public class MetadataService {
 
         var selectPredicates = fileJournalRepo.buildPredicatesFromParams(cb, selectRoot, wsID, directory);
 
-        selectQuery.select(selectRoot).where(cb.and(selectPredicates.toArray(new Predicate[0])));
+        selectQuery.select(selectRoot).where(cb.and(selectPredicates.toArray(new Predicate[0]))).orderBy(cb.desc(selectRoot.get("updatedAt")));
 
         CriteriaQuery<Long> countQuery = cb.createQuery(Long.class);
         Root<FileJournalModel> countRoot = countQuery.from(FileJournalModel.class);
