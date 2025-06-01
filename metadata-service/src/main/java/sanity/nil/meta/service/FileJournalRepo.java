@@ -3,10 +3,7 @@ package sanity.nil.meta.service;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.Expression;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.*;
 import org.apache.commons.lang3.StringUtils;
 import sanity.nil.meta.consts.Constants;
 import sanity.nil.meta.consts.FileState;
@@ -86,14 +83,50 @@ public class FileJournalRepo {
         return CollectionUtils.isEmpty(res) ? Optional.empty() : Optional.of(res.getFirst());
     }
 
-    public Integer countByPath(Long wsID, String path) {
-        return entityManager.createQuery("SELECT COUNT(f) FROM FileJournalModel f " +
+    public String findPathByID(Long wsID, Long id) {
+        return entityManager.createQuery("SELECT f.path FROM FileJournalModel f " +
+                        "WHERE id.workspaceID = :wsID AND f.id.fileID = :id " +
+                        "AND state in :state " +
+                        "ORDER BY f.historyID DESC", String.class)
+                .setParameter("wsID", wsID)
+                .setParameter("id", id)
+                .setParameter("state", FileState.UPLOADED)
+                .getSingleResult();
+    }
+
+    public List<Long> getVersionsByPath(Long wsID, String path) {
+        return entityManager.createQuery("SELECT f.fileID FROM FileJournalModel f " +
                         "WHERE id.workspaceID = :wsID AND f.path = :path " +
-                        "AND state in :state", Integer.class)
+                        "AND state in :state " +
+                        "ORDER BY f.historyID ASC", Long.class)
                 .setParameter("path", path)
                 .setParameter("wsID", wsID)
                 .setParameter("state", FileState.UPLOADED)
-                .getSingleResult();
+                .getResultList();
+    }
+
+    public void updateStateAndNameByPath(String updatedName, FileState updatedState, Long wsID, String path) {
+        var builder = entityManager.getCriteriaBuilder();
+        CriteriaUpdate<FileJournalModel> update = builder.createCriteriaUpdate(FileJournalModel.class);
+        Root<FileJournalModel> root = update.from(FileJournalModel.class);
+
+        boolean needsUpdate = false;
+
+        if (updatedName != null) {
+            update.set(root.get("path"), updatedName);
+            needsUpdate = true;
+        }
+        if (updatedState != null) {
+            update.set(root.get("state"), updatedState);
+            needsUpdate = true;
+        }
+
+        if (needsUpdate) {
+            update.where(builder.equal(root.get("path"), path),
+                    builder.equal(root.get("id").get("workspaceID"), wsID)
+            );
+            entityManager.createQuery(update).executeUpdate();
+        }
     }
 
     public List<Predicate> buildPredicatesFromParams(CriteriaBuilder cb, Root<FileJournalModel> root, FileFilters filters) {

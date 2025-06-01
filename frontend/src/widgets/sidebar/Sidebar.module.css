@@ -87,6 +87,12 @@ a:visited {
   display: block;
 }
 
+.sideBtns {
+  display: flex;
+  flex-direction: row;
+  gap: 5px
+}
+
 .storageBar {
   background-color: lightgray;
   border-radius: 10px;

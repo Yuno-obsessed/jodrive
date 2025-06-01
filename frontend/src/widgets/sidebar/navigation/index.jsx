@@ -3,6 +3,7 @@ import MingcuteHome4Line from "~icons/mingcute/home-4-line";
 import MaterialSymbolsGroups from "~icons/material-symbols/groups";
 import MynauiTrash from "~icons/mynaui/trash";
 import { CreateWorkspaceModalButton } from "../../../features/create-ws/index.jsx";
+import { JoinWorkspaceModalButton } from "../../../features/join-workspace/index.jsx";
 
 export const navigationElements = (token, workspaceItems = []) => {
   const workspacesLink = "/workspace";
@@ -21,7 +22,12 @@ export const navigationElements = (token, workspaceItems = []) => {
         name: workspace.name,
         link: `${workspacesLink}/${workspace.id}`,
       })),
-      buttons: <CreateWorkspaceModalButton />,
+      buttons: (
+        <div className={styles.sideBtns}>
+          <CreateWorkspaceModalButton />
+          <JoinWorkspaceModalButton />
+        </div>
+      ),
     },
     {
       name: "Trash",

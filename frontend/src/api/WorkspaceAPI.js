@@ -72,3 +72,38 @@ export async function kickWorkspaceUser(wsID, userID, token) {
     throw new Error("Error kicking workspace user");
   }
 }
+
+export async function createLink(wsID, token) {
+  if (!wsID) {
+    return new Error("Invalid parameters");
+  }
+  const response = await fetch(`${WORKSPACE_URI}/${wsID}/link`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (response.status !== 200) {
+    throw new Error("Error creating join link");
+  }
+  return await response.text();
+}
+
+export async function joinWorkspace(link, token) {
+  if (!link) {
+    return new Error("Invalid parameters");
+  }
+  const encodedLink = encodeURIComponent(link);
+  const response = await fetch(`${WORKSPACE_URI}/join?link=${encodedLink}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (response.status !== 201) {
+    throw new Error("Error joining to workspace");
+  }
+  return await response.json();
+}

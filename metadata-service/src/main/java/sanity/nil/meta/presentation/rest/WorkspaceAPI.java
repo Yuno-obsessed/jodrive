@@ -64,4 +64,26 @@ public class WorkspaceAPI {
         workspaceService.kickWorkspaceUser(wsID, userID);
         return RestResponse.noContent();
     }
+
+    @GET
+    @Path("/{id}/link")
+    public RestResponse<String> createJoinWorkspaceLink(
+            @PathParam("id") Long wsID
+    ) {
+        return RestResponse.ok(
+                workspaceService.generateJoinWorkspaceLink(wsID)
+        );
+    }
+
+    @POST
+    @Path("/join")
+    public RestResponse<WorkspaceDTO> joinWorkspace(
+            @QueryParam("link") String link
+    ) {
+        return RestResponse.status(
+                RestResponse.Status.CREATED,
+                workspaceService.joinWorkspace(link)
+        );
+    }
+
 }

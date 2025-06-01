@@ -1,0 +1,11 @@
+.modal {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.copiedMessage {
+    color: green;
+    font-weight: bold;
+    margin: 8px 0;
+}

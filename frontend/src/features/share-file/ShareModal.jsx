@@ -20,9 +20,7 @@ export const ShareModal = ({ file, onClose }) => {
   const handleShare = async () => {
     let expiresAt = dayjs(date.toISOString()).unix();
     let link = await constructLink(file, expiresAt, token);
-    console.log(link);
     link = createEntireLink(link);
-    console.log(link);
     navigator.clipboard.writeText(link).then(() => {
       setCopied(true);
       setTimeout(() => {

@@ -24,5 +24,5 @@ export async function getFileInfo(request, token) {
   if (response.status !== 200) {
     throw new Error("Error getting file info");
   }
-  return response.json();
+  return await response.json();
 }

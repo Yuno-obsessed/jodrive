@@ -9,19 +9,6 @@
   flex-direction: column;
   text-align: left;
 }
-.radioUnits {
-  display: flex;
-  flex-wrap: wrap;
-  label {
-    margin: 2px;
-    text-align: left;
-    flex: 0 0 48.5%;
-    box-sizing: border-box;
-  }
-  a {
-    margin-left: 2px;
-  }
-}
 
 .link {
   margin-top: 12px;

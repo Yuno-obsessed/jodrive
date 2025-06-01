@@ -1,7 +1,7 @@
 import { useSearchModel } from "../../enitites/file/model/index.js";
 import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { FileTreeTable } from "../../components/ui/table-v2/index.jsx";
 import {
   closestCenter,
@@ -19,13 +19,14 @@ import { ShareModal } from "../../features/share-file/ShareModal.jsx";
 import useAuthStore from "../../util/authStore.js";
 import { FileSearchMenuActions } from "./context/index.jsx";
 import { useContextMenuStore } from "../../components/ui/table-v2/config/store/index.js";
-import { downloadFile } from "../../api/DownloadFile.js";
 import { deleteFile } from "../../api/DeleteFile.js";
+import { FileDownloader } from "../../util/FileDownloader.jsx";
 
 export const FileSearchPage = () => {
   const { searchResults, removeSearchResult, renameSearchResult } =
     useSearchModel();
   const { token, userInfo } = useAuthStore();
+  const downloaderRef = useRef();
 
   const [fileToRename, setFileToRename] = useState(null);
   const [fileToShare, setFileToShare] = useState(null);
@@ -62,7 +63,7 @@ export const FileSearchPage = () => {
         setFileToShare(eventRow);
         break;
       case "download":
-        downloadFile(eventRow, token).then().catch(console.log);
+        downloaderRef.current.download(eventRow);
         break;
       case "delete":
         deleteFile(
@@ -93,6 +94,7 @@ export const FileSearchPage = () => {
         />
       </DndContext>
 
+      <FileDownloader ref={downloaderRef} token={token} />
       {fileToRename && (
         <RenameModal
           file={fileToRename}

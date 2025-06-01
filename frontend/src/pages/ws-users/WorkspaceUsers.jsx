@@ -79,7 +79,7 @@ export const WorkspaceUsers = () => {
             <ProfileModalButton
               className={styles.btn}
               variant="icon"
-              currentUser={userInfo}
+              targetUser={user}
               children={<TablerInfoCircle className={styles.icons} />}
             />
           </>

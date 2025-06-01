@@ -5,9 +5,11 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.NoResultException;
 import jakarta.transaction.Transactional;
 import jakarta.transaction.UserTransaction;
 import lombok.extern.jbosslog.JBossLog;
+import org.apache.commons.lang3.StringUtils;
 import sanity.nil.meta.cache.SubscriptionQuotaCache;
 import sanity.nil.meta.consts.Quota;
 import sanity.nil.meta.consts.WsRole;
@@ -16,15 +18,15 @@ import sanity.nil.meta.dto.file.CreateDirectory;
 import sanity.nil.meta.dto.workspace.CreateWorkspaceDTO;
 import sanity.nil.meta.dto.workspace.WorkspaceDTO;
 import sanity.nil.meta.dto.workspace.WorkspaceUserDTO;
+import sanity.nil.meta.exceptions.CryptoException;
 import sanity.nil.meta.exceptions.InsufficientQuotaException;
 import sanity.nil.meta.model.*;
+import sanity.nil.meta.security.CryptoManager;
+import sanity.nil.meta.security.LinkEncoder;
 import sanity.nil.minio.MinioOperations;
 import sanity.nil.security.IdentityProvider;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.UUID;
+import java.util.*;
 
 @JBossLog
 @ApplicationScoped
@@ -43,6 +45,8 @@ public class WorkspaceService {
     SubscriptionQuotaCache subscriptionQuotaCache;
     @Inject
     MinioOperations minioOperations;
+    @Inject
+    LinkEncoder linkEncoder;
     private final String AVATAR_BUCKET = "user.avatars";
 
     public WorkspaceDTO getWorkspace(String id) {
@@ -112,25 +116,7 @@ public class WorkspaceService {
         try {
             userTransaction.begin();
             var creator = entityManager.find(UserModel.class, identity.getUserID());
-            var subscriptionID = creator.getSubscription().getId();
-            var statistics = entityManager.createQuery("SELECT s FROM UserStatisticsModel s " +
-                            "WHERE s.id.userID = :userID AND s.id.statisticsID = :statisticsID", UserStatisticsModel.class)
-                    .setParameter("userID", identity.getUserID())
-                    .setParameter("statisticsID", Quota.USER_WORKSPACES.id())
-                    .getSingleResult();
-
-            var workspacesUserIn = Long.valueOf(statistics.getValue());
-            var quota = subscriptionQuotaCache.getByID(subscriptionID);
-            Integer workspacesLimit;
-            if (quota != null) {
-                workspacesLimit = quota.workspacesLimit();
-            } else {
-                var subscription = entityManager.find(UserSubscriptionModel.class, subscriptionID);
-                workspacesLimit = subscription.getWorkspacesLimit();
-            }
-            if (workspacesLimit - workspacesUserIn < 1) {
-                throw new InsufficientQuotaException(Quota.USER_WORKSPACES, workspacesLimit.toString());
-            }
+            verifyUserQuota(identity.getUserID(), creator.getSubscription().getId());
             entityManager.persist(newWorkspace);
             var workspaceUser = new UserWorkspaceModel(newWorkspace, creator, WsRole.OWNER);
             entityManager.persist(workspaceUser);
@@ -147,8 +133,8 @@ public class WorkspaceService {
     @Transactional
     public void kickWorkspaceUser(Long wsID, UUID userID) {
         var identity = identityProvider.getCheckedIdentity();
-        var issuerRole = getUserWorkspaceRole(wsID, identity.getUserID());
-        var userToKickRole = getUserWorkspaceRole(wsID, userID);
+        var issuerRole = getUserWorkspaceRole(wsID, identity.getUserID()).get();
+        var userToKickRole = getUserWorkspaceRole(wsID, userID).get();
 
         if (!userToKickRole.equals(WsRole.OWNER) && issuerRole.equals(WsRole.OWNER)) {
             entityManager.createQuery("DELETE FROM UserWorkspaceModel u " +
@@ -161,11 +147,74 @@ public class WorkspaceService {
         }
     }
 
-    private WsRole getUserWorkspaceRole(Long wsID, UUID userID) {
-        return entityManager.createQuery("SELECT u.role FROM UserWorkspaceModel u " +
-                        "WHERE u.id.workspaceID = :wsID AND u.id.userID = :userID", WsRole.class)
-                .setParameter("wsID", wsID)
+    private Optional<WsRole> getUserWorkspaceRole(Long wsID, UUID userID) {
+        try {
+            return Optional.of(entityManager.createQuery("SELECT u.role FROM UserWorkspaceModel u " +
+                            "WHERE u.id.workspaceID = :wsID AND u.id.userID = :userID", WsRole.class)
+                    .setParameter("wsID", wsID)
+                    .setParameter("userID", userID)
+                    .getSingleResult());
+        } catch (NoResultException e) {
+            return Optional.empty();
+        }
+    }
+
+    public String generateJoinWorkspaceLink(Long wsID) {
+        var identity = identityProvider.getIdentity();
+        String link = String.format("%s_join_workspace_%s", wsID, identity.getUserID());
+        try {
+            return linkEncoder.encrypt(link);
+        } catch (CryptoException e) {
+            log.error("Could not encrypt link " + link, e);
+            return "";
+        }
+    }
+
+    @Transactional
+    public WorkspaceDTO joinWorkspace(String link) {
+        var identity = identityProvider.getIdentity();
+        try {
+            var bareLink = linkEncoder.decrypt(link);
+            var linkWs = Long.valueOf(StringUtils.substringBefore(bareLink, "_"));
+            var issuerID = StringUtils.substringAfterLast(bareLink, "_");
+
+            var userExistsInWs = getUserWorkspaceRole(linkWs, identity.getUserID());
+            if (userExistsInWs.isPresent()) {
+                throw new ForbiddenException("User is already in workspace");
+            }
+
+            var issuer = getUserWorkspaceRole(linkWs, UUID.fromString(issuerID));
+            if (issuer.isEmpty()) {
+                throw new IllegalArgumentException("Issuer is not found in workspace");
+            }
+            var workspace = entityManager.find(WorkspaceModel.class, linkWs);
+            var newWsUser = new UserWorkspaceModel(workspace, entityManager.find(UserModel.class, identity.getUserID()), WsRole.USER);
+            entityManager.persist(newWsUser);
+            return new WorkspaceDTO(workspace.getId(), workspace.getName(), workspace.getDescription());
+        } catch (CryptoException e) {
+            log.error("Could not decrypt link " + link, e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void verifyUserQuota(UUID userID, Short subscriptionID) {
+        var statistics = entityManager.createQuery("SELECT s FROM UserStatisticsModel s " +
+                        "WHERE s.id.userID = :userID AND s.id.statisticsID = :statisticsID", UserStatisticsModel.class)
                 .setParameter("userID", userID)
+                .setParameter("statisticsID", Quota.USER_WORKSPACES.id())
                 .getSingleResult();
+
+        var workspacesUserIn = Long.valueOf(statistics.getValue());
+        var quota = subscriptionQuotaCache.getByID(subscriptionID);
+        Integer workspacesLimit;
+        if (quota != null) {
+            workspacesLimit = quota.workspacesLimit();
+        } else {
+            var subscription = entityManager.find(UserSubscriptionModel.class, subscriptionID);
+            workspacesLimit = subscription.getWorkspacesLimit();
+        }
+        if (workspacesLimit - workspacesUserIn < 1) {
+            throw new InsufficientQuotaException(Quota.USER_WORKSPACES, workspacesLimit.toString());
+        }
     }
 }

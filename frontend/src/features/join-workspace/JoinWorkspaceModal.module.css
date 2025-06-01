@@ -1,0 +1,17 @@
+.modal {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+.inputs {
+    margin: 10px 0;
+}
+.innerBtn {
+    display: block;
+    height: 20px;
+    width: 20px;
+}
+.innerBtn:hover {
+    background-color: rgba(var(--accent-color), 0.2);
+    border-radius: 10px;
+}

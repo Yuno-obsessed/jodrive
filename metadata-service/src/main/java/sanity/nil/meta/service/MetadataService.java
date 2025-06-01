@@ -49,6 +49,7 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static sanity.nil.meta.consts.Constants.*;
@@ -384,10 +385,15 @@ public class MetadataService {
         }
         var file = fileOp.get();
 
-        if (listVersions && StringUtils.isNotBlank(path)) {
-            int versions = fileJournalRepo.countByPath(wsID, path);
+        if (listVersions && (StringUtils.isNotBlank(path) || fileID != null)) {
+            if (StringUtils.isEmpty(path)) {
+                path = fileJournalRepo.findPathByID(wsID, fileID);
+            }
+            var versions = fileJournalRepo.getVersionsByPath(wsID, path);
             var versionedFile = fileMapper.journalToVersionedInfo(file);
-            versionedFile.versions = versions;
+            versionedFile.versions = IntStream.range(1, versions.size()+1).mapToObj(v -> {
+                return new FileVersion(v, versions.get(v-1));
+            }).toList();
             log.debug("Returning file info with versions");
             return versionedFile;
         }
@@ -622,14 +628,16 @@ public class MetadataService {
         if (!fileJournal.getUploader().getId().equals(identity.getUserID())) {
             throw new UnauthorizedException("File wasn't uploaded by current user");
         }
+        FileState updatedState = null;
+        String updatedName = null;
 
         if (StringUtils.isNotBlank(newName)) {
             if (isFileDirectory(fileJournal.getPath())) {
-                fileJournal.setPath(newName);
+                updatedName = newName;
             } else {
                 var currPath = StringUtils.substringBeforeLast(fileJournal.getPath(), "/");
                 var extention = StringUtils.substringAfterLast(fileJournal.getPath(), ".");
-                fileJournal.setPath(String.format("%s/%s.%s", currPath, newName, extention));
+                updatedName = String.format("%s/%s.%s", currPath, newName, extention);
             }
         }
         if (fileJournal.getState().equals(FileState.DELETED)) {
@@ -643,11 +651,11 @@ public class MetadataService {
                 deletionTask = Optional.of(deletionTasks.getFirst());
             }
             if (fileAction.equals(FileAction.RESTORE)) {
-                fileJournal.setState(FileState.UPLOADED);
+                updatedState = FileState.UPLOADED;
                 deletionTask.ifPresent(task -> entityManager.remove(task));
             }
             if (fileAction.equals(FileAction.DELETE_FOREVER)) {
-                fileJournal.setState(FileState.DELETING);
+                updatedState = FileState.DELETING;
                 deletionTask.ifPresent(task -> {
                     task.setPerformAt(LocalDateTime.now());
                     entityManager.persist(task);
@@ -663,7 +671,8 @@ public class MetadataService {
                 entityManager.persist(statistics);
             }
         }
-        entityManager.persist(fileJournal);
+        // update all file versions
+        fileJournalRepo.updateStateAndNameByPath(updatedName, updatedState, wsID, fileJournal.getPath());
         // return new name
         return isFileDirectory(fileJournal.getPath()) ? newName
                 : StringUtils.substringAfterLast(fileJournal.getPath(), "/");

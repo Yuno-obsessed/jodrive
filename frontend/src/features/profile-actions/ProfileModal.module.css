@@ -44,6 +44,7 @@
     border: 1px solid #ddd;
 }
 .changeAvatar {
+    height: 30px;
     input {
         display: none;
     }

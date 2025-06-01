@@ -1,7 +1,7 @@
 import useAuthStore from "../../util/authStore.js";
 import { useTreeModel } from "../../enitites/file-tree/model/index.js";
 import { useNavigate, useParams } from "react-router-dom";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
 
 import {
@@ -27,10 +27,11 @@ import { useFilesystemStore } from "../../shared/fs-dir/index.js";
 import { deleteFile } from "../../api/DeleteFile.js";
 import { Button } from "../../components/ui/button/index.jsx";
 import { useWorkspacesModel } from "../../enitites/workspace/model/index.js";
-import { downloadFile } from "../../api/DownloadFile.js";
 import { RenameModal } from "../../features/rename-file/RenameModal.jsx";
 import { ShareModal } from "../../features/share-file/ShareModal.jsx";
 import { updateFile } from "../../api/UpdateFile.js";
+import { FileDownloader } from "../../util/FileDownloader.jsx";
+import { AddWorkspaceUserModalButton } from "../../features/add-user/index.jsx";
 
 export const FileTreePage = () => {
   const { id } = useParams();
@@ -42,9 +43,9 @@ export const FileTreePage = () => {
   const { currentPath, basePath } = useFilesystemStore();
   const [fileToRename, setFileToRename] = useState(null);
   const [fileToShare, setFileToShare] = useState(null);
+  const downloaderRef = useRef();
 
   console.log(currentPath, basePath);
-  // const folderSegments = currentPath.split("/").filter(Boolean);
 
   useFileTree(id, currentPath, token, setFiles);
   setActive(userWorkspaces.filter((e) => e.id == id)[0]);
@@ -80,7 +81,7 @@ export const FileTreePage = () => {
         console.log("share");
         break;
       case "download":
-        downloadFile(eventRow, token).then().catch(console.log);
+        downloaderRef.current.download(eventRow);
         console.log("download");
         break;
       case "delete":
@@ -142,9 +143,10 @@ export const FileTreePage = () => {
             >
               List users
             </Button>
-            <Button variant="default" className={styles.secondaryActions}>
-              Add user
-            </Button>
+            <AddWorkspaceUserModalButton
+              className={styles.secondaryActions}
+              wsID={id}
+            />
             <CreateDirectoryModalButton path={currentPath} wsID={id} />
           </div>
           <FileTreeTable
@@ -155,6 +157,7 @@ export const FileTreePage = () => {
         </div>
       </DndContext>
 
+      <FileDownloader ref={downloaderRef} token={token} />
       {fileToRename && (
         <RenameModal
           file={fileToRename}

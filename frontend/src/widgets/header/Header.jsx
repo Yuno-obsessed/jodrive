@@ -15,7 +15,7 @@ export const Header = () => {
       <div className={styles.user}>
         <ProfileModalButton
           variant="primary"
-          currentUser={userInfo}
+          targetUser={userInfo}
           children={
             userInfo.avatarURL ? (
               <img

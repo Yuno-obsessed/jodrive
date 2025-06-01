@@ -6,7 +6,7 @@ export const ProfileModalButton = ({
   variant,
   className,
   children,
-  currentUser,
+  targetUser,
 }) => {
   const [showProfile, setShowProfile] = useState(false);
   const modalRef = useRef(null);
@@ -43,7 +43,7 @@ export const ProfileModalButton = ({
       {showProfile && (
         <ProfileModal
           ref={modalRef}
-          targetUser={currentUser}
+          targetUser={targetUser}
           onClose={() => setShowProfile(false)}
         />
       )}
