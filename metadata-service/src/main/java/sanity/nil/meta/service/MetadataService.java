@@ -45,6 +45,7 @@ import sanity.nil.util.CollectionUtils;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -369,27 +370,46 @@ public class MetadataService {
             throw new InvalidParametersException("Either link for file access is invalid or workspace/file id wasn't provided");
         }
 
-        if (version != null && StringUtils.isNotBlank(path)) {
-            var fileOp = fileJournalRepo.findByPathAndVersion(wsID, path, version);
-            if (fileOp.isEmpty()) {
-                throw new NotFoundException();
-            }
-            log.debug("Returning file info for specific version");
-            return fileMapper.journalToInfo(fileOp.get());
-        }
-
+        FileJournalModel file = null;
         // TODO: optimize reads by not selecting not needed columns (blocklist)
-        var fileOp = fileJournalRepo.findByIdAndStateIn(fileID, wsID, FileState.UPLOADED);
-        if (fileOp.isEmpty()) {
-            throw new NotFoundException();
-        }
-        var file = fileOp.get();
 
-        if (listVersions && (StringUtils.isNotBlank(path) || fileID != null)) {
+        // find by path
+        if (version != null && fileID != null) {
             if (StringUtils.isEmpty(path)) {
                 path = fileJournalRepo.findPathByID(wsID, fileID);
             }
-            var versions = fileJournalRepo.getVersionsByPath(wsID, path);
+            file = fileJournalRepo.findByPathAndVersion(wsID, path, version);
+            log.debug("Returning file info for specific version");
+        }
+
+        if (StringUtils.isNotEmpty(link)) {
+            try {
+                var bareLink = linkEncoder.decrypt(link);
+                String[] components = bareLink.split(":");
+                // TODO check issuer
+                var id = Long.parseLong(components[1]);
+                var ws = Long.parseLong(components[2]);
+                file = fileJournalRepo.findByIdAndStateIn(id, ws, FileState.UPLOADED);
+                log.debug("Found by link");
+                if (version != null) {
+                    file = fileJournalRepo.findByPathAndVersion(ws, file.getPath(), version);
+                    log.debug("Found by link and version");
+                }
+            } catch (CryptoException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        // find by file id
+        if (fileID != null) {
+            file = fileJournalRepo.findByIdAndStateIn(fileID, wsID, FileState.UPLOADED);
+        }
+
+        if (listVersions != null && listVersions) {
+            if (StringUtils.isEmpty(path)) {
+                path = fileJournalRepo.findPathByID(file.getId().getWorkspaceID(), file.getId().getFileID());
+            }
+            var versions = fileJournalRepo.getVersionsByPath(file.getId().getWorkspaceID(), path);
             var versionedFile = fileMapper.journalToVersionedInfo(file);
             versionedFile.versions = IntStream.range(1, versions.size()+1).mapToObj(v -> {
                 return new FileVersion(v, versions.get(v-1));
@@ -397,7 +417,6 @@ public class MetadataService {
             log.debug("Returning file info with versions");
             return versionedFile;
         }
-
         return fileMapper.journalToInfo(file);
     }
 
@@ -608,7 +627,9 @@ public class MetadataService {
             log.error("Could not encrypt link " + link, e);
             return "";
         }
-        LinkModel linkModel = new LinkModel(identity.getUserID(), link, LocalDateTime.now());
+        LinkModel linkModel = new LinkModel(identity.getUserID(), link,
+                LocalDateTime.ofEpochSecond(expiresAt, 0, ZoneOffset.UTC)
+        );
         entityManager.persist(linkModel);
 
         return encryptedLink;
@@ -689,7 +710,7 @@ public class MetadataService {
 
         var link = entityManager.find(LinkModel.class, decryptedLink);
         if (link != null) {
-            return new LinkValidity(true, link.getExpiresAt().isBefore(LocalDateTime.now()));
+            return new LinkValidity(true, link.getExpiresAt().isAfter(LocalDateTime.now(ZoneId.of("GMT"))));
         }
         return new LinkValidity(false, false);
     }

@@ -31,10 +31,7 @@ export const FileSearchPage = () => {
   const [fileToRename, setFileToRename] = useState(null);
   const [fileToShare, setFileToShare] = useState(null);
 
-  const elements = useMemo(
-    () => searchResults?.elements ?? [],
-    [searchResults],
-  );
+  const elements = useMemo(() => searchResults ?? [], [searchResults]);
 
   const getRowID = (row) => {
     return row.id + "_" + row.workspaceID;

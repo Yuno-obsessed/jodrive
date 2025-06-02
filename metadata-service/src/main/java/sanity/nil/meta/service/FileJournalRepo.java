@@ -59,28 +59,27 @@ public class FileJournalRepo {
         return CollectionUtils.isEmpty(res) ? Optional.empty() : Optional.of(res.getFirst());
     }
 
-    public Optional<FileJournalModel> findByIdAndStateIn(Long fileID, Long wsID, FileState state) {
-        var res = entityManager.createQuery("SELECT f FROM FileJournalModel f " +
+    public FileJournalModel findByIdAndStateIn(Long fileID, Long wsID, FileState state) {
+        return entityManager.createQuery("SELECT f FROM FileJournalModel f " +
                         "WHERE id.fileID = :fileID AND id.workspaceID = :wsID " +
                         "AND state in :state", FileJournalModel.class)
                 .setParameter("fileID", fileID)
                 .setParameter("wsID", wsID)
                 .setParameter("state", state)
-                .getResultList();
-        return CollectionUtils.isEmpty(res) ? Optional.empty() : Optional.of(res.getFirst());
+                .getSingleResult();
     }
 
-    public Optional<FileJournalModel> findByPathAndVersion(Long wsID, String path, int version) {
-        var res = entityManager.createQuery("SELECT f FROM FileJournalModel f " +
+    public FileJournalModel findByPathAndVersion(Long wsID, String path, int version) {
+        return entityManager.createQuery("SELECT f FROM FileJournalModel f " +
                         "WHERE id.workspaceID = :wsID AND f.path = :path " +
                         "AND state in :state " +
-                        "ORDER BY f.historyID DESC", FileJournalModel.class)
+                        "ORDER BY f.historyID ASC", FileJournalModel.class)
                 .setParameter("wsID", wsID)
                 .setParameter("path", path)
                 .setParameter("state", FileState.UPLOADED)
-                .setFirstResult(version)
-                .getResultList();
-        return CollectionUtils.isEmpty(res) ? Optional.empty() : Optional.of(res.getFirst());
+                .setFirstResult(version-1)
+                .setMaxResults(1)
+                .getSingleResult();
     }
 
     public String findPathByID(Long wsID, Long id) {
@@ -147,6 +146,7 @@ public class FileJournalRepo {
         if (filters.userID() != null) {
             predicates.add(cb.equal(root.get("uploader").get("id"), filters.userID()));
         }
+        predicates.add(cb.equal(root.get("latest"), (short) 1));
         return predicates;
     }
 

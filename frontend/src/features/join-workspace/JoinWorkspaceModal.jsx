@@ -14,7 +14,6 @@ export const JoinWorkspaceModal = ({ onClose }) => {
   const { addWorkspace } = useWorkspacesModel();
 
   const handleJoin = async () => {
-    console.log("ASJDJKSADJ");
     try {
       await joinWorkspace(link, token)
         .then((res) => addWorkspace(res))

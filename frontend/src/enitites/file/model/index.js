@@ -7,25 +7,26 @@ export const useSearchModel = create(
 
     setSearch: (results) =>
       set((state) => {
+        console.log(results);
         state.searchResults = results;
       }),
 
     addSearchResult: (result) => {
       set((state) => {
         if (
-          !state.searchResults.elements.some(
+          !state.searchResults.some(
             (r) => r.id === result.id && r.workspaceID === result.workspaceID,
           )
         ) {
-          state.searchResults.elements.push(result);
+          state.searchResults.push(result);
         }
       });
     },
 
     removeSearchResult: (result) => {
       set((state) => {
-        state.searchResults.elements = state.searchResults.elements.filter(
-          (r) => r.id !== result.id && r.workspaceID !== result.workspaceID,
+        state.searchResults = state.searchResults.filter(
+          (r) => r.id !== result.id || r.workspaceID !== result.workspaceID,
         );
       });
     },
@@ -37,7 +38,7 @@ export const useSearchModel = create(
 
     renameSearchResult: (targetFile, newName) => {
       set((state) => {
-        const file = state.searchResults.elements.find(
+        const file = state.searchResults.find(
           (f) =>
             f.id === targetFile.id && f.workspaceID === targetFile.workspaceID,
         );

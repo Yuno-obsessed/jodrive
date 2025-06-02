@@ -10,6 +10,7 @@ const variants = {
 };
 
 export const Button = ({
+  title,
   children,
   className,
   ref,
@@ -19,6 +20,7 @@ export const Button = ({
 }) => {
   return (
     <button
+      title={title}
       ref={ref}
       type={type}
       onClick={onClick}

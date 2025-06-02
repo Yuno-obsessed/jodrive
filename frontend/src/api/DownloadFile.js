@@ -1,16 +1,15 @@
 import { BLOCK_URI } from "../consts/Constants.js";
 
-export async function downloadFile(file, token) {
+export async function downloadFile(file, token, link) {
   if (!file || !file.id || !file.workspaceID) {
     return new Error("Invalid parameters");
   }
   try {
-    const headers = {
-      Authorization: `Bearer ${token}`,
-    };
-
+    const headers = token != null ? { Authorization: `Bearer ${token}` } : {};
+    let linkParam = !link ? "" : `&link=${encodeURIComponent(link)}`;
+    console.log(linkParam);
     const downloadRes = await fetch(
-      `${BLOCK_URI}/download/${file.id}?wsID=${file.workspaceID}`,
+      `${BLOCK_URI}/download/${file.id}?wsID=${file.workspaceID}${linkParam}`,
       {
         method: "GET",
         headers: headers,

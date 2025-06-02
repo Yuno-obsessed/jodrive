@@ -101,7 +101,7 @@ export const FileDeletedPage = () => {
       </div>
       <Table
         columns={columns}
-        data={searchResults?.elements || []}
+        data={searchResults || []}
         renderRow={renderRow}
         tableClassName={styles.table}
       />

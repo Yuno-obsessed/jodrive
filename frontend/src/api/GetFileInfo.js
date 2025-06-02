@@ -1,26 +1,22 @@
 import { METADATA_URI } from "../consts/Constants.js";
 
 export async function getFileInfo(request, token) {
-  if (!request.wsID && (!request.path || !request.id)) {
+  if (!request.wsID && (!request.path || !request.id) && !request.link) {
     return new Error("Invalid parameters");
   }
-  // TODO make it usable without token, with link only
-  let pathParam = !request.path ? "" : `&path=${request.path}`;
-  let idParam = !request.id ? "" : `&fileID=${request.id}`;
-  let listVersionsParam = !request.listVersions
-    ? ""
-    : `&listVersions=${request.listVersions}`;
-  let versionParam = !request.version ? "" : `&version=${request.version}`;
-  const response = await fetch(
-    `${METADATA_URI}/file?wsID=${request.wsID}${idParam}${pathParam}${listVersionsParam}${versionParam}`,
-    {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    },
-  );
+  const params = new URLSearchParams();
+  if (request.link) params.append("link", request.link);
+  if (request.wsID) params.append("wsID", request.wsID);
+  if (request.path) params.append("path", request.path);
+  if (request.id) params.append("fileID", request.id);
+  if (request.listVersions) params.append("listVersions", request.listVersions);
+  if (request.version) params.append("version", request.version);
+  const headers = token != null ? { Authorization: `Bearer ${token}` } : {};
+  console.log(headers);
+  const response = await fetch(`${METADATA_URI}/file?${params.toString()}`, {
+    method: "GET",
+    headers,
+  });
   if (response.status !== 200) {
     throw new Error("Error getting file info");
   }

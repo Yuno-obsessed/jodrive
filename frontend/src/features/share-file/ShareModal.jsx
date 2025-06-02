@@ -5,16 +5,16 @@ import styles from "./ShareModal.module.css";
 import useAuthStore from "../../util/authStore.js";
 import DatePicker from "react-multi-date-picker";
 import TimePicker from "react-multi-date-picker/plugins/time_picker";
-import dayjs from "dayjs";
 import { constructLink } from "../../api/ConstructLink.js";
+import dayjs from "dayjs";
 
 export const ShareModal = ({ file, onClose }) => {
   const [copied, setCopied] = useState(false);
-  const [date] = useState(new Date());
+  const [date] = useState(new Date(Date.now() + 3_600_000)); // add one hour by defaukt
   const { token } = useAuthStore();
 
   const createEntireLink = (link) => {
-    return `${window.location.origin}/file?link=${link}`;
+    return `${window.location.origin}/file?link=${encodeURIComponent(link)}`;
   };
 
   const handleShare = async () => {
@@ -37,6 +37,7 @@ export const ShareModal = ({ file, onClose }) => {
         <DatePicker
           value={date}
           format="YYYY-MM-DD HH:mm"
+          calendarPosition={"left"}
           minDate={new Date()}
           plugins={[<TimePicker hideSeconds={true} />]}
         />

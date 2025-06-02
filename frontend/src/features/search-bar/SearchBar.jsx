@@ -41,7 +41,7 @@ export const SearchBar = () => {
         },
         token,
       );
-      setSearch(files);
+      setSearch(files.elements);
     },
     [token, userInfo.id, getCaller()],
   );

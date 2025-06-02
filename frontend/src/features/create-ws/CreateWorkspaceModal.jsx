@@ -32,6 +32,7 @@ export const CreateWorkspaceModal = ({ onClose }) => {
   return (
     <Modal
       title={"Create Workspace"}
+      description="Enter needed data to create workspace"
       onClose={onClose}
       className={styles.modal}
     >

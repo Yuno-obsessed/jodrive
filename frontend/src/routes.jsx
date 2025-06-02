@@ -7,6 +7,7 @@ import { FileTreePage } from "./pages/file-tree/FileTreePage.jsx";
 import { FileDeletedPage } from "./pages/file-deleted/FileDeletedPage.jsx";
 import { WorkspaceBreadcrumb } from "./shared/auth/WorkspaceBreadcrumb.jsx";
 import { WorkspaceUsers } from "./pages/ws-users/WorkspaceUsers.jsx";
+import { FileInfoPage } from "./pages/file-info/FileInfoPage.jsx";
 
 export const router = () =>
   createBrowserRouter([
@@ -37,12 +38,12 @@ export const router = () =>
         },
       ],
     },
-    // {
-    //   children: [
-    //     {
-    //       path: "workspace/:id/users",
-    //       element: <SomePage />,
-    //     },
-    //   ],
-    // },
+    {
+      children: [
+        {
+          path: "file",
+          element: <FileInfoPage />,
+        },
+      ],
+    },
   ]);

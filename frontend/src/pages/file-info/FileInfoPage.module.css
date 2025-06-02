@@ -1,0 +1,45 @@
+.file {
+    background-color: whitesmoke;
+    padding: 50px 40px;
+}
+.filename {
+    display: flex;
+    gap: 20px;
+    height: 25px;
+    svg {
+        height: 25px;
+        width: 25px;
+    }
+}
+.fileInfo {
+    padding-left: 20px;
+}
+.fileInfoEntry {
+    display: flex;
+    flex-direction: column;
+    a {
+        padding-left: 5px;
+    }
+    label {
+        padding-top: 8px;
+        opacity: 40%;
+    }
+}
+.versions {
+    opacity: 50%;
+    padding: 10px 0;
+}
+.radioUnits {
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: column;
+    label {
+        margin: 2px;
+        text-align: left;
+        box-sizing: border-box;
+    }
+    a {
+        margin-left: 2px;
+    }
+    padding-top: 10px;
+}
