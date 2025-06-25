@@ -38,6 +38,7 @@ import sanity.nil.meta.exceptions.InvalidParametersException;
 import sanity.nil.meta.mappers.FileMapper;
 import sanity.nil.meta.model.*;
 import sanity.nil.meta.security.LinkEncoder;
+import sanity.nil.minio.MinioOperations;
 import sanity.nil.security.Identity;
 import sanity.nil.security.Role;
 import sanity.nil.security.WorkspaceIdentityProvider;
@@ -77,6 +78,8 @@ public class MetadataService {
     ObjectMapper objectMapper;
     @Inject
     FileMapper fileMapper;
+    @Inject
+    MinioOperations minioOperations;
     @GrpcClient("blockService")
     BlockService blockClient;
 
@@ -463,6 +466,17 @@ public class MetadataService {
                     .collect(Collectors.toCollection(ArrayList::new));
         }
 
+        List<UUID> uploaderUsers = filesFound.stream().map(f -> f.getUploader().getId()).distinct().toList();
+        var uploaders = entityManager.createQuery("SELECT u FROM UserModel u " +
+                "WHERE u.id IN :ids AND u.avatar IS NOT NULL", UserModel.class
+        ).setParameter("ids", uploaderUsers).getResultList();
+
+        res.forEach(f -> {
+            uploaders.stream().filter(u -> u.getId().equals(f.uploader)).findAny().ifPresent((u) -> {
+                f.uploaderAvatar = minioOperations.getObjectURL(u.getAvatar());
+            });
+        });
+
         int totalPages = (int) Math.ceil((double) filesCount / size);
         boolean hasNext = (page + 1) < totalPages;
         boolean hasPrevious = page > 0;
@@ -492,9 +506,17 @@ public class MetadataService {
 
         var filesFound = entityManager.createQuery(selectQuery).setFirstResult(page*size).setMaxResults(size).getResultList();
         var filesCount = entityManager.createQuery(countQuery).getSingleResult();
-        // TODO: how to handle if a file has more than 1 version?
+        List<UUID> uploaderUsers = filesFound.stream().map(f -> f.getUploader().getId()).distinct().toList();
+        var uploaders = entityManager.createQuery("SELECT u FROM UserModel u " +
+                "WHERE u.id IN :ids AND u.avatar IS NOT NULL", UserModel.class
+        ).setParameter("ids", uploaderUsers).getResultList();
         List<FileInfo> res = filesFound.stream()
                 .map(fileMapper::journalToInfo)
+                .peek(f -> {
+                    uploaders.stream().filter(u -> u.getId().equals(f.uploader)).findAny().ifPresent((u) -> {
+                        f.uploaderAvatar = minioOperations.getObjectURL(u.getAvatar());
+                    });
+                })
                 .collect(Collectors.toList());
 
         int totalPages = (int) Math.ceil((double) filesCount / size);
@@ -710,7 +732,7 @@ public class MetadataService {
 
         var link = entityManager.find(LinkModel.class, decryptedLink);
         if (link != null) {
-            return new LinkValidity(true, link.getExpiresAt().isAfter(LocalDateTime.now(ZoneId.of("GMT"))));
+            return new LinkValidity(true, link.getExpiresAt().isBefore(LocalDateTime.now(ZoneId.of("GMT"))));
         }
         return new LinkValidity(false, false);
     }

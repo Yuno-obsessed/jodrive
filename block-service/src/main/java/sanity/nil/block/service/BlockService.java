@@ -10,7 +10,6 @@ import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.transaction.Transactional;
 import jakarta.transaction.UserTransaction;
@@ -19,13 +18,15 @@ import jakarta.ws.rs.WebApplicationException;
 import lombok.extern.jbosslog.JBossLog;
 import org.apache.commons.lang3.StringUtils;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
+import org.jooq.DSLContext;
+import org.jooq.JSONB;
 import sanity.nil.block.consts.BlockStatus;
 import sanity.nil.block.consts.TaskStatus;
 import sanity.nil.block.consts.TaskType;
+import sanity.nil.block.db.tables.records.BlocksRecord;
+import sanity.nil.block.db.tables.records.TasksRecord;
 import sanity.nil.block.dto.BlockUpload;
 import sanity.nil.block.dto.BlockUploadRequest;
-import sanity.nil.block.model.BlockModel;
-import sanity.nil.block.model.TaskModel;
 import sanity.nil.grpc.meta.GetFileBlockListRequest;
 import sanity.nil.grpc.meta.MutinyMetadataServiceGrpc;
 import sanity.nil.grpc.meta.VerifyLinkRequest;
@@ -37,7 +38,9 @@ import java.io.BufferedInputStream;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.time.Duration;
-import java.time.ZonedDateTime;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -45,12 +48,16 @@ import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static sanity.nil.block.db.tables.Blocks.BLOCKS;
+
 @JBossLog
 @ApplicationScoped
 public class BlockService {
 
     @Inject
-    EntityManager entityManager;
+    DSLContext context;
+//    @Inject
+//    EntityManager entityManager;
     @Inject
     MinioOperations minio;
     @Inject
@@ -84,8 +91,9 @@ public class BlockService {
                 throw new RuntimeException(e);
             }
 
-            var newBlock = new BlockModel(block.fileName(), BlockStatus.AWAITING_UPLOAD, ZonedDateTime.now());
-            entityManager.persist(newBlock);
+            var newBlock = new BlocksRecord(getCurrDate(), block.fileName(), BlockStatus.AWAITING_UPLOAD.name());
+            newBlock.insert();
+//            entityManager.persist(newBlock);
             results.add(new BlockUpload.UploadResult(block.fileName(), true));
         }
         return new BlockUpload(request.correlationID(), results);
@@ -116,10 +124,12 @@ public class BlockService {
         List<String> res = new ArrayList<>();
         try {
             userTransaction.begin();
-            String query = "SELECT b.hash FROM BlockModel b WHERE b.hash IN :hashes";
-            res = entityManager.createQuery(query, String.class)
-                    .setParameter("hashes", batch)
-                    .getResultList();
+//            String query = "SELECT b.hash FROM BlockModel b WHERE b.hash IN :hashes";
+            res = context.select(BLOCKS.HASH).where(BLOCKS.HASH.in(batch))
+                    .fetch(BLOCKS.HASH);
+//            res = entityManager.createQuery(query, String.class)
+//                    .setParameter("hashes", batch)
+//                    .getResultList();
             userTransaction.commit();
         } catch (Exception e) {
             log.error(e.toString());
@@ -132,9 +142,11 @@ public class BlockService {
 
         Collection<String> existingBlocks = new ArrayList<>();
         if (hashList.size() < BATCH_SIZE) {
-            existingBlocks = entityManager.createQuery("SELECT u.hash FROM BlockModel u WHERE u.hash in ?1 ", String.class)
-                    .setParameter(1, hashList)
-                    .getResultList();
+            existingBlocks = context.select(BLOCKS.HASH).where(BLOCKS.HASH.in(hashList))
+                    .fetch(BLOCKS.HASH);
+//            existingBlocks = entityManager.createQuery("SELECT u.hash FROM BlockModel u WHERE u.hash in ?1 ", String.class)
+//                    .setParameter(1, hashList)
+//                    .getResultList();
         } else {
             existingBlocks = findExistingHashes(hashList);
         }
@@ -155,8 +167,11 @@ public class BlockService {
     public boolean deleteBlocks(List<String> hashList) {
         var metadata = objectMapper.createObjectNode();
         metadata.put("blocksToDelete", String.join(",", hashList));
-        var delayedTask = new TaskModel(null, TaskType.DELETE_BLOCKS, metadata, TaskStatus.CREATED);
-        entityManager.persist(delayedTask);
+        var delayedTask = new TasksRecord(null, (short) 0, getCurrDate(), TaskType.DELETE_BLOCKS.name(), null,
+                TaskStatus.CREATED.name(), JSONB.valueOf(metadata.toString()));
+        delayedTask.insert();
+//        var delayedTask = new TaskModel(null, TaskType.DELETE_BLOCKS, metadata, TaskStatus.CREATED);
+//        entityManager.persist(delayedTask);
         return true;
     }
 
@@ -194,6 +209,10 @@ public class BlockService {
             return identityProvider.getIdentityUni(wsID)
                     .onItem().transform(identity -> identity.hasRole(Role.USER));
         }
+    }
+
+    private OffsetDateTime getCurrDate() {
+        return LocalDateTime.now().atZone(ZoneId.of("UTC")).toOffsetDateTime();
     }
 
 }

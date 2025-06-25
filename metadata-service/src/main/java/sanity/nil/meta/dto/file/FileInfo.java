@@ -17,6 +17,7 @@ public class FileInfo {
     public long size;
     public UUID uploader;
     public String uploaderName;
+    public String uploaderAvatar;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm")
     public LocalDateTime uploadedAt;
 }

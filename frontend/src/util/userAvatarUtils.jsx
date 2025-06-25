@@ -4,10 +4,10 @@ import styles from "./userAvatarUtils.module.css";
 export const getUserAvatar = (row) => {
   return (
     <span title={row.uploaderName}>
-      {row.avatarURL ? (
+      {row.uploaderAvatar ? (
         <img
           alt="uploaderAvatar"
-          src={row.avatarURL}
+          src={row.uploaderAvatar}
           className={styles.userImg}
         />
       ) : (

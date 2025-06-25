@@ -30,7 +30,7 @@ public class QuarkusIntegrationTestResources implements QuarkusTestResourceLifec
         Map<String, String> config = new HashMap<>();
         config.put("application.minio.url", minioContainer.getHost());
         config.put("application.minio.port", String.valueOf(minioContainer.getMappedPort(9000)));
-        config.put("quarkus.datasource.jdbc.url", jdbcContainer.getJdbcUrl());
+        config.put("quarkus.datasource.jdbc.url", jdbcContainer.getJdbcUrl() + "&currentSchema=block_db");
         config.put("quarkus.datasource.username", jdbcContainer.getUsername());
         config.put("quarkus.datasource.password", jdbcContainer.getPassword());
 

@@ -1,23 +1,24 @@
 package sanity.nil.block;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.minio.PutObjectArgs;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.oidc.server.OidcWiremockTestResource;
 import jakarta.inject.Inject;
-import jakarta.persistence.EntityManager;
 import jakarta.transaction.UserTransaction;
 import lombok.extern.jbosslog.JBossLog;
 import org.apache.commons.lang3.StringUtils;
 import org.awaitility.Awaitility;
 import org.hamcrest.Matchers;
+import org.jooq.DSLContext;
+import org.jooq.JSONB;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import sanity.nil.block.consts.TaskStatus;
 import sanity.nil.block.consts.TaskType;
-import sanity.nil.block.model.BlockModel;
-import sanity.nil.block.model.TaskModel;
+import sanity.nil.block.db.tables.records.TasksRecord;
 import sanity.nil.exceptions.StorageException;
 import sanity.nil.minio.MinioOperations;
 
@@ -36,6 +37,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import static sanity.nil.block.db.tables.Blocks.BLOCKS;
+import static sanity.nil.block.db.tables.Tasks.TASKS;
+
 @JBossLog
 @QuarkusTest
 @QuarkusTestResource.List({
@@ -45,7 +49,7 @@ import java.util.concurrent.TimeUnit;
 public class DeleteBlocksScheduledTaskTest {
 
     @Inject
-    EntityManager entityManager;
+    DSLContext dslContext;
     @Inject
     MinioOperations minioOperations;
     @Inject
@@ -69,26 +73,23 @@ public class DeleteBlocksScheduledTaskTest {
         assertBlocksDeletedTaskFinished(savedFiles2, task2);
     }
 
-    private void assertBlocksDeletedTaskFinished(List<String> savedFiles, TaskModel task) {
+    private void assertBlocksDeletedTaskFinished(List<String> savedFiles, TasksRecord task) {
         Awaitility
                 .await()
                 .pollInterval(Duration.ofMillis(500L))
                 .atMost(10, TimeUnit.SECONDS)
                 .until(() -> assertBlocksDeleted(savedFiles), Matchers.equalTo(true));
 
-        var executedTask = entityManager.createQuery("SELECT t FROM TaskModel t WHERE t.id = :id", TaskModel.class)
-                .setParameter("id", task.getId())
-                .getSingleResult();
-        Assertions.assertEquals(TaskStatus.FINISHED, executedTask.getStatus());
+        var executedTask = dslContext.selectFrom(TASKS).where(TASKS.ID.eq(task.getId()))
+                .fetchOne();
+
+        Assertions.assertEquals(TaskStatus.FINISHED.name(), executedTask.getStatus());
     }
 
     // returns true if both records in db for all files have been deleted and minio objects
     private boolean assertBlocksDeleted(List<String> hashList) throws Exception {
         userTransaction.begin();
-        long count = entityManager.createQuery(
-                        "SELECT count(b) FROM BlockModel b WHERE b.hash IN :hashes", Long.class)
-                .setParameter("hashes", hashList)
-                .getSingleResult();
+        long count = dslContext.fetchCount(BLOCKS.where(BLOCKS.HASH.in(hashList)));
         userTransaction.commit();
 
         if (count > 0) {
@@ -110,28 +111,38 @@ public class DeleteBlocksScheduledTaskTest {
         return true;
     }
 
-    private TaskModel saveTask(List<String> filesToDelete) {
-        var metadata = objectMapper.createObjectNode();
+    private TasksRecord saveTask(List<String> filesToDelete) {
+        ObjectNode metadata = objectMapper.createObjectNode();
         metadata.put("blocksToDelete", String.join(",", filesToDelete));
-        var delayedTask = new TaskModel(null, TaskType.DELETE_BLOCKS, metadata, TaskStatus.CREATED);
-        entityManager.persist(delayedTask);
-        return delayedTask;
+
+        return dslContext.insertInto(TASKS)
+                .set(TASKS.ACTION, TaskType.DELETE_BLOCKS.name())
+                .set(TASKS.METADATA, JSONB.valueOf(metadata.toString()))
+                .set(TASKS.STATUS, TaskStatus.CREATED.name())
+                .returning()
+                .fetchOne();
     }
 
     private List<String> uploadFilesFromDirectoryToMinio(File directory) throws Exception {
         List<String> savedFiles = new ArrayList<>();
+
         for (File file : directory.listFiles()) {
-            var filename = StringUtils.substringBeforeLast(file.getName(), ".");
-            entityManager.persist(new BlockModel(filename));
-            try (InputStream inputStream = new FileInputStream(file)) {
-                minioOperations.putObject(
-                        PutObjectArgs.builder()
-                                .object(filename)
-                                .stream(inputStream, file.length(), -1)
-                                .contentType("application/octet-stream")
-                );
-                log.info("Saved file " + filename);
-                savedFiles.add(filename);
+            if (file.isFile()) {
+                String filename = StringUtils.substringBeforeLast(file.getName(), ".");
+                dslContext.insertInto(BLOCKS)
+                        .set(BLOCKS.HASH, filename)
+                        .execute();
+
+                try (InputStream inputStream = new FileInputStream(file)) {
+                    minioOperations.putObject(
+                            PutObjectArgs.builder()
+                                    .object(filename)
+                                    .stream(inputStream, file.length(), -1)
+                                    .contentType("application/octet-stream")
+                    );
+                    log.info("Saved file " + filename);
+                    savedFiles.add(filename);
+                }
             }
         }
         return savedFiles;

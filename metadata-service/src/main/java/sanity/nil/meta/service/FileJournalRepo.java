@@ -186,7 +186,7 @@ public class FileJournalRepo {
         }
         return entityManager.createQuery("SELECT new sanity.nil.meta.dto.file.FileInfo(" +
                         "f.fileID, f.id.workspaceID, f.path, false, f.size, f.uploader.id, " +
-                        "f.uploader.username, f.createdAt) " +
+                        "f.uploader.username, null, f.createdAt) " +
                         "FROM FileJournalModel f " +
                         "WHERE f.id.workspaceID = :wsID AND (:path IS NULL OR f.path LIKE :path) " +
                         "AND f.state = :state ", FileInfo.class)
