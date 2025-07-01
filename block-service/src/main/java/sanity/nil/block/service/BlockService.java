@@ -55,9 +55,7 @@ import static sanity.nil.block.db.tables.Blocks.BLOCKS;
 public class BlockService {
 
     @Inject
-    DSLContext context;
-//    @Inject
-//    EntityManager entityManager;
+    DSLContext dslContext;
     @Inject
     MinioOperations minio;
     @Inject
@@ -92,8 +90,8 @@ public class BlockService {
             }
 
             var newBlock = new BlocksRecord(getCurrDate(), block.fileName(), BlockStatus.AWAITING_UPLOAD.name());
+            dslContext.attach(newBlock);
             newBlock.insert();
-//            entityManager.persist(newBlock);
             results.add(new BlockUpload.UploadResult(block.fileName(), true));
         }
         return new BlockUpload(request.correlationID(), results);
@@ -124,12 +122,9 @@ public class BlockService {
         List<String> res = new ArrayList<>();
         try {
             userTransaction.begin();
-//            String query = "SELECT b.hash FROM BlockModel b WHERE b.hash IN :hashes";
-            res = context.select(BLOCKS.HASH).where(BLOCKS.HASH.in(batch))
+            res = dslContext.select(BLOCKS.HASH).from(BLOCKS)
+                    .where(BLOCKS.HASH.in(batch))
                     .fetch(BLOCKS.HASH);
-//            res = entityManager.createQuery(query, String.class)
-//                    .setParameter("hashes", batch)
-//                    .getResultList();
             userTransaction.commit();
         } catch (Exception e) {
             log.error(e.toString());
@@ -142,11 +137,9 @@ public class BlockService {
 
         Collection<String> existingBlocks = new ArrayList<>();
         if (hashList.size() < BATCH_SIZE) {
-            existingBlocks = context.select(BLOCKS.HASH).where(BLOCKS.HASH.in(hashList))
+            existingBlocks = dslContext.select(BLOCKS.HASH).from(BLOCKS)
+                    .where(BLOCKS.HASH.in(hashList))
                     .fetch(BLOCKS.HASH);
-//            existingBlocks = entityManager.createQuery("SELECT u.hash FROM BlockModel u WHERE u.hash in ?1 ", String.class)
-//                    .setParameter(1, hashList)
-//                    .getResultList();
         } else {
             existingBlocks = findExistingHashes(hashList);
         }
@@ -169,9 +162,8 @@ public class BlockService {
         metadata.put("blocksToDelete", String.join(",", hashList));
         var delayedTask = new TasksRecord(null, (short) 0, getCurrDate(), TaskType.DELETE_BLOCKS.name(), null,
                 TaskStatus.CREATED.name(), JSONB.valueOf(metadata.toString()));
+        dslContext.attach(delayedTask);
         delayedTask.insert();
-//        var delayedTask = new TaskModel(null, TaskType.DELETE_BLOCKS, metadata, TaskStatus.CREATED);
-//        entityManager.persist(delayedTask);
         return true;
     }
 

@@ -37,7 +37,7 @@ public class IntegrationTestResource implements QuarkusTestResourceLifecycleMana
         String redisHost = redisContainer.getHost();
         Integer redisPort = redisContainer.getMappedPort(6379);
         String redisUrl = "redis://:@" + redisHost + ":" + redisPort + "/";
-        String pgUrl = jdbcContainer.getJdbcUrl();
+        String pgUrl = jdbcContainer.getJdbcUrl() + "&currentSchema=metadata_db";
 
         Map<String, String> config = new HashMap<>();
         config.put("quarkus.datasource.jdbc.url", pgUrl);

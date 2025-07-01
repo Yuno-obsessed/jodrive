@@ -11,23 +11,16 @@ quarkus:
   redis:
     hosts:
       - redis://:@${REDIS_HOST:localhost}:6379/0
-  hibernate-orm:
-    log:
-      sql: true
-      bind-parameters: true
-      format-sql: false
-    database:
-      default-schema: metadata_db
-      generation:
-        ~: none
+  jooq:
+    dialect: Postgres
   datasource:
-    username: sanity
-    password: wordpass
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
     jdbc:
-      url: jdbc:postgresql://${PG_HOST:localhost}:5432/jodrive
+      url: ${DB_URL}
     db-kind: postgresql
   flyway:
-    migrate-at-start: true
+    migrate-at-start: false
     schemas: metadata_db
   scheduler:
     start-mode: forced
@@ -79,6 +72,8 @@ quarkus:
       "sanity.nil":
         level: DEBUG
       "io.quarkus.redis":
+        level: DEBUG
+      "io.quarkiverse.jooq.sql":
         level: DEBUG
 application:
   scheduler:

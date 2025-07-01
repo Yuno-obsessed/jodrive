@@ -6,17 +6,16 @@ import io.quarkus.test.oidc.server.OidcWiremockTestResource;
 import io.restassured.common.mapper.TypeRef;
 import io.restassured.http.ContentType;
 import jakarta.inject.Inject;
-import jakarta.persistence.EntityManager;
 import jakarta.transaction.UserTransaction;
 import lombok.extern.jbosslog.JBossLog;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jooq.DSLContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import sanity.nil.meta.consts.FileState;
+import sanity.nil.meta.db.tables.FileJournal;
 import sanity.nil.meta.dto.file.FileNode;
-import sanity.nil.meta.model.FileJournalModel;
-import sanity.nil.meta.model.UserModel;
-import sanity.nil.meta.model.WorkspaceModel;
+import sanity.nil.meta.model.FileJournalEntity;
 import sanity.nil.meta.service.FileJournalRepo;
 
 import java.util.ArrayList;
@@ -37,7 +36,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class ListFileTreeTest {
 
     @Inject
-    EntityManager entityManager;
+    DSLContext dslContext;
     @Inject
     FileJournalRepo fileJournalRepo;
     @Inject
@@ -48,7 +47,8 @@ public class ListFileTreeTest {
     @BeforeEach
     public void setup() throws Exception {
         userTransaction.begin();
-        entityManager.createQuery("DELETE FROM FileJournalModel f").executeUpdate();
+        dslContext.deleteFrom(FileJournal.FILE_JOURNAL).execute();
+//        entityManager.createQuery("DELETE FROM FileJournalModel f").executeUpdate();
         generateFile("/", 0L); // base directory
         userTransaction.commit();
     }
@@ -157,10 +157,8 @@ public class ListFileTreeTest {
     }
 
     private void generateFile(String filename, Long size) {
-        var userUploader = entityManager.find(UserModel.class, defaultUserID);
-        var workspace = entityManager.find(WorkspaceModel.class, 1L);
-        var journal = new FileJournalModel(workspace, filename, userUploader, FileState.UPLOADED, (short) 1,
-                size, UUID.randomUUID().toString());
+        var journal = new FileJournalEntity(1L, filename, size, FileState.UPLOADED,
+                List.of(UUID.randomUUID().toString()), defaultUserID);
         fileJournalRepo.insert(journal);
     }
 }

@@ -6,21 +6,21 @@ import io.quarkus.test.oidc.server.OidcWiremockTestResource;
 import io.restassured.common.mapper.TypeRef;
 import io.restassured.http.ContentType;
 import jakarta.inject.Inject;
-import jakarta.persistence.EntityManager;
 import jakarta.transaction.UserTransaction;
 import lombok.extern.jbosslog.JBossLog;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jooq.DSLContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import sanity.nil.meta.consts.FileState;
+import sanity.nil.meta.db.tables.FileJournal;
 import sanity.nil.meta.dto.Paged;
 import sanity.nil.meta.dto.file.DeletedFileInfo;
 import sanity.nil.meta.dto.file.FileInfo;
-import sanity.nil.meta.model.FileJournalModel;
-import sanity.nil.meta.model.UserModel;
-import sanity.nil.meta.model.WorkspaceModel;
+import sanity.nil.meta.model.FileJournalEntity;
 import sanity.nil.meta.service.FileJournalRepo;
 
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.IntStream;
 
@@ -36,7 +36,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class SearchFilesTest {
 
     @Inject
-    EntityManager entityManager;
+    DSLContext dslContext;
     @Inject
     FileJournalRepo fileJournalRepo;
     @Inject
@@ -47,7 +47,7 @@ public class SearchFilesTest {
     @BeforeEach
     public void setup() throws Exception {
         userTransaction.begin();
-        entityManager.createQuery("DELETE FROM FileJournalModel f").executeUpdate();
+        dslContext.deleteFrom(FileJournal.FILE_JOURNAL).execute();
         userTransaction.commit();
     }
 
@@ -137,13 +137,11 @@ public class SearchFilesTest {
 
     private void generateTestData(int quantity, boolean deleted) throws Exception {
         userTransaction.begin();
-        var userUploader = entityManager.find(UserModel.class, defaultUserID);
-        var workspace = entityManager.find(WorkspaceModel.class, 1L);
         IntStream.range(0, quantity)
                 .forEach(i -> {
                     var state = deleted ? FileState.DELETED : FileState.UPLOADED;
-                    var journal = new FileJournalModel(workspace, UUID.randomUUID().toString(), userUploader, state, (short) 1,
-                            4256400L, UUID.randomUUID().toString());
+                    var journal = new FileJournalEntity(1L, UUID.randomUUID().toString(), 4256400L, state,
+                            List.of(UUID.randomUUID().toString()), defaultUserID);
                     fileJournalRepo.insert(journal);
                 });
         userTransaction.commit();

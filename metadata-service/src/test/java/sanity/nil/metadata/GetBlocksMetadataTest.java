@@ -9,10 +9,10 @@ import io.quarkus.test.oidc.server.OidcWiremockTestResource;
 import io.restassured.http.ContentType;
 import io.smallrye.mutiny.Uni;
 import jakarta.inject.Inject;
-import jakarta.persistence.EntityManager;
 import jakarta.transaction.UserTransaction;
 import lombok.extern.jbosslog.JBossLog;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jooq.DSLContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -21,12 +21,10 @@ import sanity.nil.grpc.block.CheckBlocksExistenceRequest;
 import sanity.nil.grpc.block.CheckBlocksExistenceResponse;
 import sanity.nil.meta.consts.FileState;
 import sanity.nil.meta.consts.Quota;
+import sanity.nil.meta.db.tables.records.FileJournalRecord;
 import sanity.nil.meta.dto.block.BlockMetadata;
 import sanity.nil.meta.dto.block.GetBlocksMetadata;
-import sanity.nil.meta.model.FileJournalModel;
-import sanity.nil.meta.model.UserModel;
-import sanity.nil.meta.model.UserStatisticsModel;
-import sanity.nil.meta.model.WorkspaceModel;
+import sanity.nil.meta.model.FileJournalEntity;
 import sanity.nil.meta.service.FileJournalRepo;
 
 import java.util.*;
@@ -36,6 +34,8 @@ import java.util.stream.Stream;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
+import static sanity.nil.meta.db.tables.FileJournal.FILE_JOURNAL;
+import static sanity.nil.meta.db.tables.UserStatistics.USER_STATISTICS;
 
 @JBossLog
 @QuarkusTest
@@ -53,7 +53,7 @@ public class GetBlocksMetadataTest {
     @GrpcClient("blockService")
     BlockService blockClient;
     @Inject
-    EntityManager entityManager;
+    DSLContext dslContext;
     @Inject
     UserTransaction userTransaction;
     @ConfigProperty(name = "application.security.default-user-id")
@@ -64,12 +64,11 @@ public class GetBlocksMetadataTest {
     @BeforeEach
     public void setUp() throws Exception {
         userTransaction.begin();
-        entityManager.createQuery("DELETE FROM FileJournalModel f").executeUpdate();
-        entityManager.createQuery("UPDATE UserStatisticsModel us " +
-                        "SET us.value = :defaultValue WHERE us.id.userID = :userID")
-                .setParameter("defaultValue", DEFAULT_STATISTICS_VALUE)
-                .setParameter("userID", defaultUserID)
-                .executeUpdate();
+        dslContext.deleteFrom(FILE_JOURNAL).execute();
+        dslContext.update(USER_STATISTICS)
+                .set(USER_STATISTICS.VALUE, DEFAULT_STATISTICS_VALUE)
+                .where(USER_STATISTICS.USER_ID.eq(defaultUserID))
+                .execute();
         redisDataSource.flushall();
         userTransaction.commit();
     }
@@ -159,7 +158,7 @@ public class GetBlocksMetadataTest {
         assertThat(response.missingBlocks().size()).isEqualTo(addedBlocks.size());
 
         var files = getFileJournals(defaultPath);
-        var updatedJournal = files.stream().filter(file -> file.getHistoryID() > 0).findFirst().get();
+        var updatedJournal = files.stream().filter(file -> file.getHistoryId() > 0).findFirst().get();
 
         assertFileState(updatedJournal, defaultPath, expectedBlockList, expectedFileSize, defaultUserID, FileState.IN_UPLOAD, 2);
         assertThat(getStorageLimitQuota()).isEqualTo(expectedFileSize);
@@ -169,12 +168,16 @@ public class GetBlocksMetadataTest {
     public void given_Valid_Request_When_Exceeded_Subscription_Limit_Then_Return_Insufficient_Quota_Exception() throws Exception {
         var almostExceededLimit = 10735418240L;
         userTransaction.begin();
-        entityManager.createQuery("UPDATE UserStatisticsModel us SET us.value = :currValue " +
-                        "WHERE us.id.userID = :userID AND us.id.statisticsID = :statisticsID")
-                .setParameter("currValue", String.valueOf(almostExceededLimit))
-                .setParameter("userID", defaultUserID)
-                .setParameter("statisticsID", Quota.USER_STORAGE_USED.id())
-                .executeUpdate();
+        dslContext.update(USER_STATISTICS)
+                .set(USER_STATISTICS.VALUE, String.valueOf(almostExceededLimit))
+                .where(USER_STATISTICS.USER_ID.eq(defaultUserID))
+                .and(USER_STATISTICS.STATISTICS_ID.eq(Quota.USER_STORAGE_USED.id())).execute();
+//        entityManager.createQuery("UPDATE UserStatisticsModel us SET us.value = :currValue " +
+//                        "WHERE us.id.userID = :userID AND us.id.statisticsID = :statisticsID")
+//                .setParameter("currValue", String.valueOf(almostExceededLimit))
+//                .setParameter("userID", defaultUserID)
+//                .setParameter("statisticsID", Quota.USER_STORAGE_USED.id())
+//                .executeUpdate();
         userTransaction.commit();
 
         var lastBlockSize = 12000;
@@ -259,8 +262,8 @@ public class GetBlocksMetadataTest {
 
         var files = getFileJournals(defaultPath);
 
-        var latestInsertedVersion = files.stream().max(Comparator.comparingInt(FileJournalModel::getHistoryID)).get();
-        assertThat(files.stream().filter(j -> j.getHistoryID() == 0).findAny()).isEmpty(); // oldest was deleted
+        var latestInsertedVersion = files.stream().max(Comparator.comparingInt(FileJournalRecord::getHistoryId)).get();
+        assertThat(files.stream().filter(j -> j.getHistoryId() == 0).findAny()).isEmpty(); // oldest was deleted
 
         assertFileState(latestInsertedVersion, defaultPath, expectedBlockList, expectedFileSize, defaultUserID, FileState.IN_UPLOAD, 4);
         assertThat(getStorageLimitQuota()).isEqualTo(expectedFileSize);
@@ -351,7 +354,7 @@ public class GetBlocksMetadataTest {
         Mockito.when(blockClient.checkBlocksExistence(blockServiceRequest))
                 .thenReturn(Uni.createFrom().item(blockServiceFinalResponse));
 
-        // updates file state to uploaded and place it in cache
+        // updates file state to uploaded and places it in cache
         given()
                 .contentType(ContentType.JSON)
                 .body(request)
@@ -383,54 +386,64 @@ public class GetBlocksMetadataTest {
         assertThat(getStorageLimitQuota()).isEqualTo(expectedFileSize);
     }
 
-    private void assertFileState(FileJournalModel file, String name, String blocklist, Long filesize, UUID uploader, FileState state, Integer historyID) {
+    private void assertFileState(FileJournalRecord file, String name, String blocklist, Long filesize, UUID uploader, FileState state, Integer historyID) {
         assertThat(file.getPath()).isEqualTo(name);
         assertThat(file.getBlocklist()).isEqualTo(blocklist);
         assertThat(file.getSize()).isEqualTo(filesize);
-        assertThat(file.getUploader().getId()).isEqualTo(uploader);
-        assertThat(file.getState()).isEqualTo(state);
-        assertThat(file.getHistoryID()).isEqualTo(historyID);
+        assertThat(file.getUploaderId()).isEqualTo(uploader);
+        assertThat(file.getState()).isEqualTo(state.name());
+        assertThat(file.getHistoryId()).isEqualTo(historyID);
     }
 
-    private FileJournalModel createExistingFile(FileState state) {
-        var workspace = entityManager.find(WorkspaceModel.class, 1L);
-        var uploadUser = entityManager.find(UserModel.class, defaultUserID);
+    private FileJournalRecord createExistingFile(FileState state) {
         var blockList = IntStream.range(1, 101)
-                .mapToObj(e -> UUID.randomUUID().toString())
-                .collect(Collectors.joining(","));
-        var fileJournal = new FileJournalModel(workspace, defaultPath, uploadUser, state, (short) 1,
-                411053792L, blockList);
-        fileJournalRepo.insert(fileJournal);
-        var statistics = entityManager.find(UserStatisticsModel.class, new UserStatisticsModel.UserStatisticsIDModel(
-                defaultUserID, Quota.USER_STORAGE_USED.id())
-        );
-        statistics.setValue(fileJournal.getSize().toString());
-        return fileJournal;
+                .mapToObj(e -> UUID.randomUUID().toString()).toList();
+        var journal = new FileJournalEntity(1L, defaultPath, 411053792L, state,
+                blockList, defaultUserID);
+        var savedJournal = fileJournalRepo.insert(journal);
+        dslContext.update(USER_STATISTICS)
+                .set(USER_STATISTICS.VALUE, savedJournal.getSize().toString())
+                .where(USER_STATISTICS.USER_ID.eq(defaultUserID))
+                .and(USER_STATISTICS.STATISTICS_ID.eq(Quota.USER_STORAGE_USED.id())).execute();
+//        var statistics = entityManager.find(UserStatisticsModel.class, new UserStatisticsModel.UserStatisticsIDModel(
+//                defaultUserID, Quota.USER_STORAGE_USED.id())
+//        );
+//        statistics.setValue(fileJournal.getSize().toString());
+        return savedJournal;
     }
 
-    private FileJournalModel getFileJournal(String path) {
-        return entityManager.createQuery("SELECT f FROM FileJournalModel f " +
-                        "WHERE f.id.workspaceID = :wsID AND f.path = :path " +
-                        "ORDER BY f.historyID DESC", FileJournalModel.class)
-                .setParameter("wsID", 1L)
-                .setParameter("path", path)
-                .setMaxResults(1)
-                .getSingleResult();
+    private FileJournalRecord getFileJournal(String path) {
+        return dslContext.selectFrom(FILE_JOURNAL)
+                .where(FILE_JOURNAL.WS_ID.eq(1L))
+                .and(FILE_JOURNAL.PATH.eq(path))
+                .orderBy(FILE_JOURNAL.HISTORY_ID.desc())
+                .limit(1L).fetchOne();
+//        return entityManager.createQuery("SELECT f FROM FileJournalModel f " +
+//                        "WHERE f.id.workspaceID = :wsID AND f.path = :path " +
+//                        "ORDER BY f.historyID DESC", FileJournalModel.class)
+//                .setParameter("wsID", 1L)
+//                .setParameter("path", path)
+//                .setMaxResults(1)
+//                .getSingleResult();
     }
 
-    private List<FileJournalModel> getFileJournals(String path) {
-        return entityManager.createQuery("SELECT f FROM FileJournalModel f " +
-                        "WHERE f.id.workspaceID = :wsID AND f.path = :path " +
-                        "ORDER BY f.historyID DESC", FileJournalModel.class)
-                .setParameter("wsID", 1L)
-                .setParameter("path", path)
-                .getResultList();
+    private List<FileJournalRecord> getFileJournals(String path) {
+        return dslContext.selectFrom(FILE_JOURNAL)
+                .where(FILE_JOURNAL.WS_ID.eq(1L))
+                .and(FILE_JOURNAL.PATH.eq(path))
+                .orderBy(FILE_JOURNAL.HISTORY_ID.desc()).fetch();
+//        return entityManager.createQuery("SELECT f FROM FileJournalModel f " +
+//                        "WHERE f.id.workspaceID = :wsID AND f.path = :path " +
+//                        "ORDER BY f.historyID DESC", FileJournalModel.class)
+//                .setParameter("wsID", 1L)
+//                .setParameter("path", path)
+//                .getResultList();
     }
 
     private Long getStorageLimitQuota() {
-        var userStatistics = entityManager.find(UserStatisticsModel.class, new UserStatisticsModel.UserStatisticsIDModel(
-                defaultUserID, Quota.USER_STORAGE_USED.id())
-        );
-        return Long.parseLong(userStatistics.getValue());
+        return dslContext.select(USER_STATISTICS.VALUE).from(USER_STATISTICS)
+                .where(USER_STATISTICS.USER_ID.eq(defaultUserID))
+                .and(USER_STATISTICS.STATISTICS_ID.eq(Quota.USER_STORAGE_USED.id()))
+                .fetchOne().into(Long.class);
     }
 }

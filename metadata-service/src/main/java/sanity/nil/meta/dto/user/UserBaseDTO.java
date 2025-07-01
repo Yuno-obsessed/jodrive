@@ -3,7 +3,7 @@ package sanity.nil.meta.dto.user;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @NoArgsConstructor
@@ -14,5 +14,5 @@ public class UserBaseDTO {
     public String email;
     public SubscriptionDTO subscription;
     public String avatarURL;
-    public LocalDateTime createdAt;
+    public OffsetDateTime createdAt;
 }

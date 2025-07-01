@@ -5,39 +5,39 @@ import io.quarkus.security.ForbiddenException;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.NoResultException;
 import jakarta.transaction.Transactional;
 import lombok.extern.jbosslog.JBossLog;
 import org.apache.commons.lang3.StringUtils;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
+import org.jooq.DSLContext;
 import sanity.nil.exceptions.StorageException;
+import sanity.nil.meta.db.tables.Statistics;
+import sanity.nil.meta.db.tables.UserSubscriptions;
+import sanity.nil.meta.db.tables.records.UsersRecord;
+import sanity.nil.meta.dto.user.StatisticsDTO;
 import sanity.nil.meta.dto.user.UserBaseDTO;
-import sanity.nil.meta.mappers.StatisticsMapper;
 import sanity.nil.meta.mappers.SubscriptionMapper;
 import sanity.nil.meta.mappers.UserMapper;
-import sanity.nil.meta.model.StatisticsModel;
-import sanity.nil.meta.model.UserModel;
-import sanity.nil.meta.model.UserStatisticsModel;
-import sanity.nil.meta.model.UserSubscriptionModel;
 import sanity.nil.minio.MinioOperations;
 import sanity.nil.security.IdentityProvider;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
+
+import static sanity.nil.meta.db.Tables.*;
+import static sanity.nil.meta.db.tables.UserStatistics.USER_STATISTICS;
 
 @JBossLog
 @ApplicationScoped
 public class UserService {
 
     @Inject
-    EntityManager entityManager;
+    DSLContext dslContext;
     @Inject
     SubscriptionMapper subscriptionMapper;
-    @Inject
-    StatisticsMapper statisticsMapper;
     @Inject
     UserMapper userMapper;
     @Inject
@@ -51,28 +51,35 @@ public class UserService {
     @Transactional
     public UserBaseDTO getUser(UUID id) {
         var identity = identityProvider.getCheckedIdentity();
-        var user = new UserModel();
-        try {
-            user = entityManager.createQuery("SELECT u FROM UserModel u " +
-                            "WHERE u.id = :id", UserModel.class)
-                    .setParameter("id", id)
-                    .getSingleResult();
-        } catch (NoResultException e) {
+        var userOp = dslContext.selectFrom(USERS)
+                .where(USERS.ID.eq(id))
+                .fetchOptional();
+        var user = userOp.orElse(null);
+        if (userOp.isEmpty() && id.equals(identity.getUserID())) {
             // in case such user doesn't exist, means that it's first getInfo request after register
             // so we can create a new user
-            var defaultSubscription = entityManager.find(UserSubscriptionModel.class, (short) 1);
-            user = new UserModel(identity.getUserID(), identity.getUsername(), identity.getEmail(), defaultSubscription);
-            var defaultStatistics = entityManager.createQuery("SELECT s FROM StatisticsModel s " +
-                            "WHERE s.id IN :id", StatisticsModel.class)
-                    .setParameter("id", List.of((short) 1, (short) 2))
-                    .getResultList();
-            entityManager.persist(user);
+            var defaultSubscription = dslContext.selectFrom(UserSubscriptions.USER_SUBSCRIPTIONS)
+                    .where(USER_SUBSCRIPTIONS.ID.eq((short) 1))
+                    .fetchOne();
+            user = new UsersRecord(id, identity.getEmail(), identity.getUsername(), null,
+                    defaultSubscription.getId(), OffsetDateTime.now(), OffsetDateTime.now());
+            var defaultStatistics = dslContext.selectFrom(Statistics.STATISTICS)
+                    .where(STATISTICS.ID.in(List.of((short) 1, (short) 2)))
+                    .fetch();
+            dslContext.attach(user);
+            user.store();
             for (var statistics : defaultStatistics) {
-                var userStatistic = new UserStatisticsModel(user, statistics, DEFAULT_STATISTICS_VALUE);
-                entityManager.persist(userStatistic);
+                var userStatistic = dslContext.newRecord(USER_STATISTICS);
+                userStatistic.setStatisticsId(statistics.getId());
+                userStatistic.setUserId(user.getId());
+                userStatistic.setValue(DEFAULT_STATISTICS_VALUE);
+                userStatistic.store();
             }
         }
-        var subscriptionDTO = subscriptionMapper.entityToDTO(user.getSubscription());
+        var subscription = dslContext.selectFrom(USER_SUBSCRIPTIONS)
+                .where(USER_SUBSCRIPTIONS.ID.eq(user.getSubscriptionId()))
+                .fetchOne();
+        var subscriptionDTO = subscriptionMapper.entityToDTO(subscription);
 
         String avatarURL = null;
         if (StringUtils.isNotBlank(user.getAvatar())) {
@@ -80,14 +87,17 @@ public class UserService {
         }
 
         if (id.equals(identity.getUserID())) {
-            var statisticsModel = entityManager.createQuery("SELECT s FROM UserStatisticsModel s " +
-                            "WHERE s.id.userID = :id", UserStatisticsModel.class)
-                    .setParameter("id", id)
-                    .getResultList();
-            var statisticsDTOs = statisticsModel.stream().map(statisticsMapper::entityToDTO).toList();
+            var statistics = dslContext.select(USER_STATISTICS.asterisk(), STATISTICS.asterisk())
+                    .from(USER_STATISTICS)
+                    .join(STATISTICS).on(USER_STATISTICS.STATISTICS_ID.eq(STATISTICS.ID))
+                    .where(USER_STATISTICS.USER_ID.eq(user.getId()))
+                    .fetch().map(record -> {
+                        return new StatisticsDTO(record.get(STATISTICS.ID), record.get(STATISTICS.QUOTA),
+                                record.get(STATISTICS.DESCRIPTION), record.get(USER_STATISTICS.VALUE));
+                    });
             var userDTO = userMapper.entityToExtendedDTO(user);
             userDTO.subscription = subscriptionDTO;
-            userDTO.statistics = statisticsDTOs;
+            userDTO.statistics = statistics;
             userDTO.avatarURL = avatarURL;
             return userDTO;
         } else {
@@ -121,9 +131,9 @@ public class UserService {
         if (!userID.equals(identity.getUserID().toString())) {
             throw new ForbiddenException();
         }
-        var user = entityManager.find(UserModel.class, identity.getUserID());
-        user.setAvatar(photo);
-        entityManager.persist(user);
+        dslContext.update(USERS).set(USERS.AVATAR, photo)
+                .where(USERS.ID.eq(identity.getUserID()))
+                .execute();
         return minioOperations.getObjectURL(AVATAR_BUCKET, photo);
     }
 }

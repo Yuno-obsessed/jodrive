@@ -5,7 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 import sanity.nil.meta.dto.workspace.WorkspaceUserDTO;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -14,5 +14,5 @@ public class DeletedFileInfo extends FileInfo {
     public int versions;
     public WorkspaceUserDTO deletedBy;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm")
-    public LocalDateTime deletedAt;
+    public OffsetDateTime deletedAt;
 }

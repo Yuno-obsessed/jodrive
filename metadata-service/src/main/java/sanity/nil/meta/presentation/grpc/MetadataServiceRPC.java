@@ -28,7 +28,7 @@ public class MetadataServiceRPC extends MetadataServiceGrpc.MetadataServiceImplB
             throw new InvalidParameterException("Invalid request");
         }
 
-        Uni.createFrom().item(() -> metadataService.getFileBlockList(request.getFileID(), request.getWsID(), 1))
+        Uni.createFrom().item(() -> metadataService.getFileBlockList(Long.valueOf(request.getFileID()), Long.valueOf(request.getWsID()), 1))
                 .runSubscriptionOn(Infrastructure.getDefaultExecutor())
                 .subscribe().with(
                         blockList -> {

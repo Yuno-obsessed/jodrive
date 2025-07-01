@@ -5,7 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 import sanity.nil.meta.consts.WsRole;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @AllArgsConstructor
@@ -16,5 +16,5 @@ public class WorkspaceUserDTO {
     public String avatarURL;
     public WsRole role;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm")
-    public LocalDateTime joinedAt;
+    public OffsetDateTime joinedAt;
 }

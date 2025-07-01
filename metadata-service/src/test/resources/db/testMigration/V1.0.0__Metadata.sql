@@ -37,6 +37,20 @@ create table if not exists metadata_db.file_journal (
     updated_at timestamptz,
     primary key (ws_id, file_id)
 );
+
+create or replace function metadata_db.next_history_id(p_ws_id bigint)
+    returns integer
+    language plpgsql
+as $$
+declare
+    result integer;
+begin
+    select max(metadata_db.file_journal.history_id) + 1 from file_journal
+    where metadata_db.file_journal.ws_id = p_ws_id into result;
+    return result;
+end;
+$$;
+
 create table if not exists metadata_db.statistics (
     id smallint generated always as identity,
     quota varchar(255) check (quota in ('USER_STORAGE_USED','USER_WORKSPACES')),

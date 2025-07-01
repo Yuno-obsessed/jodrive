@@ -1,10 +1,9 @@
 package sanity.nil.meta.dto.file;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @NoArgsConstructor
@@ -18,6 +17,5 @@ public class FileInfo {
     public UUID uploader;
     public String uploaderName;
     public String uploaderAvatar;
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm")
-    public LocalDateTime uploadedAt;
+    public OffsetDateTime uploadedAt;
 }

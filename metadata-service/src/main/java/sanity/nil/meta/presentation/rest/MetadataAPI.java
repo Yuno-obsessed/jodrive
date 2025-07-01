@@ -31,8 +31,8 @@ public class MetadataAPI {
     @DELETE
     @Path("file/{fileID}")
     public Response deleteFile(
-            @PathParam("fileID") String fileID,
-            @QueryParam("wsID") String wsID
+            @PathParam("fileID") Long fileID,
+            @QueryParam("wsID") Long wsID
     ) {
         metadataService.deleteFile(fileID, wsID);
         return Response.noContent().build();

@@ -6,20 +6,16 @@ import io.quarkus.security.ForbiddenException;
 import io.quarkus.security.UnauthorizedException;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.NoResultException;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
-import jakarta.transaction.Status;
 import jakarta.transaction.Transactional;
 import jakarta.transaction.UserTransaction;
 import jakarta.ws.rs.NotFoundException;
 import lombok.extern.jbosslog.JBossLog;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.faulttolerance.Retry;
-import org.hibernate.query.Order;
+import org.jooq.Condition;
+import org.jooq.DSLContext;
+import org.jooq.JSONB;
+import org.jooq.impl.DSL;
 import sanity.nil.grpc.block.BlockService;
 import sanity.nil.grpc.block.CheckBlocksExistenceRequest;
 import sanity.nil.grpc.block.Code;
@@ -28,6 +24,10 @@ import sanity.nil.meta.cache.FileMetadataCache;
 import sanity.nil.meta.cache.SubscriptionQuotaCache;
 import sanity.nil.meta.cache.model.FileMetadata;
 import sanity.nil.meta.consts.*;
+import sanity.nil.meta.db.tables.records.FileJournalRecord;
+import sanity.nil.meta.db.tables.records.LinksRecord;
+import sanity.nil.meta.db.tables.records.TasksRecord;
+import sanity.nil.meta.db.tables.records.WorkspacesRecord;
 import sanity.nil.meta.dto.Paged;
 import sanity.nil.meta.dto.block.BlockMetadata;
 import sanity.nil.meta.dto.block.GetBlocksMetadata;
@@ -36,18 +36,14 @@ import sanity.nil.meta.exceptions.CryptoException;
 import sanity.nil.meta.exceptions.InsufficientQuotaException;
 import sanity.nil.meta.exceptions.InvalidParametersException;
 import sanity.nil.meta.mappers.FileMapper;
-import sanity.nil.meta.model.*;
+import sanity.nil.meta.model.FileJournalEntity;
 import sanity.nil.meta.security.LinkEncoder;
-import sanity.nil.minio.MinioOperations;
 import sanity.nil.security.Identity;
 import sanity.nil.security.Role;
 import sanity.nil.security.WorkspaceIdentityProvider;
 import sanity.nil.util.CollectionUtils;
 
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
+import java.time.*;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -55,6 +51,12 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static sanity.nil.meta.consts.Constants.*;
+import static sanity.nil.meta.db.Tables.*;
+import static sanity.nil.meta.db.tables.FileJournal.FILE_JOURNAL;
+import static sanity.nil.meta.db.tables.UserStatistics.USER_STATISTICS;
+import static sanity.nil.meta.db.tables.UserWorkspaces.USER_WORKSPACES;
+import static sanity.nil.meta.db.tables.Users.USERS;
+import static sanity.nil.meta.db.tables.Workspaces.WORKSPACES;
 
 @JBossLog
 @ApplicationScoped
@@ -65,7 +67,7 @@ public class MetadataService {
     @Inject
     FileJournalRepo fileJournalRepo;
     @Inject
-    EntityManager entityManager;
+    DSLContext dslContext;
     @Inject
     WorkspaceIdentityProvider identityProvider;
     @Inject
@@ -78,45 +80,44 @@ public class MetadataService {
     ObjectMapper objectMapper;
     @Inject
     FileMapper fileMapper;
-    @Inject
-    MinioOperations minioOperations;
     @GrpcClient("blockService")
     BlockService blockClient;
 
-    public List<String> getFileBlockList(String fileID, String workspaceID, Integer versions) {
+    public List<String> getFileBlockList(Long fileID, Long workspaceID, Integer versions) {
         log.info("MetadataService thread: " + Thread.currentThread().getName());
-        var blocklist = entityManager.createQuery("SELECT f.blocklist FROM FileJournalModel f " +
-                        "WHERE f.id.fileID = :fileID AND f.id.workspaceID = :wsID " +
-                        "ORDER BY f.historyID DESC ", String.class)
-                .setParameter("fileID", fileID)
-                .setParameter("wsID", workspaceID)
-                .setMaxResults(versions)
-                .getSingleResult();
+        var blocklist = dslContext.select(FILE_JOURNAL.BLOCKLIST)
+                .from(FILE_JOURNAL)
+                .where(FILE_JOURNAL.FILE_ID.eq(fileID))
+                .and(FILE_JOURNAL.WS_ID.eq(workspaceID))
+                .orderBy(FILE_JOURNAL.HISTORY_ID.desc())
+                .limit(versions)
+                .fetchOne().into(String.class);
 
         return getBlocksFromBlockList(blocklist);
     }
 
     @Transactional
-    public void deleteFile(String fileIDParam, String workspaceIDParam) {
-        var identity = identityProvider.getIdentity(workspaceIDParam);
+    public void deleteFile(Long fileID, Long workspaceID) {
+        var identity = identityProvider.getIdentity(String.valueOf(workspaceID));
         if (!identity.hasRole(Role.USER)) {
             throw new UnauthorizedException();
         }
 
-        var user = entityManager.find(UserModel.class, identity.getUserID());
-        entityManager.createQuery("UPDATE FileJournalModel f SET f.state = :newState, " +
-                        "f.updatedBy = :updatedBy " +
-                        "WHERE f.id.fileID = :fileID AND f.id.workspaceID = :wsID")
-                .setParameter("newState", FileState.DELETED)
-                .setParameter("updatedBy", user)
-                .setParameter("fileID", fileIDParam)
-                .setParameter("wsID", workspaceIDParam)
-                .executeUpdate();
+        dslContext.update(FILE_JOURNAL)
+                .set(FILE_JOURNAL.STATE, FileState.DELETED.name())
+                .set(FILE_JOURNAL.UPDATED_BY, identity.getUserID())
+                .set(FILE_JOURNAL.UPDATED_AT, OffsetDateTime.now())
+                .where(FILE_JOURNAL.FILE_ID.eq(fileID))
+                .and(FILE_JOURNAL.WS_ID.eq(workspaceID))
+                .execute();
         var metadata = objectMapper.createObjectNode();
-        metadata.put("workspace",workspaceIDParam);
-        var performAt = LocalDateTime.now().plusDays(Constants.FILE_RETENTION_DAYS);
-        var task = new TaskModel(fileIDParam, TaskType.DELETE_FILE, metadata, performAt, TaskStatus.CREATED);
-        entityManager.persist(task);
+        metadata.put("workspace", workspaceID);
+        var performAt = OffsetDateTime.now().plusDays(Constants.FILE_RETENTION_DAYS);
+        var task = new TasksRecord(null, TaskType.DELETE_FILE.name(), TaskStatus.CREATED.name(),
+                String.valueOf(fileID), JSONB.valueOf(metadata.toString()), OffsetDateTime.now(), performAt
+        );
+        dslContext.attach(task);
+        task.store();
     }
 
     //    @CircuitBreaker()
@@ -133,11 +134,10 @@ public class MetadataService {
 
 //    @Transactional
     public void deleteFileJournal(Long fileID, Long workspaceID) {
-        var deleted = entityManager.createQuery("DELETE FROM FileJournalModel f " +
-                        "WHERE f.id.fileID = :fileID AND f.id.workspaceID = :wsID ")
-                .setParameter("fileID", fileID)
-                .setParameter("wsID", workspaceID)
-                .executeUpdate();
+        dslContext.deleteFrom(FILE_JOURNAL)
+                .where(FILE_JOURNAL.FILE_ID.eq(fileID))
+                .and(FILE_JOURNAL.WS_ID.eq(workspaceID))
+                .execute();
     }
 
     public BlockMetadata getBlocksMetadata(GetBlocksMetadata request) {
@@ -145,7 +145,9 @@ public class MetadataService {
         if (!identity.hasRole(Role.USER)) {
             throw new UnauthorizedException();
         }
-        var userUploader = entityManager.find(UserModel.class, identity.getUserID());
+        var uploaderSubscription = dslContext.select(USERS.SUBSCRIPTION_ID).from(USERS)
+                .where(USERS.ID.eq(identity.getUserID()))
+                .fetchOne().into(Short.class);
 
         var requestSortedBlocks = request.blocks().stream()
                 .sorted(Comparator.comparing(a -> a.position()))
@@ -200,160 +202,128 @@ public class MetadataService {
             if (existingFileOp.isPresent()) {
                 var existingFile = existingFileOp.get();
                 var cacheEntry = fileMapper.journalToMetadata(existingFile);
-                fileMetadataCache.persistFileMetadata(cacheEntry, request.workspaceID(), existingFile.getFileID(), Duration.ofMinutes(10L));
+                fileMetadataCache.persistFileMetadata(cacheEntry, request.workspaceID(), existingFile.getFileId(), Duration.ofMinutes(10L));
 
-                var fileInfo = fileMapper.journalToInfo(existingFile);
+                var fileInfo = fileJournalRepo.journalToFileInfo(existingFile);
                 return new BlockMetadata(request.correlationID(), null, fileInfo);
             } else {
-                // forse insert because file exists in another workspace
+                // force insert because file exists in another workspace
                 missingBlocks = requestSortedBlocks;
                 existsInAnotherWorkspace = true;
             }
         }
         var fileSize = calculateFileSize(missingBlocks.size(), request.lastBlockSize());
-        verifyQuotaUsage(identity.getUserID(), userUploader.getSubscription().getId(), fileSize);
+        verifyQuotaUsage(identity.getUserID(), uploaderSubscription, fileSize);
 
-        var workspace = getWorkspace(request.workspaceID(), identity.getUserID()).get();
+//        var workspace = getWorkspace(request.workspaceID(), identity.getUserID()).get();
 
-        var file = new FileJournalModel();
+        var file = new FileJournalRecord();
         if (cachedMetadata != null && cachedMetadata.state().equals(FileState.IN_UPLOAD)) {
             // if file is not uploaded yet (some blocks weren't delivered) - resumable upload
             return new BlockMetadata(request.correlationID(), missingBlocks, null);
         } else if (existsInAnotherWorkspace) {
-            file = postProcessExistingFileNewInWorkspace(request.path(), userUploader, missingBlocks, workspace, fileSize);
+            file = postProcessExistingFileNewInWorkspace(request.path(), identity.getUserID(), missingBlocks, request.workspaceID(), fileSize);
             missingBlocks = null;
         } else if (missingBlocks.size() == requestSortedBlocks.size()) {
-            file = postProcessNewFile(request.path(), userUploader, missingBlocks, workspace, fileSize);
+            file = postProcessNewFile(request.path(), identity.getUserID(), missingBlocks, request.workspaceID(), fileSize);
         } else {
-            file = postProcessUpdateFile(request.path(), userUploader, requestSortedBlocks, workspace, fileSize);
+            file = postProcessUpdateFile(request.path(), identity.getUserID(), requestSortedBlocks, request.workspaceID(), fileSize);
         }
 
         var cacheEntry = fileMapper.journalToMetadata(file);
-        fileMetadataCache.persistFileMetadata(cacheEntry, request.workspaceID(), file.getFileID(), Duration.ofMinutes(10L));
+        fileMetadataCache.persistFileMetadata(cacheEntry, request.workspaceID(), file.getFileId(), Duration.ofMinutes(10L));
 
-        return new BlockMetadata(request.correlationID(), missingBlocks, fileMapper.journalToInfo(file));
+        return new BlockMetadata(request.correlationID(), missingBlocks, fileJournalRepo.journalToFileInfo(file));
     }
 
     @Transactional
-    protected FileJournalModel postProcessExistingFileNewInWorkspace(String path, UserModel userUploader, Collection<String> newBlocks, WorkspaceModel workspace, Long fileSize) {
+    protected FileJournalRecord postProcessExistingFileNewInWorkspace(String path, UUID userUploader, Collection<String> newBlocks, Long wsID, Long fileSize) {
         // separate method because not sure how to treat such case, logic can be rethought
-        FileJournalModel fileJournal = new FileJournalModel(entityManager.merge(workspace), path, userUploader, FileState.UPLOADED, (short) 1,
-                fileSize, createBlockList(newBlocks.stream()));
-        fileJournalRepo.insert(fileJournal);
-        var userStatistics = entityManager.find(UserStatisticsModel.class, new UserStatisticsModel.UserStatisticsIDModel(
-                identityProvider.getCheckedIdentity().getUserID(), Quota.USER_STORAGE_USED.id())
-        );
-        userStatistics.setValue(String.valueOf(
-                Long.parseLong(userStatistics.getValue()) + fileSize)
-        );
-        entityManager.persist(userStatistics);
+        FileJournalEntity fileJournalEntity = new FileJournalEntity(wsID, path, fileSize, FileState.UPLOADED, newBlocks, userUploader);
+        var fileJournal = fileJournalRepo.insert(fileJournalEntity);
+        updateUserStatistics(userUploader, Quota.USER_STORAGE_USED.id(), String.valueOf(fileSize), StatisticsOperation.ADD);
         return fileJournal;
     }
 
     @Transactional
-    protected FileJournalModel postProcessNewFile(String path, UserModel userUploader, Collection<String> newBlocks, WorkspaceModel workspace, Long fileSize) {
-        FileJournalModel fileJournal = new FileJournalModel(entityManager.merge(workspace), path, userUploader, FileState.IN_UPLOAD, (short) 1,
-                fileSize, createBlockList(newBlocks.stream()));
-        fileJournalRepo.insert(fileJournal);
-        var userStatistics = entityManager.find(UserStatisticsModel.class, new UserStatisticsModel.UserStatisticsIDModel(
-                identityProvider.getCheckedIdentity().getUserID(), Quota.USER_STORAGE_USED.id())
-        );
-        userStatistics.setValue(String.valueOf(
-                Long.parseLong(userStatistics.getValue()) + fileSize)
-        );
-        entityManager.persist(userStatistics);
+    protected FileJournalRecord postProcessNewFile(String path, UUID userUploader, Collection<String> newBlocks, Long wsID, Long fileSize) {
+        FileJournalEntity fileJournalEntity = new FileJournalEntity(wsID, path, fileSize, FileState.IN_UPLOAD, newBlocks, userUploader);
+        var fileJournal = fileJournalRepo.insert(fileJournalEntity);
+        updateUserStatistics(userUploader, Quota.USER_STORAGE_USED.id(), String.valueOf(fileSize), StatisticsOperation.ADD);
         return fileJournal;
     }
 
     @Transactional
-    protected FileJournalModel postProcessUpdateFile(String path, UserModel userUploader, Set<String> newBlocks, WorkspaceModel workspace, Long fileSize) {
-        var existingVersions = entityManager.createQuery("SELECT f.historyID FROM FileJournalModel f " +
-                        "WHERE f.id.workspaceID = :wsID AND f.path = :path " +
-                        "AND f.state <> :state " +
-                        "ORDER BY f.historyID", Integer.class)
-                .setParameter("wsID", workspace.getId())
-                .setParameter("path", path)
-                .setParameter("state", FileState.DELETED)
-                .getResultList();
+    protected FileJournalRecord postProcessUpdateFile(String path, UUID userUploader, Set<String> newBlocks, Long wsID, Long fileSize) {
+        var existingVersions = dslContext.select(FILE_JOURNAL.HISTORY_ID).from(FILE_JOURNAL)
+                .where(FILE_JOURNAL.WS_ID.eq(wsID)).and(FILE_JOURNAL.PATH.eq(path))
+                .and(FILE_JOURNAL.STATE.notEqual(FileState.DELETED.name()))
+                .orderBy(FILE_JOURNAL.HISTORY_ID)
+                .fetchInto(Integer.class);
 
         if (existingVersions.size() == FILE_VERSIONS_MAX) {
             // TODO: delete blocks for file versions that are cleaned up
             // or to maintain a policy of soft deletes?
-            entityManager.createQuery("DELETE FROM FileJournalModel fj " +
-                            "WHERE fj.id.workspaceID = :wsID AND fj.historyID = :version")
-                    .setParameter("wsID", workspace.getId())
-                    .setParameter("version", existingVersions.getFirst()) // the oldest version
-                    .executeUpdate();
+            dslContext.deleteFrom(FILE_JOURNAL)
+                    .where(FILE_JOURNAL.WS_ID.eq(wsID))
+                    .and(FILE_JOURNAL.HISTORY_ID.eq(existingVersions.getFirst()))
+                    .execute();
         }
 
         // unmark previous version as latest
-        entityManager.createQuery("UPDATE FileJournalModel f SET latest = 0 " +
-                "WHERE f.historyID = :version AND f.id.workspaceID = :wsID")
-                .setParameter("version", existingVersions.getLast())
-                .setParameter("wsID", workspace.getId())
-                .executeUpdate();
+        dslContext.update(FILE_JOURNAL)
+                .set(FILE_JOURNAL.LATEST, (short) 0)
+                .where(FILE_JOURNAL.WS_ID.eq(wsID))
+                .and(FILE_JOURNAL.HISTORY_ID.eq(existingVersions.getLast()))
+                .execute();
 
-        var fileJournal = entityManager.createQuery("SELECT fj FROM FileJournalModel fj " +
-                        "WHERE fj.id.workspaceID = ?1 AND fj.path = ?2 " +
-                        "ORDER BY fj.historyID DESC", FileJournalModel.class)
-                .setParameter(1, workspace.getId())
-                .setParameter(2, path)
-                .setMaxResults(1)
-                .getSingleResult();
+        var fileJournal = dslContext.selectFrom(FILE_JOURNAL)
+                .where(FILE_JOURNAL.WS_ID.eq(wsID))
+                .and(FILE_JOURNAL.PATH.eq(path))
+                .orderBy(FILE_JOURNAL.HISTORY_ID.desc())
+                .limit(1).fetchOne().into(FileJournalRecord.class);
 
-        var newFileJournalEntry = new FileJournalModel(entityManager.merge(workspace), path, userUploader,
-                FileState.IN_UPLOAD, (short) 1, fileJournal.getSize() + fileSize, createBlockList(newBlocks.stream())
-        );
-        newFileJournalEntry.setUpdatedBy(userUploader);
-        fileJournalRepo.insert(newFileJournalEntry);
+        var newFileJournalEntity = new FileJournalEntity(wsID, path, fileJournal.getSize() + fileSize, FileState.IN_UPLOAD, newBlocks, userUploader);
+        var newFileJournalEntry = fileJournalRepo.insert(newFileJournalEntity);
 
-        log.debug("FileJournal entry history updated to: " + fileJournal.getHistoryID());
-        var userStatistics = entityManager.find(UserStatisticsModel.class, new UserStatisticsModel.UserStatisticsIDModel(
-                identityProvider.getCheckedIdentity().getUserID(), Quota.USER_STORAGE_USED.id())
-        );
-        userStatistics.setValue(String.valueOf(
-                Long.parseLong(userStatistics.getValue()) + fileSize)
-        );
-        entityManager.persist(userStatistics);
+        log.debug("FileJournal entry history updated to: " + newFileJournalEntry.getHistoryId());
+        updateUserStatistics(userUploader, Quota.USER_STORAGE_USED.id(), String.valueOf(fileSize), StatisticsOperation.ADD);
         return newFileJournalEntry;
     }
 
     @Transactional
-    protected Optional<FileJournalModel> updateFileState(UUID userID, Long workspaceID, String path) {
-        var user = entityManager.find(UserModel.class, userID);
-        FileJournalModel uploadedFile;
-        try {
-             uploadedFile = entityManager.createQuery("SELECT f FROM FileJournalModel f " +
-                            "WHERE f.id.workspaceID = :wsID AND f.path = :path " +
-                            "ORDER BY f.historyID DESC " +
-                            "FETCH FIRST 1 ROW ONLY ", FileJournalModel.class)
-                    .setParameter("wsID", workspaceID)
-                    .setParameter("path", path)
-                    .getSingleResult();
-        } catch (NoResultException e) {
+    protected Optional<FileJournalRecord> updateFileState(UUID userID, Long workspaceID, String path) {
+
+        var uploadedFile = dslContext.selectFrom(FILE_JOURNAL)
+                .where(FILE_JOURNAL.WS_ID.eq(workspaceID))
+                .and(FILE_JOURNAL.PATH.eq(path))
+                .orderBy(FILE_JOURNAL.HISTORY_ID.desc())
+                .limit(1)
+                .fetchOne();
+
+        if (uploadedFile == null) {
             log.info("Same file in another workspace identified, proceeding to creating a new entry");
             return Optional.empty();
         }
 
-        if (uploadedFile.getState().equals(FileState.IN_UPLOAD)) {
-            uploadedFile.setState(FileState.UPLOADED);
-            uploadedFile.setUpdatedBy(user);
-            entityManager.merge(uploadedFile);
+        if (uploadedFile.getState().equals(FileState.IN_UPLOAD.name())) {
+            uploadedFile.setState(FileState.UPLOADED.name());
+            uploadedFile.setUpdatedAt(OffsetDateTime.now());
+            uploadedFile.setUpdatedBy(userID);
+            uploadedFile.store();
             log.debug("File was uploaded before, now updated state");
         }
+
         return Optional.of(uploadedFile);
     }
 
-    public Optional<WorkspaceModel> getWorkspace(Long wsID, UUID userID) {
-        var workspaces = entityManager.createQuery("SELECT m.workspace FROM UserWorkspaceModel m " +
-                        "WHERE m.id.workspaceID = ?1 AND m.id.userID IN ?2 ", WorkspaceModel.class)
-                .setParameter(1, wsID)
-                .setParameter(2, userID)
-                .getResultList();
-        if (workspaces == null || workspaces.isEmpty())
-            return Optional.empty();
-
-        return Optional.of(workspaces.getFirst());
+    public Optional<WorkspacesRecord> getWorkspace(Long wsID, UUID userID) {
+        return dslContext.select(WORKSPACES).from(WORKSPACES)
+                .join(USER_WORKSPACES).on(WORKSPACES.ID.eq(USER_WORKSPACES.WS_ID))
+                .where(USER_WORKSPACES.WS_ID.eq(wsID))
+                .and(USER_WORKSPACES.USER_ID.eq(userID))
+                .fetchOptional()
+                .map(r -> dslContext.newRecord(WORKSPACES, r));
     }
 
     /**
@@ -373,7 +343,7 @@ public class MetadataService {
             throw new InvalidParametersException("Either link for file access is invalid or workspace/file id wasn't provided");
         }
 
-        FileJournalModel file = null;
+        FileJournalRecord file = null;
         // TODO: optimize reads by not selecting not needed columns (blocklist)
 
         // find by path
@@ -408,76 +378,60 @@ public class MetadataService {
             file = fileJournalRepo.findByIdAndStateIn(fileID, wsID, FileState.UPLOADED);
         }
 
+        var fileInfo = fileJournalRepo.journalToFileInfo(file);
+
         if (listVersions != null && listVersions) {
             if (StringUtils.isEmpty(path)) {
-                path = fileJournalRepo.findPathByID(file.getId().getWorkspaceID(), file.getId().getFileID());
+                path = fileJournalRepo.findPathByID(file.getWsId(), file.getFileId());
             }
-            var versions = fileJournalRepo.getVersionsByPath(file.getId().getWorkspaceID(), path);
-            var versionedFile = fileMapper.journalToVersionedInfo(file);
+            var versions = fileJournalRepo.getVersionsByPath(file.getWsId(), path);
+            var versionedFile = fileMapper.fileInfoToVersionedFile(fileInfo);
             versionedFile.versions = IntStream.range(1, versions.size()+1).mapToObj(v -> {
                 return new FileVersion(v, versions.get(v-1));
             }).toList();
             log.debug("Returning file info with versions");
             return versionedFile;
         }
-        return fileMapper.journalToInfo(file);
+        return fileInfo;
     }
 
     /**
     * Returns a paginated list of information about files
      **/
     public Paged<FileInfo> searchFiles(FileFilters filters) {
-        Identity identity;
-        if (filters.wsID() != null) {
-            identity = identityProvider.getIdentity(String.valueOf(filters.wsID()));
-        } else {
-            identity = identityProvider.getCheckedIdentity();
-        }
+        Identity identity = (filters.wsID() != null)
+                ? identityProvider.getIdentity(String.valueOf(filters.wsID()))
+                : identityProvider.getCheckedIdentity();
+
         if (!identity.hasRole(Role.USER)) {
             throw new ForbiddenException();
         }
-        var page = filters.page() == null ? 0 : filters.page();
-        var size = filters.size() == null ? 10 : filters.size();
-        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
-        CriteriaQuery<FileJournalModel> selectQuery = cb.createQuery(FileJournalModel.class);
-        Root<FileJournalModel> selectRoot = selectQuery.from(FileJournalModel.class);
 
-        var selectPredicates = fileJournalRepo.buildPredicatesFromParams(cb, selectRoot, filters);
+        int page = (filters.page() == null) ? 0 : filters.page();
+        int size = (filters.size() == null ? 10 : filters.size());
 
-        selectQuery.select(selectRoot).where(cb.and(selectPredicates.toArray(new Predicate[0]))).orderBy(cb.desc(selectRoot.get("updatedAt")));
+        Condition condition = FILE_JOURNAL.LATEST.eq((short) 1)
+                .and(FILE_JOURNAL.PATH.isDistinctFrom("/"))
+                .and(FILE_JOURNAL.STATE.eq(filters.deleted() == null || !filters.deleted()
+                        ? FileState.UPLOADED.name()
+                        : FileState.DELETED.name()));
 
-        CriteriaQuery<Long> countQuery = cb.createQuery(Long.class);
-        Root<FileJournalModel> countRoot = countQuery.from(FileJournalModel.class);
-        var countPredicates = fileJournalRepo.buildPredicatesFromParams(cb, countRoot, filters);
-        countQuery.select(cb.count(countRoot)).where(cb.and(countPredicates.toArray(new Predicate[0])));
-
-        var filesFound = entityManager.createQuery(selectQuery).setFirstResult(page*size).setMaxResults(size).getResultList();
-        var filesCount = entityManager.createQuery(countQuery).getSingleResult();
-
-        List<FileInfo> res;
-
-        if (filters.deleted() == null || !filters.deleted()) {
-            res = filesFound.stream()
-                    .map(fileMapper::journalToInfo)
-                    .collect(Collectors.toList());
-        } else {
-            res = filesFound.stream()
-                    .map(fileMapper::journalToDeletedFileInfo)
-                    .collect(Collectors.toCollection(ArrayList::new));
+        if (filters.wsID() != null) {
+            condition = condition.and(FILE_JOURNAL.WS_ID.eq(filters.wsID()));
         }
 
-        List<UUID> uploaderUsers = filesFound.stream().map(f -> f.getUploader().getId()).distinct().toList();
-        var uploaders = entityManager.createQuery("SELECT u FROM UserModel u " +
-                "WHERE u.id IN :ids AND u.avatar IS NOT NULL", UserModel.class
-        ).setParameter("ids", uploaderUsers).getResultList();
+        if (filters.name() != null) {
+            String pathLike = filters.name().endsWith("/")
+                    ? filters.name() + "%"
+                    : filters.name();
+            condition = condition.and(FILE_JOURNAL.PATH.like(pathLike));
+        }
 
-        res.forEach(f -> {
-            uploaders.stream().filter(u -> u.getId().equals(f.uploader)).findAny().ifPresent((u) -> {
-                f.uploaderAvatar = minioOperations.getObjectURL(u.getAvatar());
-            });
-        });
+        var countRecord = dslContext.fetchCount(FILE_JOURNAL, condition);
+        int totalPages = (int) Math.ceil((double) countRecord / size);
 
-        int totalPages = (int) Math.ceil((double) filesCount / size);
+        var res = fileJournalRepo.getFileInfoList(condition, size, page);
+
         boolean hasNext = (page + 1) < totalPages;
         boolean hasPrevious = page > 0;
 
@@ -489,39 +443,24 @@ public class MetadataService {
         if (!identity.hasRole(Role.USER)) {
             throw new ForbiddenException();
         }
-        page = page == null ? 0 : page;
-        size = size == null ? 10 : size;
-        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
-        CriteriaQuery<FileJournalModel> selectQuery = cb.createQuery(FileJournalModel.class);
-        Root<FileJournalModel> selectRoot = selectQuery.from(FileJournalModel.class);
 
-        var selectPredicates = fileJournalRepo.buildPredicatesFromParams(cb, selectRoot, wsID, directory);
+        int currentPage = Optional.ofNullable(page).orElse(0);
+        int pageSize = Optional.ofNullable(size).orElse(10);
 
-        selectQuery.select(selectRoot).where(cb.and(selectPredicates.toArray(new Predicate[0]))).orderBy(cb.desc(selectRoot.get("updatedAt")));
+        Condition condition = fileJournalRepo.buildConditionsFromParams(
+                FILE_JOURNAL, wsID, directory);
 
-        CriteriaQuery<Long> countQuery = cb.createQuery(Long.class);
-        Root<FileJournalModel> countRoot = countQuery.from(FileJournalModel.class);
-        var countPredicates = fileJournalRepo.buildPredicatesFromParams(cb, countRoot, wsID, directory);
-        countQuery.select(cb.count(countRoot)).where(cb.and(countPredicates.toArray(new Predicate[0])));
+        long totalCount = dslContext.fetchOne(
+                dslContext.selectCount()
+                        .from(FILE_JOURNAL)
+                        .where(condition)
+        ).value1();
 
-        var filesFound = entityManager.createQuery(selectQuery).setFirstResult(page*size).setMaxResults(size).getResultList();
-        var filesCount = entityManager.createQuery(countQuery).getSingleResult();
-        List<UUID> uploaderUsers = filesFound.stream().map(f -> f.getUploader().getId()).distinct().toList();
-        var uploaders = entityManager.createQuery("SELECT u FROM UserModel u " +
-                "WHERE u.id IN :ids AND u.avatar IS NOT NULL", UserModel.class
-        ).setParameter("ids", uploaderUsers).getResultList();
-        List<FileInfo> res = filesFound.stream()
-                .map(fileMapper::journalToInfo)
-                .peek(f -> {
-                    uploaders.stream().filter(u -> u.getId().equals(f.uploader)).findAny().ifPresent((u) -> {
-                        f.uploaderAvatar = minioOperations.getObjectURL(u.getAvatar());
-                    });
-                })
-                .collect(Collectors.toList());
+        int totalPages = (int) Math.ceil((double) totalCount / pageSize);
+        boolean hasNext = (currentPage + 1) < totalPages;
+        boolean hasPrevious = currentPage > 0;
 
-        int totalPages = (int) Math.ceil((double) filesCount / size);
-        boolean hasNext = (page + 1) < totalPages;
-        boolean hasPrevious = page > 0;
+        List<FileInfo> res = fileJournalRepo.getFileInfoList(condition, pageSize,currentPage * pageSize);
 
         return new Paged<FileInfo>().of(res, totalPages, hasNext, hasPrevious);
     }
@@ -590,36 +529,20 @@ public class MetadataService {
         if (!identity.hasRole(Role.USER)) {
             throw new UnauthorizedException();
         }
-        FileJournalModel newDirectory = null;
         var dir = request.path() + request.name() + "/";
-        try {
-            var externalTransaction = true;
-            if (userTransaction.getStatus() == Status.STATUS_NO_TRANSACTION) {
-                userTransaction.begin();
-                externalTransaction = false;
-            }
-            var workspace = getWorkspace(request.workspaceID(), identity.getUserID());
-            var userUploader = entityManager.find(UserModel.class, identity.getUserID());
+        var newDirectoryEntity = new FileJournalEntity(request.workspaceID(), dir, 0L, FileState.UPLOADED, null, identity.getUserID());
+        var newDirectory = fileJournalRepo.insert(newDirectoryEntity);
 
-            newDirectory = new FileJournalModel(workspace.get(), dir, userUploader, FileState.UPLOADED, (short) 1, 0L, null);
-            fileJournalRepo.insert(newDirectory);
-            if (!externalTransaction) {
-                userTransaction.commit();
-            }
-        } catch (Exception e) {
-            log.error("Error creating directory", e);
-            throw new RuntimeException("Application error");
-        }
-        return fileMapper.journalToInfo(newDirectory);
+        return fileJournalRepo.journalToFileInfo(newDirectory);
     }
 
     public List<String> getDirectories(Long wsID, String path) {
         var directoriesInPath = path == null ? "%" : path + "%";
-        return entityManager.createQuery("SELECT f.path FROM FileJournalModel f " +
-                "WHERE f.id.workspaceID = :wsID AND f.path LIKE :path AND f.size = 0", String.class)
-                .setParameter("wsID", wsID)
-                .setParameter("path", directoriesInPath)
-                .getResultList();
+        return dslContext.select(FILE_JOURNAL.PATH).from(FILE_JOURNAL)
+                .where(FILE_JOURNAL.WS_ID.eq(wsID))
+                .and(FILE_JOURNAL.PATH.like(directoriesInPath))
+                .and(FILE_JOURNAL.SIZE.eq(0L))
+                .fetch().into(String.class);
     }
 
     private boolean hasFileAccessPermissions(Long wsID, String link) {
@@ -649,10 +572,11 @@ public class MetadataService {
             log.error("Could not encrypt link " + link, e);
             return "";
         }
-        LinkModel linkModel = new LinkModel(identity.getUserID(), link,
-                LocalDateTime.ofEpochSecond(expiresAt, 0, ZoneOffset.UTC)
+        LinksRecord linksRecord = new LinksRecord(link, identity.getUserID(), 0, OffsetDateTime.now(),
+                LocalDateTime.ofEpochSecond(expiresAt, 0, ZoneOffset.UTC).atOffset(ZoneOffset.UTC)
         );
-        entityManager.persist(linkModel);
+        dslContext.attach(linksRecord);
+        linksRecord.store();
 
         return encryptedLink;
     }
@@ -668,7 +592,7 @@ public class MetadataService {
             throw new NotFoundException();
         }
         var fileJournal = fileJournalOp.get();
-        if (!fileJournal.getUploader().getId().equals(identity.getUserID())) {
+        if (!fileJournal.getUploaderId().equals(identity.getUserID())) {
             throw new UnauthorizedException("File wasn't uploaded by current user");
         }
         FileState updatedState = null;
@@ -683,35 +607,38 @@ public class MetadataService {
                 updatedName = String.format("%s/%s.%s", currPath, newName, extention);
             }
         }
-        if (fileJournal.getState().equals(FileState.DELETED)) {
-            List<TaskModel> deletionTasks = entityManager.createNativeQuery("SELECT * FROM metadata_db.tasks t " +
-                            "WHERE t.object_id = :fileID AND metadata ->> 'workspace' = :workspaceID", TaskModel.class)
-                    .setParameter("fileID", String.valueOf(fileID))
-                    .setParameter("workspaceID", String.valueOf(wsID))
-                    .getResultList();
-            Optional<TaskModel> deletionTask = Optional.empty();
-            if (CollectionUtils.isNotEmpty(deletionTasks)) {
-                deletionTask = Optional.of(deletionTasks.getFirst());
-            }
-            if (fileAction.equals(FileAction.RESTORE)) {
+
+        if (fileJournal.getState().equals(FileState.DELETED.name())) {
+            String fileIdStr = fileID.toString();
+            String workspaceIdStr = wsID.toString();
+
+            List<TasksRecord> deletionTasks = dslContext
+                    .selectFrom(TASKS)
+                    .where(TASKS.OBJECT_ID.eq(fileIdStr)
+                            .and(DSL.field("metadata->>workspace", String.class).eq(workspaceIdStr)))
+                    .fetchInto(TasksRecord.class);
+
+            Optional<TasksRecord> deletionTaskOpt = deletionTasks.stream().findFirst();
+
+            if (fileAction == FileAction.RESTORE) {
                 updatedState = FileState.UPLOADED;
-                deletionTask.ifPresent(task -> entityManager.remove(task));
+                deletionTaskOpt.ifPresent(task ->
+                        dslContext.deleteFrom(TASKS)
+                                .where(TASKS.ID.eq(task.getId()))
+                                .execute()
+                );
             }
-            if (fileAction.equals(FileAction.DELETE_FOREVER)) {
+
+            if (fileAction == FileAction.DELETE_FOREVER) {
                 updatedState = FileState.DELETING;
-                deletionTask.ifPresent(task -> {
-                    task.setPerformAt(LocalDateTime.now());
-                    entityManager.persist(task);
-                });
-                var statistics = entityManager.createQuery("SELECT s FROM UserStatisticsModel s " +
-                                "WHERE s.id.userID = :userID AND s.id.statisticsID = :statisticsID", UserStatisticsModel.class)
-                        .setParameter("userID", identity.getUserID())
-                        .setParameter("statisticsID", Quota.USER_STORAGE_USED.id())
-                        .getSingleResult();
-                var storageUsed = Long.valueOf(statistics.getValue());
-                var storageToClean = storageUsed - fileJournal.getSize();
-                statistics.setValue(String.valueOf(storageToClean));
-                entityManager.persist(statistics);
+                deletionTaskOpt.ifPresent(task ->
+                        dslContext.update(TASKS)
+                                .set(TASKS.PERFORM_AT, OffsetDateTime.now())
+                                .where(TASKS.ID.eq(task.getId()))
+                                .execute()
+                );
+
+                updateUserStatistics(identity.getUserID(), Quota.USER_STORAGE_USED.id(), String.valueOf(fileJournal.getSize()), StatisticsOperation.SUBTRACT);
             }
         }
         // update all file versions
@@ -730,34 +657,51 @@ public class MetadataService {
             return new LinkValidity(false, false);
         }
 
-        var link = entityManager.find(LinkModel.class, decryptedLink);
+        var link = dslContext.selectFrom(LINKS)
+                .where(LINKS.LINK.eq(decryptedLink))
+                .fetchOne();
         if (link != null) {
-            return new LinkValidity(true, link.getExpiresAt().isBefore(LocalDateTime.now(ZoneId.of("GMT"))));
+            return new LinkValidity(true, link.getExpiresAt().isBefore(OffsetDateTime.now(ZoneId.of("GMT"))));
         }
         return new LinkValidity(false, false);
     }
 
     private void verifyQuotaUsage(UUID userID, Short subscriptionID, Long fileSize) {
-        var statistics = entityManager.createQuery("SELECT s FROM UserStatisticsModel s " +
-                        "WHERE s.id.userID = :userID AND s.id.statisticsID = :statisticsID", UserStatisticsModel.class)
-                .setParameter("userID", userID)
-                .setParameter("statisticsID", Quota.USER_STORAGE_USED.id())
-                .getSingleResult();
-
-        var storageUsed = Long.valueOf(statistics.getValue());
+        var statisticsValue = dslContext.select(USER_STATISTICS.VALUE).from(USER_STATISTICS)
+                .where(USER_STATISTICS.USER_ID.eq(userID))
+                .and(USER_STATISTICS.STATISTICS_ID.eq(Quota.USER_STORAGE_USED.id()))
+                .fetchOne().into(String.class);
+        var storageUsed = Long.valueOf(statisticsValue);
         var quota = subscriptionQuotaCache.getByID(subscriptionID);
         Long storageLimit;
         if (quota != null) {
             storageLimit = quota.storageLimit();
         } else {
-            var subscription = entityManager.find(UserSubscriptionModel.class, subscriptionID);
-            storageLimit = subscription.getStorageLimit();
+            storageLimit = dslContext.select(USER_SUBSCRIPTIONS.STORAGE_LIMIT).from(USER_SUBSCRIPTIONS)
+                    .where(USER_SUBSCRIPTIONS.ID.eq(subscriptionID))
+                    .fetchOne().into(Long.class);
         }
         var remainingQuota = storageLimit - (storageUsed + fileSize);
         if (remainingQuota < 0) {
             throw new InsufficientQuotaException(Quota.USER_STORAGE_USED, String.valueOf(storageLimit));
         }
         log.debug("Verified quota, remaining: " + remainingQuota);
+    }
+
+    private void updateUserStatistics(UUID userID, short id, String addedValue, StatisticsOperation operation) {
+        var statisticsValue = dslContext.select(USER_STATISTICS.VALUE).from(USER_STATISTICS)
+                .where(USER_STATISTICS.USER_ID.eq(userID))
+                .and(USER_STATISTICS.STATISTICS_ID.eq(id))
+                .forNoKeyUpdate()
+                .fetchOne().into(String.class);
+        var newValue = operation == StatisticsOperation.ADD
+                ? Long.parseLong(statisticsValue) + Long.parseLong(addedValue)
+                : Long.parseLong(statisticsValue) - Long.parseLong(addedValue);
+        dslContext.update(USER_STATISTICS)
+                .set(USER_STATISTICS.VALUE, String.valueOf(newValue))
+                .where(USER_STATISTICS.USER_ID.eq(userID))
+                .and(USER_STATISTICS.STATISTICS_ID.eq(id))
+                .execute();
     }
 
     private Long calculateFileSize(Integer blockCount, Integer lastBlockSize) {

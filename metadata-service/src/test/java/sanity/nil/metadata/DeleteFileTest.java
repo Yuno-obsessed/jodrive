@@ -8,12 +8,12 @@ import io.quarkus.test.oidc.server.OidcWiremockTestResource;
 import io.restassured.http.ContentType;
 import io.smallrye.mutiny.Uni;
 import jakarta.inject.Inject;
-import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import jakarta.transaction.UserTransaction;
 import lombok.extern.jbosslog.JBossLog;
 import org.awaitility.Awaitility;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jooq.DSLContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import sanity.nil.grpc.block.BlockService;
@@ -22,14 +22,14 @@ import sanity.nil.grpc.block.DeleteBlocksRequest;
 import sanity.nil.grpc.block.DeleteBlocksResponse;
 import sanity.nil.meta.consts.FileState;
 import sanity.nil.meta.consts.TaskStatus;
-import sanity.nil.meta.model.FileJournalModel;
-import sanity.nil.meta.model.TaskModel;
-import sanity.nil.meta.model.UserModel;
-import sanity.nil.meta.model.WorkspaceModel;
+import sanity.nil.meta.db.tables.Tasks;
+import sanity.nil.meta.db.tables.records.FileJournalRecord;
+import sanity.nil.meta.db.tables.records.TasksRecord;
+import sanity.nil.meta.model.FileJournalEntity;
 import sanity.nil.meta.service.FileJournalRepo;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -38,6 +38,7 @@ import java.util.concurrent.TimeUnit;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
+import static sanity.nil.meta.db.tables.FileJournal.FILE_JOURNAL;
 
 @JBossLog
 @QuarkusTest
@@ -53,7 +54,7 @@ public class DeleteFileTest {
     @GrpcClient("blockService")
     BlockService blockClient;
     @Inject
-    EntityManager entityManager;
+    DSLContext dslContext;
     @Inject
     UserTransaction userTransaction;
     @ConfigProperty(name = "application.security.default-user-id")
@@ -63,8 +64,8 @@ public class DeleteFileTest {
     @BeforeEach
     public void setup() throws Exception {
         userTransaction.begin();
-        entityManager.createQuery("DELETE FROM FileJournalModel f").executeUpdate();
-        entityManager.createQuery("DELETE FROM TaskModel t").executeUpdate();
+        dslContext.deleteFrom(FILE_JOURNAL).execute();
+        dslContext.deleteFrom(Tasks.TASKS).execute();
         userTransaction.commit();
     }
 
@@ -75,13 +76,13 @@ public class DeleteFileTest {
         var response = given()
                 .contentType(ContentType.JSON)
                 .queryParam("wsID", 1L)
-                .when().delete("/api/v1/metadata/file/{id}", file.getFileID())
+                .when().delete("/api/v1/metadata/file/{id}", file.getFileId())
                 .then()
                 .statusCode(204)
                 .extract().response();
 
         var expectedFile = getFileJournals(testFile).getFirst();
-        assertThat(expectedFile.getState()).isEqualTo(FileState.DELETED);
+        assertThat(expectedFile.getState()).isEqualTo(FileState.DELETED.name());
     }
 
     @Test
@@ -98,24 +99,28 @@ public class DeleteFileTest {
         given()
                 .contentType(ContentType.JSON)
                 .queryParam("wsID", 1L)
-                .when().delete("/api/v1/metadata/file/{id}", file.getFileID())
+                .when().delete("/api/v1/metadata/file/{id}", file.getFileId())
                 .then()
                 .statusCode(204)
                 .extract().response();
 
         // imitate performAt trigger
         userTransaction.begin();
-        entityManager.createQuery("UPDATE TaskModel t SET t.performAt = :beforeNow " +
-                        "WHERE t.objectID = :fileID")
-                .setParameter("beforeNow", LocalDateTime.now().minusDays(1L))
-                .setParameter("fileID", file.getFileID())
-                .executeUpdate();
+        dslContext.update(Tasks.TASKS)
+                .set(Tasks.TASKS.PERFORM_AT, OffsetDateTime.now().minusDays(1L))
+                .where(Tasks.TASKS.OBJECT_ID.eq(String.valueOf(file.getFileId())))
+                .execute();
+//        entityManager.createQuery("UPDATE TaskModel t SET t.performAt = :beforeNow " +
+//                        "WHERE t.objectID = :fileID")
+//                .setParameter("beforeNow", LocalDateTime.now().minusDays(1L))
+//                .setParameter("fileID", file.getFileID())
+//                .executeUpdate();
         userTransaction.commit();
 
         Awaitility.await()
                 .pollInterval(Duration.ofMillis(500L))
                 .atMost(10, TimeUnit.SECONDS)
-                .until(() -> getTask(file.getFileID()).getStatus().equals(TaskStatus.FAILED));
+                .until(() -> getTask(file.getFileId()).getStatus().equals(TaskStatus.FAILED.name()));
         assertThat(getFileJournals(testFile)).isNotEmpty();
     }
 
@@ -133,18 +138,22 @@ public class DeleteFileTest {
         given()
                 .contentType(ContentType.JSON)
                 .queryParam("wsID", 1L)
-                .when().delete("/api/v1/metadata/file/{id}", file.getFileID())
+                .when().delete("/api/v1/metadata/file/{id}", file.getFileId())
                 .then()
                 .statusCode(204)
                 .extract().response();
 
         // imitate performAt trigger
         userTransaction.begin();
-        entityManager.createQuery("UPDATE TaskModel t SET t.performAt = :beforeNow " +
-                        "WHERE t.objectID = :fileID")
-                .setParameter("beforeNow", LocalDateTime.now().minusDays(1L))
-                .setParameter("fileID", file.getFileID())
-                .executeUpdate();
+        dslContext.update(Tasks.TASKS)
+                .set(Tasks.TASKS.PERFORM_AT, OffsetDateTime.now().minusDays(1L))
+                .where(Tasks.TASKS.OBJECT_ID.eq(String.valueOf(file.getFileId())))
+                .execute();
+//        entityManager.createQuery("UPDATE TaskModel t SET t.performAt = :beforeNow " +
+//                        "WHERE t.objectID = :fileID")
+//                .setParameter("beforeNow", LocalDateTime.now().minusDays(1L))
+//                .setParameter("fileID", file.getFileID())
+//                .executeUpdate();
         userTransaction.commit();
 
         Awaitility.await()
@@ -152,38 +161,40 @@ public class DeleteFileTest {
                 .atMost(10, TimeUnit.SECONDS)
                 .until(() -> getFileJournals(testFile).isEmpty());
 
-        var task = entityManager.createQuery("SELECT t FROM TaskModel t " +
-                        "WHERE t.objectID = :fileID", TaskModel.class)
-                .setParameter("fileID", file.getFileID())
-                .getSingleResult();
-        assertThat(task.getStatus()).isEqualTo(TaskStatus.FINISHED);
+        var task = getTask(file.getFileId());
+        assertThat(task.getStatus()).isEqualTo(TaskStatus.FINISHED.name());
     }
 
     @Transactional
-    protected List<FileJournalModel> getFileJournals(String path) {
-        return entityManager.createQuery("SELECT f FROM FileJournalModel f " +
-                        "WHERE f.id.workspaceID = :wsID AND f.path = :path", FileJournalModel.class)
-                .setParameter("wsID", 1L)
-                .setParameter("path", path)
-                .getResultList();
+    protected List<FileJournalRecord> getFileJournals(String path) {
+        return dslContext.selectFrom(FILE_JOURNAL)
+                .where(FILE_JOURNAL.WS_ID.eq(1L))
+                .and(FILE_JOURNAL.PATH.eq(path))
+                .fetch();
+//        return entityManager.createQuery("SELECT f FROM FileJournalModel f " +
+//                        "WHERE f.id.workspaceID = :wsID AND f.path = :path", FileJournalModel.class)
+//                .setParameter("wsID", 1L)
+//                .setParameter("path", path)
+//                .getResultList();
     }
 
     @Transactional
-    protected TaskModel getTask(Long fileID) {
-        return entityManager.createQuery("SELECT t FROM TaskModel t " +
-                        "WHERE t.objectID = :fileID", TaskModel.class)
-                .setParameter("fileID", fileID)
-                .getSingleResult();
+    protected TasksRecord getTask(Long fileID) {
+        return dslContext.selectFrom(Tasks.TASKS)
+                .where(Tasks.TASKS.OBJECT_ID.eq(String.valueOf(fileID)))
+                .fetchOne();
+//        return entityManager.createQuery("SELECT t FROM TaskModel t " +
+//                        "WHERE t.objectID = :fileID", TaskModel.class)
+//                .setParameter("fileID", fileID)
+//                .getSingleResult();
     }
 
-    private FileJournalModel generateTestData(String path) throws Exception {
+    private FileJournalRecord generateTestData(String path) throws Exception {
         userTransaction.begin();
-        var userUploader = entityManager.find(UserModel.class, defaultUserID);
-        var workspace = entityManager.find(WorkspaceModel.class, 1L);
-        var journal = new FileJournalModel(workspace, testFile, userUploader, FileState.UPLOADED, (short) 1,
-                4256400L, UUID.randomUUID().toString());
-        fileJournalRepo.insert(journal);
+        var journal = new FileJournalEntity(1L, testFile, 4256400L, FileState.UPLOADED,
+                List.of(UUID.randomUUID().toString()), defaultUserID);
+        var savedJournal = fileJournalRepo.insert(journal);
         userTransaction.commit();
-        return journal;
+        return savedJournal;
     }
 }

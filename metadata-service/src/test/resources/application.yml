@@ -8,16 +8,14 @@ quarkus:
       metadataService:
         host: localhost
         port: 8083
-  hibernate-orm:
-    database:
-      default-schema: metadata_db
-      generation:
-        ~: none
+  jooq:
+    dialect: Postgres
   datasource:
     db-kind: postgresql
   flyway:
     migrate-at-start: true
     schemas: metadata_db
+    locations: db/testMigration
   live-reload:
     enabled: false
   test:
